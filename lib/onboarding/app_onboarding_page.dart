@@ -19,6 +19,11 @@ class _AppOnboardingScreenState extends State<AppOnboardingScreen> {
   int _currentPage = 0;
   bool _isLastPage = false;
 
+  // Add this field to hold the preloaded image
+  late final ImageProvider _backgroundImage;
+  bool _imageLoaded = false;
+  bool _preloadStarted = false; // Add this flag to avoid duplicate calls
+
   final List<Widget> _pages = [
     OnboardingPage(
       title: "Smart Car",
@@ -55,6 +60,41 @@ class _AppOnboardingScreenState extends State<AppOnboardingScreen> {
         _isLastPage = _currentPage == _pages.length - 1;
       });
     });
+
+    // Initialize the image provider without precaching yet
+    _backgroundImage = const AssetImage('assets/images/onboarding.jpeg');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Only start preloading once
+    if (!_preloadStarted) {
+      _preloadStarted = true;
+      _preloadBackgroundImage();
+    }
+  }
+
+  Future<void> _preloadBackgroundImage() async {
+    // Now context is safely available
+    await precacheImage(_backgroundImage, context)
+        .then((_) {
+          if (mounted) {
+            setState(() {
+              _imageLoaded = true;
+            });
+          }
+        })
+        .catchError((error) {
+          print("Error loading image: $error");
+          // If image fails to load, still set imageLoaded to show a fallback
+          if (mounted) {
+            setState(() {
+              _imageLoaded = true;
+            });
+          }
+        });
   }
 
   @override
@@ -75,14 +115,25 @@ class _AppOnboardingScreenState extends State<AppOnboardingScreen> {
         extendBodyBehindAppBar: true,
         body: Stack(
           children: [
-            Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/onboarding.jpeg'),
-                  fit: BoxFit.cover,
+            _imageLoaded
+                ? Container(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: _backgroundImage,
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.medium,
+                    ),
+                  ),
+                )
+                : Container(
+                  // Show a placeholder until image loads
+                  color: Colors.black,
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: GlobalStyles.primaryColor,
+                    ),
+                  ),
                 ),
-              ),
-            ),
             Container(
               decoration: const BoxDecoration(color: Color(0x80191919)),
             ),

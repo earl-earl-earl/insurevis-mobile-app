@@ -118,20 +118,13 @@ class GlobalStyles {
     return AppBar(
       backgroundColor: appBarBackgroundColor,
       automaticallyImplyLeading: false,
-      leadingWidth: leadingPaddingLeft.w + 24.0.w + 12.0.w,
-      leading: Padding(
-        padding: EdgeInsets.only(
-          left: leadingPaddingLeft,
-          top: leadingPaddingTop,
-        ),
-        child: IconButton(
-          icon: Icon(icon, color: color, size: 30.sp),
-          onPressed: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          },
-        ),
+      leading: IconButton(
+        icon: Icon(icon, color: color, size: 24.sp),
+        onPressed: () {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+        },
       ),
     );
   }
