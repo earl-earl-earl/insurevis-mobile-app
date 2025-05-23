@@ -3,6 +3,15 @@ allprojects {
         google()
         mavenCentral()
     }
+    
+    // Add this block to force Kotlin JVM target for all projects including plugins
+    plugins.withId("org.jetbrains.kotlin.android") {
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            kotlinOptions {
+                jvmTarget = "11"
+            }
+        }
+    }
 }
 
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()

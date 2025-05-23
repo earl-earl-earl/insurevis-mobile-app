@@ -1,15 +1,23 @@
 // filepath: c:\Users\Regine Torremoro\Desktop\Earl John\insurevis\lib\other-screens\result-screen.dart
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:http/io_client.dart';
+import 'package:provider/provider.dart';
+import 'package:insurevis/providers/assessment_provider.dart';
 
 class ResultsScreen extends StatefulWidget {
   final String imagePath;
+  final String? assessmentId; // Add this line
 
-  const ResultsScreen({super.key, required this.imagePath});
+  const ResultsScreen({
+    super.key,
+    required this.imagePath,
+    this.assessmentId, // Add this line
+  });
 
   @override
   ResultsScreenState createState() => ResultsScreenState();
@@ -34,7 +42,14 @@ class ResultsScreenState extends State<ResultsScreen> {
   void initState() {
     super.initState();
     _imageFile = File(widget.imagePath); // Pre-load file reference
-    _uploadImage();
+
+    if (widget.assessmentId != null) {
+      // If we have an assessment ID, load data from that instead of making a new API call
+      _loadDataFromAssessment();
+    } else {
+      // Otherwise proceed with the usual API call
+      _uploadImage();
+    }
   }
 
   Future<void> _uploadImage() async {
@@ -43,6 +58,18 @@ class ResultsScreenState extends State<ResultsScreen> {
     );
 
     try {
+      // Verify if image exists
+      if (!_imageFile.existsSync()) {
+        print("ERROR: Image file doesn't exist!");
+        setState(() {
+          _apiResponse = 'Error: Image file not found';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      print("Uploading image from: ${_imageFile.path}");
+
       // Create an HttpClient that accepts all certificates in release mode
       final ioClient =
           HttpClient()..badCertificateCallback = (cert, host, port) => true;
@@ -52,14 +79,22 @@ class ResultsScreenState extends State<ResultsScreen> {
       final request = http.MultipartRequest('POST', url)
         ..files.add(
           await http.MultipartFile.fromPath('image_file', _imageFile.path),
-        );
+        ); // THIS LINE WAS MISSING CLOSING PARENTHESIS AND SEMICOLON (Note: This line appears correct as provided)
+
+      print("Request created, sending to: $url");
 
       // Send the request using our custom client
       final streamedResponse = await client.send(request);
+      print("Response received: ${streamedResponse.statusCode}");
+
       final response = await http.Response.fromStream(streamedResponse);
+      print(
+        "Response body: ${response.body.substring(0, min(100, response.body.length))}...",
+      );
 
       if (response.statusCode == 200) {
         // Process data outside of setState to avoid UI jank
+        print("Success! Processing response...");
         await _processApiResponse(response.body);
 
         if (mounted) {
@@ -69,20 +104,70 @@ class ResultsScreenState extends State<ResultsScreen> {
           });
         }
       } else {
+        print("Error: ${response.statusCode} - ${response.body}");
         if (mounted) {
           setState(() {
-            _apiResponse = 'Error: ${response.statusCode}';
+            _apiResponse = 'Error: ${response.statusCode} - ${response.body}';
             _isLoading = false;
           });
         }
       }
     } catch (e) {
+      print("Exception: $e");
       if (mounted) {
         setState(() {
           _apiResponse = 'Error: $e';
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // Add this method after initState()
+  Future<void> _loadDataFromAssessment() async {
+    print("Loading data from assessment ID: ${widget.assessmentId}");
+
+    try {
+      // Create a proper assessment provider and load real data
+      final assessmentProvider = Provider.of<AssessmentProvider>(
+        context,
+        listen: false,
+      );
+
+      // Get assessment data from ID
+      final assessment = await assessmentProvider.getAssessmentById(
+        widget.assessmentId!,
+      );
+
+      if (assessment == null) {
+        setState(() {
+          _apiResponse = 'Error: Assessment not found';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // If assessment has stored API response, use it
+      if (assessment.apiResponse != null &&
+          assessment.apiResponse!.isNotEmpty) {
+        await _processApiResponse(assessment.apiResponse!);
+        if (mounted) {
+          setState(() {
+            _apiResponse =
+                assessment.apiResponse!; // Add ! to use non-null assertion
+            _isLoading = false;
+          });
+        }
+      } else {
+        // Otherwise, make a new API call using the saved image
+        _uploadImage();
+      }
+    } catch (e) {
+      print("Error loading assessment: $e");
+      setState(() {
+        _apiResponse = 'Error loading assessment: $e';
+        _isLoading = false;
+      });
     }
   }
 
@@ -148,15 +233,15 @@ class ResultsScreenState extends State<ResultsScreen> {
         try {
           if (_cachedCostEstimate is num) {
             _cachedCostEstimate =
-                '\$${(_cachedCostEstimate as num).toStringAsFixed(2)}';
+                '₱${(_cachedCostEstimate as num).toStringAsFixed(2)}';
           } else {
             double cost = double.parse(_cachedCostEstimate.toString());
-            _cachedCostEstimate = '\$${cost.toStringAsFixed(2)}';
+            _cachedCostEstimate = '₱${cost.toStringAsFixed(2)}';
           }
         } catch (e) {
           // If parsing fails, just prepend a dollar sign
           print("Error formatting cost: $e");
-          _cachedCostEstimate = '\$${_cachedCostEstimate}';
+          _cachedCostEstimate = '₱$_cachedCostEstimate';
         }
       }
 
@@ -346,6 +431,7 @@ class ResultsScreenState extends State<ResultsScreen> {
             style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
         ],
+        // Fixed: Removed one extra closing parenthesis here. Was `));`, now `);`
       ),
     );
   }
@@ -406,13 +492,13 @@ class ResultsScreenState extends State<ResultsScreen> {
     final lowerField = fieldName.toLowerCase();
     if (lowerField.contains('cost')) {
       if (value is num) {
-        return '\$${value.toStringAsFixed(2)}';
+        return '₱${value.toStringAsFixed(2)}';
       } else {
         try {
           final numValue = double.parse(value.toString());
-          return '\$${numValue.toStringAsFixed(2)}';
+          return '₱${numValue.toStringAsFixed(2)}';
         } catch (e) {
-          return '\$${value.toString()}';
+          return '₱${value.toString()}';
         }
       }
     }
@@ -751,9 +837,7 @@ class ResultsScreenState extends State<ResultsScreen> {
                   ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-          const SizedBox(height: 30), // Add some bottom padding
+          ), // Add some bottom padding
         ],
       );
     } catch (e) {

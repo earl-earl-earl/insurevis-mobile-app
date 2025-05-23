@@ -10,6 +10,8 @@ import 'package:insurevis/other-screens/result-screen.dart';
 import 'package:path_provider/path_provider.dart'; // To save the picture temporarily
 // import 'package:photo_manager/photo_manager.dart'; // REMOVED: No longer used
 import 'package:image_picker/image_picker.dart'; // ADDED: For picking images from gallery
+import 'package:provider/provider.dart';
+import 'package:insurevis/providers/assessment_provider.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -172,10 +174,24 @@ class _CameraScreenState extends State<CameraScreen> {
       final XFile imageFile = await _controller!.takePicture();
 
       if (mounted) {
+        // Add the photo to assessments before navigating
+        final assessmentProvider = Provider.of<AssessmentProvider>(
+          context,
+          listen: false,
+        );
+        final assessment = await assessmentProvider.addAssessment(
+          imageFile.path,
+        );
+
+        // Navigate to results screen with the assessment ID
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ResultsScreen(imagePath: imageFile.path),
+            builder:
+                (context) => ResultsScreen(
+                  imagePath: imageFile.path,
+                  assessmentId: assessment.id,
+                ),
           ),
         );
       }
@@ -221,11 +237,24 @@ class _CameraScreenState extends State<CameraScreen> {
       );
 
       if (pickedFile != null && mounted) {
-        // Navigate to ResultsScreen with the picked image path
+        // Add the photo to assessments
+        final assessmentProvider = Provider.of<AssessmentProvider>(
+          context,
+          listen: false,
+        );
+        final assessment = await assessmentProvider.addAssessment(
+          pickedFile.path,
+        );
+
+        // Navigate to ResultsScreen with the assessment ID
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ResultsScreen(imagePath: pickedFile.path),
+            builder:
+                (context) => ResultsScreen(
+                  imagePath: pickedFile.path,
+                  assessmentId: assessment.id,
+                ),
           ),
         );
       } else {

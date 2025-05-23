@@ -1,0 +1,232 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:insurevis/global_ui_variables.dart';
+
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              GlobalStyles.backgroundColorStart,
+              GlobalStyles.backgroundColorEnd,
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: 20.h),
+                  Text(
+                    'Dave Benedict',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'dave.benedict@gmail.com',
+                    style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  // Profile picture container
+                  Container(
+                    width: 120.w,
+                    height: 120.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.1),
+                      border: Border.all(color: Colors.white24, width: 2),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.person,
+                        size: 70.sp,
+                        color: Colors.white38,
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 40.h),
+
+                  Text(
+                    'General',
+                    style: TextStyle(
+                      color: GlobalStyles.primaryColor,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.left,
+                  ),
+
+                  SizedBox(height: 10.h),
+
+                  _buildSettingItem(
+                    icon: Icons.person_outline,
+                    title: 'Personal Data',
+                    subtitle: 'Change name, email id',
+                  ),
+
+                  _buildSettingItem(
+                    icon: Icons.backup_outlined,
+                    title: 'Data Backup/Restore',
+                    subtitle: 'Change number, email id',
+                  ),
+
+                  _buildSettingItem(
+                    icon: Icons.settings_outlined,
+                    title: 'Preferences',
+                    subtitle: 'Theme, other preferences',
+                  ),
+
+                  _buildSettingItem(
+                    icon: Icons.language_outlined,
+                    title: 'Language',
+                    subtitle: 'Change language preference',
+                  ),
+
+                  SizedBox(height: 20.h),
+
+                  Text(
+                    'Notification',
+                    style: TextStyle(
+                      color: GlobalStyles.primaryColor,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.left,
+                  ),
+
+                  SizedBox(height: 10.h),
+
+                  _buildToggleItem(
+                    icon: Icons.notifications_outlined,
+                    title: 'Enable Notification',
+                    subtitle: 'Turn on updates/verifications',
+                  ),
+
+                  SizedBox(height: 20.h),
+
+                  Text(
+                    'App Info',
+                    style: TextStyle(
+                      color: GlobalStyles.primaryColor,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.left,
+                  ),
+
+                  SizedBox(height: 10.h),
+
+                  _buildSettingItem(
+                    icon: Icons.contact_support_outlined,
+                    title: 'Contact Us',
+                    subtitle: 'Contact our Customer Service',
+                  ),
+
+                  _buildSettingItem(
+                    icon: Icons.policy_outlined,
+                    title: 'Privacy Policy',
+                    subtitle: 'Security notifications',
+                  ),
+
+                  _buildSettingItem(
+                    icon: Icons.help_outline,
+                    title: 'FAQ',
+                    subtitle: 'Get in touch with us',
+                  ),
+
+                  SizedBox(height: 80.h),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 15.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: Colors.white70, size: 24.sp),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+        ),
+        trailing: Icon(Icons.chevron_right, color: Colors.white54, size: 20.sp),
+        onTap: () {},
+      ),
+    );
+  }
+
+  Widget _buildToggleItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 15.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: SwitchListTile(
+        secondary: Icon(icon, color: Colors.white70, size: 24.sp),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+        ),
+        value: true,
+        activeColor: GlobalStyles.primaryColor,
+        onChanged: (value) {},
+      ),
+    );
+  }
+}
