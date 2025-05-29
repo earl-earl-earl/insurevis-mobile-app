@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:insurevis/global_ui_variables.dart'; // Using your actual import
+import 'package:insurevis/global_ui_variables.dart';
 
 class SignInEmail extends StatefulWidget {
   const SignInEmail({super.key});
@@ -9,43 +9,93 @@ class SignInEmail extends StatefulWidget {
   SignInEmailState createState() => SignInEmailState();
 }
 
-class SignInEmailState extends State<SignInEmail> {
+class SignInEmailState extends State<SignInEmail>
+    with SingleTickerProviderStateMixin {
   bool _isPasswordVisible = false;
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
+  bool _rememberMe = false;
+  bool _isLoading = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
-  // State variable for the checkbox
-  bool _rememberMe = false; // Default value is unchecked
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+
+    _animationController.forward();
+  }
 
   @override
   void dispose() {
+    _emailController.dispose();
     _passwordController.dispose();
+    _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
+    _animationController.dispose();
     super.dispose();
+  }
+
+  void _handleSignIn() async {
+    // Validate inputs first
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Please fill in all fields"),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.r),
+          ),
+          margin: EdgeInsets.all(20),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // Simulate API call
+    await Future.delayed(const Duration(seconds: 2));
+
+    // After API call completes
+    setState(() => _isLoading = false);
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/home',
+      (Route<dynamic> route) => false,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    // Height for the top spacer
-    final double topSpacingHeight = isKeyboardVisible ? 40.h : 120.h;
-    // Height for the middle spacer
-    final double middleSpacingHeight = isKeyboardVisible ? 20.h : 60.h;
-    // Animation Duration
-    const Duration animationDuration = Duration(milliseconds: 250);
+    final double topSpacingHeight =
+        isKeyboardVisible ? 60.h : 100.h; // Increased top spacing
+    final double middleSpacingHeight = isKeyboardVisible ? 20.h : 40.h;
 
     return SafeArea(
       child: Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: GlobalStyles.buildCustomAppBar(
           context: context,
           icon: Icons.arrow_back_rounded,
           color: GlobalStyles.paleWhite,
-          appBarBackgroundColor: GlobalStyles.backgroundColorStart,
+          appBarBackgroundColor: Colors.transparent,
         ),
-        backgroundColor: Colors.transparent,
         body: Container(
-          // Using GlobalStyles.defaultPadding from the provided code version
-          padding: GlobalStyles.defaultPadding,
+          height: double.infinity,
           width: double.infinity,
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -57,280 +107,399 @@ class SignInEmailState extends State<SignInEmail> {
               end: Alignment.bottomCenter,
             ),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start, // Keep as is
-            crossAxisAlignment: CrossAxisAlignment.start, // Keep as is
-            children: [
-              // Group 1
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Keep the first AnimatedContainer as is
-                  AnimatedContainer(
-                    duration: animationDuration,
-                    curve: Curves.ease, // Curve from user's last code
-                    height: topSpacingHeight,
-                  ),
-                  Text(
-                    "Sign in to continue",
-                    style: GlobalStyles.headingStyle.copyWith(
-                      color: GlobalStyles.secondaryColor,
-                      fontSize: 40.sp,
-                    ),
-                  ),
-                ],
-              ),
-              // Middle AnimatedContainer
-              AnimatedContainer(
-                duration: animationDuration,
-                curve: Curves.easeInOut, // Curve from user's last code
-                height: middleSpacingHeight, // Use the dynamic height
-              ),
-
-              // Group 2
-              SizedBox(height: 10.h),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(left: 20.w),
-                    child: Text(
-                      "Email",
-                      style: GlobalStyles.subheadingStyle.copyWith(
-                        fontSize: 12.sp,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 15.h),
-                  TextField(
-                    style: TextStyle(fontSize: 14.sp, color: Colors.white),
-                    keyboardType: TextInputType.emailAddress, // Good practice
-                    decoration: InputDecoration(
-                      hintText: "Enter your email",
-                      hintStyle: TextStyle(
-                        color: GlobalStyles.paleWhite,
-                        fontSize: 14.sp,
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 20.h,
-                        horizontal: 20.w,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(50.r),
-                        borderSide: BorderSide(
-                          color: Colors.white10,
-                          width: 1.w,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(50.r),
-                        borderSide: BorderSide(
-                          color: Colors.white10,
-                          width: 1.w,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(50.r),
-                        borderSide: BorderSide(
-                          color: Colors.white54,
-                          width: 1.w,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: 20.h),
-
-                  Padding(
-                    padding: EdgeInsets.only(left: 20.w),
-                    child: Text(
-                      "Password",
-                      style: GlobalStyles.subheadingStyle.copyWith(
-                        fontSize: 12.sp,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 15.h),
-                  TextField(
-                    controller: _passwordController,
-                    focusNode: _passwordFocusNode,
-                    obscureText: !_isPasswordVisible,
-                    style: TextStyle(fontSize: 14.sp, color: Colors.white),
-                    decoration: InputDecoration(
-                      suffixIcon: Padding(
-                        padding: EdgeInsets.only(right: 10.w),
-                        child: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                            color: Colors.white54,
-                            size: 20.sp,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
-                          },
-                        ),
-                      ),
-                      hintText: "Enter your password",
-                      hintStyle: TextStyle(
-                        color: GlobalStyles.paleWhite,
-                        fontSize: 14.sp,
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 20.h,
-                        horizontal: 20.w,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(50.r),
-                        borderSide: BorderSide(
-                          color: Colors.white10,
-                          width: 1.w,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(50.r),
-                        borderSide: BorderSide(
-                          color: Colors.white10,
-                          width: 1.w,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(50.r),
-                        borderSide: BorderSide(
-                          color: Colors.white54,
-                          width: 1.w,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 5.h),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Wrap Checkbox and Text in a Row, then wrap that Row in GestureDetector for larger tap area
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _rememberMe = !_rememberMe; // Toggle on tap
-                      });
-                    },
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
                     child: Padding(
-                      // Add padding for visual spacing if needed
-                      padding: EdgeInsets.only(
-                        left: 10.w,
-                      ), // Keep original padding area
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
+                      padding: GlobalStyles.defaultPadding,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Checkbox(
-                            value: _rememberMe, // Use the state variable
-                            onChanged: (bool? newValue) {
-                              // Update the state when changed directly on checkbox too
-                              setState(() {
-                                _rememberMe =
-                                    newValue ?? false; // Handle null case
-                              });
-                            },
-                            side: BorderSide(width: 1.w, color: Colors.white),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5.r),
-                            ),
-                            activeColor: GlobalStyles.primaryColor,
-                            checkColor: Colors.white, // Make checkmark visible
-                            visualDensity:
-                                VisualDensity.compact, // Reduce default padding
-                            materialTapTargetSize:
-                                MaterialTapTargetSize
-                                    .shrinkWrap, // Reduce tap area of checkbox itself
-                          ),
-                          SizedBox(
-                            width: 4.w,
-                          ), // Small space between checkbox and text
+                          SizedBox(height: topSpacingHeight),
                           Text(
-                            "Remember me",
-                            style: TextStyle(
+                            "Welcome Back",
+                            style: GlobalStyles.headingStyle.copyWith(
                               color: Colors.white,
-                              fontSize: 12.sp,
+                              fontSize: 34.sp,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            "Sign in to continue",
+                            style: TextStyle(
+                              color: GlobalStyles.paleWhite.withOpacity(0.8),
+                              fontSize: 16.sp,
+                            ),
+                          ),
+                          SizedBox(height: middleSpacingHeight),
+
+                          // Form Container
+                          Container(
+                            padding: EdgeInsets.all(20.r),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(20.r),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.1),
+                                width: 1.w,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Email Field
+                                _buildInputLabel("Email"),
+                                SizedBox(height: 8.h),
+                                _buildTextField(
+                                  controller: _emailController,
+                                  focusNode: _emailFocusNode,
+                                  hintText: "Enter your email",
+                                  keyboardType: TextInputType.emailAddress,
+                                  prefixIcon: Icons.email_outlined,
+                                ),
+                                SizedBox(height: 20.h),
+
+                                // Password Field
+                                _buildInputLabel("Password"),
+                                SizedBox(height: 8.h),
+                                _buildTextField(
+                                  controller: _passwordController,
+                                  focusNode: _passwordFocusNode,
+                                  hintText: "Enter your password",
+                                  obscureText: !_isPasswordVisible,
+                                  prefixIcon: Icons.lock_outline,
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _isPasswordVisible
+                                          ? Icons.visibility_off_rounded
+                                          : Icons.visibility_rounded,
+                                      color: Colors.white60,
+                                      size: 20.sp,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isPasswordVisible =
+                                            !_isPasswordVisible;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          SizedBox(height: 16.h),
+
+                          // Remember Me & Forgot Password
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              GestureDetector(
+                                onTap:
+                                    () => setState(
+                                      () => _rememberMe = !_rememberMe,
+                                    ),
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      height: 20.h,
+                                      width: 20.w,
+                                      child: Material(
+                                        color:
+                                            _rememberMe
+                                                ? GlobalStyles.primaryColor
+                                                : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(
+                                          4.r,
+                                        ),
+                                        child: Checkbox(
+                                          value: _rememberMe,
+                                          onChanged: (bool? value) {
+                                            setState(
+                                              () =>
+                                                  _rememberMe = value ?? false,
+                                            );
+                                          },
+                                          fillColor:
+                                              MaterialStateProperty.resolveWith(
+                                                (states) =>
+                                                    _rememberMe
+                                                        ? GlobalStyles
+                                                            .primaryColor
+                                                        : Colors.transparent,
+                                              ),
+                                          checkColor: Colors.white,
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          side: BorderSide(
+                                            color: Colors.white54,
+                                            width: 1.5.w,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              4.r,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Text(
+                                      "Remember me",
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13.sp,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  // Forgot password logic
+                                },
+                                style: TextButton.styleFrom(
+                                  minimumSize: Size.zero,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 8.w,
+                                    vertical: 4.h,
+                                  ),
+                                ),
+                                child: Text(
+                                  "Forgot password?",
+                                  style: TextStyle(
+                                    color: GlobalStyles.primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13.sp,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: 30.h),
+
+                          // Sign In Button
+                          _isLoading
+                              ? Center(
+                                child: SizedBox(
+                                  height: 50.h,
+                                  child: const CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 3,
+                                  ),
+                                ),
+                              )
+                              : ElevatedButton(
+                                onPressed: _handleSignIn,
+                                style: ButtonStyle(
+                                  backgroundColor: WidgetStatePropertyAll(
+                                    GlobalStyles.primaryColor,
+                                  ),
+                                  padding: WidgetStatePropertyAll(
+                                    EdgeInsets.symmetric(
+                                      vertical: 20.h,
+                                      horizontal: 20.w,
+                                    ),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    "Sign in",
+                                    style: GlobalStyles.buttonTextStyle
+                                        .copyWith(
+                                          color: Colors.white,
+                                          fontSize: 14.sp,
+                                        ),
+                                  ),
+                                ),
+                              ),
+
+                          // Extra space at bottom when keyboard is visible
+                          if (isKeyboardVisible) SizedBox(height: 40.h),
                         ],
                       ),
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      // Add forgot password logic/navigation
-                    },
-                    child: Padding(
-                      // Add padding for easier tapping
-                      padding: EdgeInsets.symmetric(
-                        vertical: 8.h,
-                        horizontal: 10.w,
-                      ),
-                      child: Text(
-                        "Forgot password",
-                        style: TextStyle(
-                          color: GlobalStyles.primaryColor,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12.sp,
+                ),
+
+                // Bottom sections container with transition
+                AnimatedOpacity(
+                  opacity: isKeyboardVisible ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 250),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    height: isKeyboardVisible ? 0 : null,
+                    child: Column(
+                      children: [
+                        // Alternative sign-in options
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.05),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                "Or sign in with",
+                                style: TextStyle(
+                                  color: Colors.white60,
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                              SizedBox(height: 16.h),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _buildSocialButton(
+                                    icon: Icons.g_mobiledata,
+                                    backgroundColor: Colors.red,
+                                  ),
+                                  SizedBox(width: 20.w),
+                                  _buildSocialButton(
+                                    icon: Icons.facebook,
+                                    backgroundColor: Colors.blue,
+                                  ),
+                                  SizedBox(width: 20.w),
+                                  _buildSocialButton(
+                                    icon: Icons.apple,
+                                    backgroundColor: Colors.white,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20.h),
-              ElevatedButton(
-                onPressed: () {
-                  // Add sign-in logic here
-                  // Access _rememberMe value if needed
-                  print("Remember Me: $_rememberMe"); // Example
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    '/home', // Ensure '/home' route exists
-                    (Route<dynamic> route) => false,
-                  );
-                },
-                style: ButtonStyle(
-                  backgroundColor: WidgetStatePropertyAll(
-                    GlobalStyles.primaryColor,
-                  ),
-                  padding: WidgetStatePropertyAll(
-                    EdgeInsets.symmetric(vertical: 20.h, horizontal: 20.w),
-                  ),
-                  minimumSize: WidgetStatePropertyAll(
-                    Size(double.infinity, 50.h),
-                  ),
-                  shape: WidgetStatePropertyAll(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50.r),
-                    ),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    "Sign in",
-                    style: GlobalStyles.buttonTextStyle.copyWith(
-                      color: Colors.white,
-                      fontSize: 14.sp,
+
+                        // Don't have an account - no divider line
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(vertical: 20.h),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Don't have an account? ",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  // Navigate to sign up
+                                },
+                                child: Text(
+                                  "Sign Up",
+                                  style: TextStyle(
+                                    color: GlobalStyles.primaryColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14.sp,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildInputLabel(String label) {
+    return Text(
+      label,
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 14.sp,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String hintText,
+    required IconData prefixIcon,
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+    Widget? suffixIcon,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        style: TextStyle(fontSize: 15.sp, color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.white38, fontSize: 15.sp),
+          contentPadding: EdgeInsets.symmetric(
+            vertical: 18.h,
+            horizontal: 16.w,
+          ),
+          prefixIcon: Icon(prefixIcon, color: Colors.white54, size: 20.sp),
+          suffixIcon: suffixIcon,
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.08),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide(
+              color: GlobalStyles.primaryColor.withOpacity(0.6),
+              width: 1.5.w,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton({
+    required IconData icon,
+    required Color backgroundColor,
+  }) {
+    return Container(
+      width: 50.w,
+      height: 50.h,
+      decoration: BoxDecoration(
+        color: backgroundColor.withOpacity(0.15),
+        shape: BoxShape.circle,
+        border: Border.all(color: backgroundColor.withOpacity(0.3), width: 1.w),
+      ),
+      child: Center(child: Icon(icon, color: backgroundColor, size: 28.sp)),
     );
   }
 }

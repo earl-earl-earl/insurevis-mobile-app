@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:photo_manager/photo_manager.dart';
-import 'package:provider/provider.dart';
 import 'dart:typed_data';
-import 'package:insurevis/other-screens/result-screen.dart';
-import 'package:insurevis/providers/assessment_provider.dart';
+import 'package:insurevis/other-screens/multiple_results_screen.dart';
 
 class GalleryScreen extends StatefulWidget {
   const GalleryScreen({super.key});
@@ -21,12 +19,16 @@ class _GalleryScreenState extends State<GalleryScreen> {
   bool _hasPermission = false;
   int _selectedAlbumIndex = 0;
   final ScrollController _scrollController = ScrollController();
-  
+
   // For pagination
   int _currentPage = 0;
   final int _pageSize = 50;
   bool _isLoadingMore = false;
   bool _hasMorePhotos = true;
+
+  // For multi-selection
+  Set<AssetEntity> _selectedAssets = <AssetEntity>{};
+  bool _isSelectionMode = false;
 
   @override
   void initState() {
@@ -74,6 +76,21 @@ class _GalleryScreenState extends State<GalleryScreen> {
         _isLoading = false;
         _hasPermission = false;
       });
+
+      // Show more detailed error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gallery access is required to select photos'),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'Settings',
+              textColor: Colors.white,
+              onPressed: () => PhotoManager.openSetting(),
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -101,12 +118,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
     final album = _albums[_selectedAlbumIndex];
     final start = _currentPage * _pageSize;
     final end = start + _pageSize;
-
     try {
-      final photos = await album.getAssetListRange(
-        start: start,
-        end: end,
-      );
+      final photos = await album.getAssetListRange(start: start, end: end);
 
       setState(() {
         if (photos.isEmpty) {
@@ -123,38 +136,69 @@ class _GalleryScreenState extends State<GalleryScreen> {
         _isLoading = false;
         _isLoadingMore = false;
       });
+
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading photos: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _selectPhoto(AssetEntity asset) async {
-    try {
-      final file = await asset.file;
-      if (file != null && mounted) {
-        // Add the photo to assessments
-        final assessmentProvider = Provider.of<AssessmentProvider>(
-          context,
-          listen: false,
-        );
-        final assessment = await assessmentProvider.addAssessment(file.path);
+    setState(() {
+      if (_selectedAssets.contains(asset)) {
+        _selectedAssets.remove(asset);
+        if (_selectedAssets.isEmpty) {
+          _isSelectionMode = false;
+        }
+      } else {
+        _selectedAssets.add(asset);
+        _isSelectionMode = true;
+      }
+    });
+  }
 
-        // Navigate to ResultsScreen with the assessment ID
+  Future<void> _uploadSelectedImages() async {
+    if (_selectedAssets.isEmpty) return;
+
+    try {
+      List<String> imagePaths = [];
+
+      for (AssetEntity asset in _selectedAssets) {
+        final file = await asset.file;
+        if (file != null) {
+          imagePaths.add(file.path);
+        }
+      }
+
+      if (imagePaths.isNotEmpty && mounted) {
+        // Navigate to MultipleResultsScreen to process and upload images
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ResultsScreen(
-              imagePath: file.path,
-              assessmentId: assessment.id,
-            ),
+            builder: (context) => MultipleResultsScreen(imagePaths: imagePaths),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error selecting image: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error processing images: $e')));
       }
     }
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedAssets.clear();
+      _isSelectionMode = false;
+    });
   }
 
   @override
@@ -162,9 +206,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
     return Scaffold(
       backgroundColor: GlobalStyles.backgroundColorStart,
       appBar: _buildAppBar(),
-      body: _isLoading && _allPhotos.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : !_hasPermission
+      body:
+          _isLoading && _allPhotos.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : !_hasPermission
               ? _buildNoPermissionView()
               : _buildGalleryContent(),
     );
@@ -179,7 +224,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
-        'Gallery',
+        _isSelectionMode ? '${_selectedAssets.length} selected' : 'Gallery',
         style: TextStyle(
           fontSize: 20.sp,
           fontWeight: FontWeight.bold,
@@ -187,47 +232,73 @@ class _GalleryScreenState extends State<GalleryScreen> {
         ),
       ),
       actions: [
-        if (_albums.isNotEmpty)
+        if (_isSelectionMode) ...[
+          IconButton(
+            icon: const Icon(Icons.clear_all, color: Colors.white),
+            onPressed: _clearSelection,
+            tooltip: 'Clear selection',
+          ),
+          Container(
+            margin: EdgeInsets.only(right: 8.w),
+            child: ElevatedButton.icon(
+              onPressed:
+                  _selectedAssets.isNotEmpty ? _uploadSelectedImages : null,
+              icon: const Icon(Icons.upload, size: 18),
+              label: const Text('Upload'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: GlobalStyles.primaryColor,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                textStyle: TextStyle(fontSize: 14.sp),
+              ),
+            ),
+          ),
+        ] else if (_albums.isNotEmpty)
           PopupMenuButton<int>(
             icon: const Icon(Icons.photo_library, color: Colors.white),
             color: const Color(0xFF292832),
             onSelected: _loadPhotosFromAlbum,
-            itemBuilder: (context) => _albums
-                .asMap()
-                .entries
-                .map(
-                  (entry) => PopupMenuItem<int>(
-                    value: entry.key,
-                    child: Row(
-                      children: [
-                        Icon(
-                          entry.key == _selectedAlbumIndex
-                              ? Icons.check_circle
-                              : Icons.photo_album_outlined,
-                          color: entry.key == _selectedAlbumIndex
-                              ? GlobalStyles.primaryColor
-                              : Colors.white70,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            entry.value.name,
-                            style: TextStyle(
-                              color: entry.key == _selectedAlbumIndex
-                                  ? GlobalStyles.primaryColor
-                                  : Colors.white,
-                              fontWeight: entry.key == _selectedAlbumIndex
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
+            itemBuilder:
+                (context) =>
+                    _albums
+                        .asMap()
+                        .entries
+                        .map(
+                          (entry) => PopupMenuItem<int>(
+                            value: entry.key,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  entry.key == _selectedAlbumIndex
+                                      ? Icons.check_circle
+                                      : Icons.photo_album_outlined,
+                                  color:
+                                      entry.key == _selectedAlbumIndex
+                                          ? GlobalStyles.primaryColor
+                                          : Colors.white70,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    entry.value.name,
+                                    style: TextStyle(
+                                      color:
+                                          entry.key == _selectedAlbumIndex
+                                              ? GlobalStyles.primaryColor
+                                              : Colors.white,
+                                      fontWeight:
+                                          entry.key == _selectedAlbumIndex
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
+                        )
+                        .toList(),
           ),
       ],
     );
@@ -261,10 +332,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 const Spacer(),
                 Text(
                   '${_allPhotos.length} photos',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    color: Colors.white70,
-                  ),
+                  style: TextStyle(fontSize: 14.sp, color: Colors.white70),
                 ),
               ],
             ),
@@ -272,43 +340,47 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
         // Photo grid
         Expanded(
-          child: _allPhotos.isEmpty
-              ? _buildNoImagesView()
-              : GridView.builder(
-                  controller: _scrollController,
-                  padding: EdgeInsets.all(8.w),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 4.0,
-                    crossAxisSpacing: 4.0,
-                    childAspectRatio: 1.0,
-                  ),
-                  itemCount: _allPhotos.length + (_isLoadingMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index >= _allPhotos.length) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    }
+          child:
+              _allPhotos.isEmpty
+                  ? _buildNoImagesView()
+                  : GridView.builder(
+                    controller: _scrollController,
+                    padding: EdgeInsets.all(8.w),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      mainAxisSpacing: 4.0,
+                      crossAxisSpacing: 4.0,
+                      childAspectRatio: 1.0,
+                    ),
+                    itemCount: _allPhotos.length + (_isLoadingMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index >= _allPhotos.length) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                    final asset = _allPhotos[index];
-                    return _buildPhotoTile(asset);
-                  },
-                ),
+                      final asset = _allPhotos[index];
+                      return _buildPhotoTile(asset);
+                    },
+                  ),
         ),
       ],
     );
   }
 
   Widget _buildPhotoTile(AssetEntity asset) {
+    final isSelected = _selectedAssets.contains(asset);
+
     return GestureDetector(
       onTap: () => _selectPhoto(asset),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: Colors.white.withOpacity(0.1),
-            width: 1,
+            color:
+                isSelected
+                    ? GlobalStyles.primaryColor
+                    : Colors.white.withOpacity(0.1),
+            width: isSelected ? 3 : 1,
           ),
         ),
         child: ClipRRect(
@@ -321,12 +393,33 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   const ThumbnailSize(200, 200),
                 ),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done &&
-                      snapshot.data != null) {
-                    return Image.memory(
-                      snapshot.data!,
-                      fit: BoxFit.cover,
-                    );
+                  if (snapshot.connectionState == ConnectionState.done) {
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return Image.memory(snapshot.data!, fit: BoxFit.cover);
+                    } else {
+                      // Handle error case
+                      return Container(
+                        color: Colors.grey.shade800,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.broken_image,
+                              color: Colors.white54,
+                              size: 24.sp,
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              'Failed to load',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 10.sp,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                   } else {
                     return Container(
                       color: Colors.grey.shade800,
@@ -337,6 +430,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   }
                 },
               ),
+
+              // Selection overlay
+              if (isSelected)
+                Container(color: GlobalStyles.primaryColor.withOpacity(0.3)),
 
               // Video indicator
               if (asset.type == AssetType.video)
@@ -357,20 +454,25 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   ),
                 ),
 
-              // Selection overlay
-              Positioned.fill(
+              // Selection indicator
+              Positioned(
+                top: 8,
+                right: 8,
                 child: Container(
+                  width: 24.w,
+                  height: 24.w,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.black.withOpacity(0.1),
+                    color:
+                        isSelected
+                            ? GlobalStyles.primaryColor
+                            : Colors.white.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
                   ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.touch_app,
-                      color: Colors.white,
-                      size: 0, // Hidden by default, shows on hover
-                    ),
-                  ),
+                  child:
+                      isSelected
+                          ? Icon(Icons.check, color: Colors.white, size: 16.sp)
+                          : null,
                 ),
               ),
             ],
@@ -387,11 +489,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.no_photography,
-              size: 64.sp,
-              color: Colors.white30,
-            ),
+            Icon(Icons.no_photography, size: 64.sp, color: Colors.white30),
             SizedBox(height: 24.h),
             Text(
               'Gallery Access Required',
@@ -405,23 +503,38 @@ class _GalleryScreenState extends State<GalleryScreen> {
             Text(
               'Please enable gallery access in your device settings to view and select photos.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16.sp,
-                color: Colors.white70,
-              ),
+              style: TextStyle(fontSize: 16.sp, color: Colors.white70),
             ),
             SizedBox(height: 32.h),
-            ElevatedButton(
-              onPressed: _loadAlbums,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: GlobalStyles.primaryColor,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                  horizontal: 24.w,
-                  vertical: 12.h,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: _loadAlbums,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: GlobalStyles.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 24.w,
+                      vertical: 12.h,
+                    ),
+                  ),
+                  child: const Text('Try Again'),
                 ),
-              ),
-              child: const Text('Try Again'),
+                SizedBox(width: 16.w),
+                ElevatedButton(
+                  onPressed: () => PhotoManager.openSetting(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[700],
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 24.w,
+                      vertical: 12.h,
+                    ),
+                  ),
+                  child: const Text('Settings'),
+                ),
+              ],
             ),
           ],
         ),
@@ -454,10 +567,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
             Text(
               'This album doesn\'t contain any images. Try selecting a different album or take some photos first.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16.sp,
-                color: Colors.white70,
-              ),
+              style: TextStyle(fontSize: 16.sp, color: Colors.white70),
             ),
           ],
         ),

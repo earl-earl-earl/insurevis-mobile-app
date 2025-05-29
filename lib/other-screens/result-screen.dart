@@ -8,15 +8,19 @@ import 'package:insurevis/global_ui_variables.dart';
 import 'package:http/io_client.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
+import 'package:insurevis/utils/pdf_service.dart';
 
 class ResultsScreen extends StatefulWidget {
   final String imagePath;
-  final String? assessmentId; // Add this line
+  final String? assessmentId;
+  final Map<String, dynamic>?
+  apiResponseData; // Add this for passing API response
 
   const ResultsScreen({
     super.key,
     required this.imagePath,
-    this.assessmentId, // Add this line
+    this.assessmentId,
+    this.apiResponseData, // Add this for passing API response
   });
 
   @override
@@ -26,6 +30,7 @@ class ResultsScreen extends StatefulWidget {
 class ResultsScreenState extends State<ResultsScreen> {
   String? _apiResponse;
   bool _isLoading = true;
+  bool _isGeneratingPdf = false;
 
   // Add these cached values to prevent reprocessing
   Map<String, dynamic>? _cachedResultData;
@@ -37,19 +42,31 @@ class ResultsScreenState extends State<ResultsScreen> {
 
   // Add this to track expanded state for damage cards
   final Map<int, bool> _expandedCards = {};
-
   @override
   void initState() {
     super.initState();
     _imageFile = File(widget.imagePath); // Pre-load file reference
 
-    if (widget.assessmentId != null) {
+    if (widget.apiResponseData != null) {
+      // If we have API response data, use it directly
+      _processApiResponseData(widget.apiResponseData!);
+    } else if (widget.assessmentId != null) {
       // If we have an assessment ID, load data from that instead of making a new API call
       _loadDataFromAssessment();
     } else {
       // Otherwise proceed with the usual API call
       _uploadImage();
     }
+  }
+
+  void _processApiResponseData(Map<String, dynamic> responseData) {
+    // Process the response data immediately without any API calls
+    _processApiResponse(jsonEncode(responseData));
+    setState(() {
+      _apiResponse = jsonEncode(responseData);
+      _cachedResultData = responseData;
+      _isLoading = false;
+    });
   }
 
   Future<void> _uploadImage() async {
@@ -193,6 +210,57 @@ class ResultsScreenState extends State<ResultsScreen> {
     }
   }
 
+  // Add PDF download functionality
+  Future<void> _downloadPdf() async {
+    if (_cachedResultData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No data available to generate PDF'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isGeneratingPdf = true;
+    });
+
+    try {
+      final filePath = await PDFService.generateSingleResultPDF(
+        imagePath: _imageFile.path,
+        apiResponse: _cachedResultData!,
+      );
+
+      if (filePath != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('PDF downloaded successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to generate PDF'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error generating PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isGeneratingPdf = false;
+      });
+    }
+  }
+
   Future<void> _processApiResponse(String response) async {
     try {
       final resultData = json.decode(response);
@@ -268,35 +336,67 @@ class ResultsScreenState extends State<ResultsScreen> {
         color: Colors.white,
         appBarBackgroundColor: Colors.transparent,
       ),
-      // Add the fixed bottom button here
-      bottomNavigationBar: Container(
-        color: GlobalStyles.backgroundColorEnd, // Match background
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: ElevatedButton(
-          onPressed: () {
-            // No functionality as requested
-          },
-          style: ButtonStyle(
-            backgroundColor: const WidgetStatePropertyAll(
-              GlobalStyles.primaryColor,
-            ),
-            padding: const WidgetStatePropertyAll(
-              EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-            ),
-            shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
-            ),
-          ),
-          child: const Text(
-            "Submit Report",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ),
+      // Only show bottom button when not loading
+      bottomNavigationBar:
+          _isLoading
+              ? null
+              : Container(
+                color: GlobalStyles.backgroundColorEnd, // Match background
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: ElevatedButton(
+                  onPressed: _isGeneratingPdf ? null : _downloadPdf,
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStatePropertyAll(
+                      _isGeneratingPdf
+                          ? Colors.grey
+                          : GlobalStyles.primaryColor,
+                    ),
+                    padding: const WidgetStatePropertyAll(
+                      EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                    ),
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                    ),
+                  ),
+                  child:
+                      _isGeneratingPdf
+                          ? const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                "Generating PDF...",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          )
+                          : const Text(
+                            "Download PDF",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                ),
+              ),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -574,7 +674,7 @@ class ResultsScreenState extends State<ResultsScreen> {
             GestureDetector(
               onTap: () {
                 setState(() {
-                  _expandedCards[index!] = !isExpanded;
+                  _expandedCards[index] = !isExpanded;
                 });
               },
               child: Row(

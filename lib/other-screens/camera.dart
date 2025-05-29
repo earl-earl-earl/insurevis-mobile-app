@@ -1,15 +1,11 @@
-import 'dart:io'; // Needed for File type if you handle the image later
-import 'dart:typed_data'; // Might be needed if you process picked image bytes
-
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart'; // Make sure camera types like FlashMode are imported
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 // import 'package:google_fonts/google_fonts.dart'; // Not used in this version
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/other-screens/result-screen.dart';
-import 'package:path_provider/path_provider.dart'; // To save the picture temporarily
+import 'package:insurevis/other-screens/gallery_view.dart';
 // import 'package:photo_manager/photo_manager.dart'; // REMOVED: No longer used
-import 'package:image_picker/image_picker.dart'; // ADDED: For picking images from gallery
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 
@@ -27,9 +23,6 @@ class _CameraScreenState extends State<CameraScreen> {
   int _selectedCameraIndex = 0; // 0 for back, 1 for front usually
   bool _isInitializing = true; // Flag for loading state
   bool _isTakingPicture = false; // Flag to prevent multiple captures
-
-  // ADDED: ImagePicker instance
-  final ImagePicker _picker = ImagePicker();
 
   // ADDED: State for flash mode
   FlashMode _currentFlashMode = FlashMode.off;
@@ -207,67 +200,13 @@ class _CameraScreenState extends State<CameraScreen> {
         setState(() => _isTakingPicture = false);
       }
     }
-  }
+  } // Function to navigate to gallery
 
-  Future<void> _switchCamera() async {
-    if (_cameras.length < 2 || _isInitializing)
-      return; // Need at least 2 cameras
-
-    setState(() {
-      _isInitializing = true; // Show loading indicator while switching
-      _selectedCameraIndex = (_selectedCameraIndex + 1) % _cameras.length;
-    });
-
-    // Initialize the new camera (this will also reset flash mode to off via _initCamera)
-    await _initCamera(_selectedCameraIndex);
-
-    // Update state after new camera is initialized
-    if (mounted) {
-      setState(() {
-        _isInitializing = false;
-      });
-    }
-  }
-
-  // Function to handle picking image using image_picker
-  Future<void> _pickImageFromGallery() async {
-    try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: ImageSource.gallery,
-      );
-
-      if (pickedFile != null && mounted) {
-        // Add the photo to assessments
-        final assessmentProvider = Provider.of<AssessmentProvider>(
-          context,
-          listen: false,
-        );
-        final assessment = await assessmentProvider.addAssessment(
-          pickedFile.path,
-        );
-
-        // Navigate to ResultsScreen with the assessment ID
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder:
-                (context) => ResultsScreen(
-                  imagePath: pickedFile.path,
-                  assessmentId: assessment.id,
-                ),
-          ),
-        );
-      } else {
-        print("User canceled gallery picking.");
-      }
-    } catch (e) {
-      print("Error picking image from gallery: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
-      }
-    }
+  void _openGallery() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const GalleryScreen()),
+    );
   }
 
   // ADDED: Function to toggle flash mode
@@ -324,8 +263,6 @@ class _CameraScreenState extends State<CameraScreen> {
       case FlashMode.always:
       case FlashMode.torch: // Show 'on' icon for torch as well
         return Icons.flash_on_rounded;
-      default:
-        return Icons.flash_off_rounded; // Default fallback
     }
   }
 
@@ -469,10 +406,9 @@ class _CameraScreenState extends State<CameraScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // --- Gallery Button (Uses image_picker) ---
+                    // --- Gallery Button ---
                     GestureDetector(
-                      onTap:
-                          _pickImageFromGallery, // Use image_picker to open gallery
+                      onTap: _openGallery,
                       child: Container(
                         width: 55.w,
                         height: 55.w,
@@ -481,7 +417,6 @@ class _CameraScreenState extends State<CameraScreen> {
                           borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(color: Colors.white54, width: 1),
                         ),
-                        // Always show the icon now
                         child: Icon(
                           Icons.photo_library_outlined,
                           color: Colors.white70,
@@ -529,21 +464,8 @@ class _CameraScreenState extends State<CameraScreen> {
                       ),
                     ),
 
-                    // --- Switch Camera Button ---
-                    IconButton(
-                      icon: Icon(
-                        Icons.flip_camera_ios_outlined,
-                        color: Colors.white,
-                        size: 30.sp,
-                      ),
-                      // Disable button if camera isn't ready or only one camera exists
-                      onPressed:
-                          canControlFlash && _cameras.length > 1
-                              ? _switchCamera
-                              : null,
-                      padding: EdgeInsets.zero,
-                      tooltip: 'Switch Camera',
-                    ),
+                    // Spacer to maintain layout balance
+                    SizedBox(width: 55.w),
                   ],
                 ),
               ),

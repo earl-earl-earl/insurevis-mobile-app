@@ -4,6 +4,7 @@ import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/main-screens/home.dart';
 import 'package:insurevis/main-screens/status_screen.dart';
 import 'package:insurevis/main-screens/history_screen.dart';
+import 'package:insurevis/main-screens/documents_screen.dart';
 import 'package:insurevis/main-screens/profile_screen.dart';
 
 class MainContainer extends StatefulWidget {
@@ -18,12 +19,12 @@ class _MainContainerState extends State<MainContainer>
   int _selectedIndex = 0;
   late PageController _pageController;
   late AnimationController _animationController;
-
   // List of screens to display
   final List<Widget> _screens = [
     const Home(),
     const StatusScreen(),
     const HistoryScreen(),
+    const DocumentsScreen(),
     const ProfileScreen(),
   ];
 
@@ -88,7 +89,13 @@ class _MainContainerState extends State<MainContainer>
               'Status',
             ),
             _buildNavItem(2, Icons.history_outlined, Icons.history, 'History'),
-            _buildNavItem(3, Icons.person_outline, Icons.person, 'Profile'),
+            _buildNavItem(
+              3,
+              Icons.upload_file_outlined,
+              Icons.upload_file,
+              'Documents',
+            ),
+            _buildNavItem(4, Icons.person_outline, Icons.person, 'Profile'),
           ],
         ),
       ),
