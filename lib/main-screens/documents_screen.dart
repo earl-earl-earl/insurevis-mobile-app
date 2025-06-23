@@ -110,7 +110,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withAlpha(26), // 0.1 * 255
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white24),
       ),
@@ -225,7 +225,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       margin: EdgeInsets.only(bottom: 12.h),
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withAlpha(13), // 0.05 * 255
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white12),
       ),
@@ -235,7 +235,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             width: 40.w,
             height: 40.w,
             decoration: BoxDecoration(
-              color: GlobalStyles.primaryColor.withOpacity(0.2),
+              color: GlobalStyles.primaryColor.withAlpha(51), // 0.2 * 255
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: GlobalStyles.primaryColor, size: 20.sp),
@@ -342,7 +342,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       margin: EdgeInsets.only(bottom: 8.h),
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withAlpha(26), // 0.1 * 255
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white24),
       ),

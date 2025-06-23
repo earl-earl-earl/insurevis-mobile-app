@@ -33,54 +33,39 @@ class _StatusScreenState extends State<StatusScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.backgroundColorStart,
-              GlobalStyles.backgroundColorEnd,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            GlobalStyles.backgroundColorStart,
+            GlobalStyles.backgroundColorEnd,
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.all(16.w),
-                child: Text(
-                  'Status',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+      ),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TabBar(
+              controller: _tabController,
+              indicatorColor: GlobalStyles.primaryColor,
+              indicatorWeight: 3,
+              tabs: [Tab(text: 'Active'), Tab(text: 'Completed')],
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white54,
+            ),
 
-              TabBar(
+            Expanded(
+              child: TabBarView(
                 controller: _tabController,
-                indicatorColor: GlobalStyles.primaryColor,
-                indicatorWeight: 3,
-                tabs: [Tab(text: 'Active'), Tab(text: 'Completed')],
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white54,
+                children: [_buildActiveTab(), _buildCompletedTab()],
               ),
-
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [_buildActiveTab(), _buildCompletedTab()],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

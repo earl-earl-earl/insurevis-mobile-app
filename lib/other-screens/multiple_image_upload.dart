@@ -18,9 +18,10 @@ class MultipleImageUpload extends StatefulWidget {
 
 class _MultipleImageUploadState extends State<MultipleImageUpload> {
   final ImagePicker _picker = ImagePicker();
-  List<XFile> _selectedImages = [];
-  Map<String, String> _uploadResults = {}; // Track upload status for each image
-  Map<String, bool> _uploadProgress = {}; // Track upload progress
+  final List<XFile> _selectedImages = [];
+  final Map<String, String> _uploadResults =
+      {}; // Track upload status for each image
+  final Map<String, bool> _uploadProgress = {}; // Track upload progress
   bool _isUploading = false;
 
   @override
@@ -99,7 +100,12 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
                       icon: Icon(Icons.photo_library),
                       label: Text('From Gallery'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.2),
+                        backgroundColor: const Color.fromRGBO(
+                          255,
+                          255,
+                          255,
+                          0.2,
+                        ),
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: 12.h),
                       ),
@@ -107,23 +113,39 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
                   ),
                 ],
               ),
-            ),
-
-            // Selected images count
+            ), // Selected images count
             if (_selectedImages.isNotEmpty)
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.w),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${_selectedImages.length} image(s) selected',
-                      style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.photo_library_outlined,
+                          color: GlobalStyles.primaryColor,
+                          size: 18.sp,
+                        ),
+                        SizedBox(width: 8.w),
+                        Text(
+                          '${_selectedImages.length} image(s) selected',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                      ],
                     ),
                     if (!_isUploading)
-                      TextButton(
+                      TextButton.icon(
                         onPressed: _clearAllImages,
-                        child: Text(
+                        icon: Icon(
+                          Icons.clear_all,
+                          color: Colors.redAccent,
+                          size: 16.sp,
+                        ),
+                        label: Text(
                           'Clear All',
                           style: TextStyle(
                             color: Colors.redAccent,
@@ -153,28 +175,49 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.photo_library_outlined,
-            size: 80.sp,
-            color: Colors.white30,
+          Container(
+            padding: EdgeInsets.all(20.w),
+            decoration: BoxDecoration(
+              color: const Color.fromRGBO(255, 255, 255, 0.05),
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(
+                color: const Color.fromRGBO(255, 255, 255, 0.1),
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              Icons.add_photo_alternate_outlined,
+              size: 60.sp,
+              color: GlobalStyles.primaryColor,
+            ),
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 20.h),
           Text(
             'No images selected',
             style: TextStyle(
               fontSize: 18.sp,
-              color: Colors.white70,
-              fontWeight: FontWeight.w500,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 8.h),
-          Text(
-            'Tap the buttons above to select multiple images',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: Colors.white.withOpacity(0.5),
-            ),
-            textAlign: TextAlign.center,
+          SizedBox(height: 12.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.touch_app,
+                color: const Color.fromRGBO(255, 255, 255, 0.5),
+                size: 16.sp,
+              ),
+              SizedBox(width: 8.w),
+              Text(
+                'Tap the buttons above to select multiple images',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  color: const Color.fromRGBO(255, 255, 255, 0.5),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -209,25 +252,45 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
     bool isUploading,
     String? uploadResult,
   ) {
-    Color borderColor = Colors.white.withOpacity(0.3);
+    Color borderColor = const Color.fromRGBO(255, 255, 255, 0.3);
     Widget? overlayWidget;
-
     if (isUploading) {
       borderColor = GlobalStyles.primaryColor;
       overlayWidget = Container(
-        color: Colors.black54,
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(10.r),
+        ),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(
-                color: GlobalStyles.primaryColor,
-                strokeWidth: 3,
+              Container(
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: GlobalStyles.primaryColor.withAlpha(51),
+                  shape: BoxShape.circle,
+                ),
+                child: CircularProgressIndicator(
+                  color: GlobalStyles.primaryColor,
+                  strokeWidth: 3,
+                ),
               ),
-              SizedBox(height: 8.h),
-              Text(
-                'Uploading...',
-                style: TextStyle(color: Colors.white, fontSize: 12.sp),
+              SizedBox(height: 12.h),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.cloud_upload, color: Colors.white, size: 16.sp),
+                  SizedBox(width: 4.w),
+                  Text(
+                    'Uploading...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -356,24 +419,38 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error selecting images: $e'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error selecting images: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 
   void _showAddMoreDialog() {
     showDialog(
       context: context,
+      useSafeArea: true,
       builder:
           (context) => AlertDialog(
-            backgroundColor: Color(0xFF292832),
-            title: Text(
-              'Add More Images?',
-              style: TextStyle(color: Colors.white),
+            backgroundColor: const Color(0xFF292832),
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.add_photo_alternate,
+                  color: GlobalStyles.primaryColor,
+                  size: 24.sp,
+                ),
+                SizedBox(width: 12.w),
+                Text('Add More Images?', style: TextStyle(color: Colors.white)),
+              ],
             ),
             content: Text(
               'Would you like to select more images from the gallery?',
@@ -448,8 +525,7 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
         _uploadResults[image.path] = result ? 'success' : 'error';
         _uploadProgress[image.path] = false;
       });
-
-      if (result) {
+      if (result && mounted) {
         // Add to assessment provider
         final assessmentProvider = Provider.of<AssessmentProvider>(
           context,
@@ -462,13 +538,14 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
         _uploadResults[image.path] = 'error';
         _uploadProgress[image.path] = false;
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Upload failed: $e'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 
@@ -483,11 +560,17 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
       final ioClient =
           HttpClient()..badCertificateCallback = (cert, host, port) => true;
       final client = IOClient(ioClient);
-
-      final request = http.MultipartRequest(
-        'POST',
-        url,
-      )..files.add(await http.MultipartFile.fromPath('image_file', image.path));
+      final request =
+          http.MultipartRequest('POST', url)
+            ..files.add(
+              await http.MultipartFile.fromPath('image_file', image.path),
+            )
+            ..headers.addAll({
+              'Accept': 'application/json',
+              'ngrok-skip-browser-warning':
+                  'true', // Skip ngrok browser warning
+              'User-Agent': 'InsurevisApp/1.0',
+            });
 
       final streamedResponse = await client.send(request);
       final response = await http.Response.fromStream(streamedResponse);
@@ -503,29 +586,54 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
     final successCount =
         _uploadResults.values.where((r) => r == 'success').length;
     final errorCount = _uploadResults.values.where((r) => r == 'error').length;
-
     showDialog(
       context: context,
+      useSafeArea: true,
       builder:
           (context) => AlertDialog(
-            backgroundColor: Color(0xFF292832),
-            title: Text(
-              'Upload Summary',
-              style: TextStyle(color: Colors.white),
+            backgroundColor: const Color(0xFF292832),
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.upload_rounded,
+                  color: GlobalStyles.primaryColor,
+                  size: 24.sp,
+                ),
+                SizedBox(width: 12.w),
+                Text('Upload Summary', style: TextStyle(color: Colors.white)),
+              ],
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Successfully uploaded: $successCount',
-                  style: TextStyle(color: Colors.green),
+                Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 20.sp),
+                    SizedBox(width: 8.w),
+                    Text(
+                      'Successfully uploaded: $successCount',
+                      style: TextStyle(color: Colors.green),
+                    ),
+                  ],
                 ),
-                if (errorCount > 0)
-                  Text(
-                    'Failed uploads: $errorCount',
-                    style: TextStyle(color: Colors.red),
+                if (errorCount > 0) ...[
+                  SizedBox(height: 8.h),
+                  Row(
+                    children: [
+                      Icon(Icons.error, color: Colors.red, size: 20.sp),
+                      SizedBox(width: 8.w),
+                      Text(
+                        'Failed uploads: $errorCount',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ],
                   ),
+                ],
               ],
             ),
             actions: [
@@ -542,11 +650,13 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
   }
 
   void _viewResult(XFile image) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ResultsScreen(imagePath: image.path),
-      ),
-    );
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ResultsScreen(imagePath: image.path),
+        ),
+      );
+    }
   }
 }

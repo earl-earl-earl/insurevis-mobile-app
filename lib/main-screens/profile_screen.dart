@@ -55,7 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     height: 120.w,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withAlpha(26), // 0.1 * 255
                       border: Border.all(color: Colors.white24, width: 2),
                     ),
                     child: Center(
@@ -175,7 +175,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 15.h),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withAlpha(13), // 0.05 * 255
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
@@ -206,7 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 15.h),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withAlpha(13), // 0.05 * 255
         borderRadius: BorderRadius.circular(12),
       ),
       child: SwitchListTile(

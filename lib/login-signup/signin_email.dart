@@ -132,7 +132,9 @@ class SignInEmailState extends State<SignInEmail>
                           Text(
                             "Sign in to continue",
                             style: TextStyle(
-                              color: GlobalStyles.paleWhite.withOpacity(0.8),
+                              color: GlobalStyles.paleWhite.withAlpha(
+                                204,
+                              ), // 0.8 * 255
                               fontSize: 16.sp,
                             ),
                           ),
@@ -142,10 +144,10 @@ class SignInEmailState extends State<SignInEmail>
                           Container(
                             padding: EdgeInsets.all(20.r),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.06),
+                              color: Colors.white.withAlpha(15), // 0.06 * 255
                               borderRadius: BorderRadius.circular(20.r),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.1),
+                                color: Colors.white.withAlpha(26), // 0.1 * 255
                                 width: 1.w,
                               ),
                             ),
@@ -226,7 +228,7 @@ class SignInEmailState extends State<SignInEmail>
                                             );
                                           },
                                           fillColor:
-                                              MaterialStateProperty.resolveWith(
+                                              WidgetStateProperty.resolveWith(
                                                 (states) =>
                                                     _rememberMe
                                                         ? GlobalStyles
@@ -342,7 +344,7 @@ class SignInEmailState extends State<SignInEmail>
                           width: double.infinity,
                           padding: EdgeInsets.symmetric(vertical: 16.h),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withAlpha(13), // 0.05 * 255
                           ),
                           child: Column(
                             children: [
@@ -466,7 +468,7 @@ class SignInEmailState extends State<SignInEmail>
           prefixIcon: Icon(prefixIcon, color: Colors.white54, size: 20.sp),
           suffixIcon: suffixIcon,
           filled: true,
-          fillColor: Colors.white.withOpacity(0.08),
+          fillColor: Colors.white.withAlpha(20), // 0.08 * 255
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide.none,
@@ -478,7 +480,7 @@ class SignInEmailState extends State<SignInEmail>
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide(
-              color: GlobalStyles.primaryColor.withOpacity(0.6),
+              color: GlobalStyles.primaryColor.withAlpha(153), // 0.6 * 255
               width: 1.5.w,
             ),
           ),
@@ -495,9 +497,12 @@ class SignInEmailState extends State<SignInEmail>
       width: 50.w,
       height: 50.h,
       decoration: BoxDecoration(
-        color: backgroundColor.withOpacity(0.15),
+        color: backgroundColor.withAlpha(38), // 0.15 * 255
         shape: BoxShape.circle,
-        border: Border.all(color: backgroundColor.withOpacity(0.3), width: 1.w),
+        border: Border.all(
+          color: backgroundColor.withAlpha(77),
+          width: 1.w,
+        ), // 0.3 * 255
       ),
       child: Center(child: Icon(icon, color: backgroundColor, size: 28.sp)),
     );

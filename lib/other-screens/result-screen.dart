@@ -5,10 +5,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:insurevis/global_ui_variables.dart';
-import 'package:http/io_client.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 import 'package:insurevis/utils/pdf_service.dart';
+import 'package:insurevis/utils/network_helper.dart';
 
 class ResultsScreen extends StatefulWidget {
   final String imagePath;
@@ -70,9 +70,7 @@ class ResultsScreenState extends State<ResultsScreen> {
   }
 
   Future<void> _uploadImage() async {
-    final url = Uri.parse(
-      'https://rooster-faithful-terminally.ngrok-free.app/predict',
-    );
+    final url = 'https://rooster-faithful-terminally.ngrok-free.app/predict';
 
     try {
       // Verify if image exists
@@ -87,21 +85,13 @@ class ResultsScreenState extends State<ResultsScreen> {
 
       print("Uploading image from: ${_imageFile.path}");
 
-      // Create an HttpClient that accepts all certificates in release mode
-      final ioClient =
-          HttpClient()..badCertificateCallback = (cert, host, port) => true;
-      final client = IOClient(ioClient);
+      // Use NetworkHelper for sending multipart request
+      final streamedResponse = await NetworkHelper.sendMultipartRequest(
+        url: url,
+        filePath: _imageFile.path,
+        fileFieldName: 'image_file',
+      );
 
-      // Create multipart request
-      final request = http.MultipartRequest('POST', url)
-        ..files.add(
-          await http.MultipartFile.fromPath('image_file', _imageFile.path),
-        ); // THIS LINE WAS MISSING CLOSING PARENTHESIS AND SEMICOLON (Note: This line appears correct as provided)
-
-      print("Request created, sending to: $url");
-
-      // Send the request using our custom client
-      final streamedResponse = await client.send(request);
       print("Response received: ${streamedResponse.statusCode}");
 
       final response = await http.Response.fromStream(streamedResponse);

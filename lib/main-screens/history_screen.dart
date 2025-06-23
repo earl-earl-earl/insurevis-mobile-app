@@ -33,54 +33,39 @@ class _HistoryScreenState extends State<HistoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.backgroundColorStart,
-              GlobalStyles.backgroundColorEnd,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            GlobalStyles.backgroundColorStart,
+            GlobalStyles.backgroundColorEnd,
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.all(16.w),
-                child: Text(
-                  'History',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+      ),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TabBar(
+              controller: _tabController,
+              indicatorColor: GlobalStyles.primaryColor,
+              indicatorWeight: 3,
+              tabs: [Tab(text: 'Recent'), Tab(text: 'Old')],
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white54,
+            ),
 
-              TabBar(
+            Expanded(
+              child: TabBarView(
                 controller: _tabController,
-                indicatorColor: GlobalStyles.primaryColor,
-                indicatorWeight: 3,
-                tabs: [Tab(text: 'Recent'), Tab(text: 'Old')],
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white54,
+                children: [_buildRecentTab(), _buildOldTab()],
               ),
-
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [_buildRecentTab(), _buildOldTab()],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -95,13 +80,13 @@ class _HistoryScreenState extends State<HistoryScreen>
             width: 150.w,
             height: 150.w,
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withAlpha(51), // 0.2 * 255
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.history,
               size: 60.sp,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withAlpha(179), // 0.7 * 255
             ),
           ),
           SizedBox(height: 24.h),
@@ -169,16 +154,16 @@ class _HistoryScreenState extends State<HistoryScreen>
     final formattedTime = DateFormat('h:mm a').format(assessment.timestamp);
 
     // Determine card border color based on damage severity
-    Color borderColor = GlobalStyles.primaryColor.withOpacity(0.3);
+    Color borderColor = GlobalStyles.primaryColor.withAlpha(77); // 0.3 * 255
     if (assessment.results != null &&
         assessment.results!.containsKey('severity')) {
       final severity = assessment.results!['severity'].toString().toLowerCase();
       if (severity.contains('high') || severity.contains('severe')) {
-        borderColor = Colors.red.withOpacity(0.5);
+        borderColor = Colors.red.withAlpha(128); // 0.5 * 255
       } else if (severity.contains('medium')) {
-        borderColor = Colors.orange.withOpacity(0.5);
+        borderColor = Colors.orange.withAlpha(128); // 0.5 * 255
       } else {
-        borderColor = Colors.green.withOpacity(0.5);
+        borderColor = Colors.green.withAlpha(128); // 0.5 * 255
       }
     }
 
@@ -187,7 +172,7 @@ class _HistoryScreenState extends State<HistoryScreen>
       child: Container(
         margin: EdgeInsets.only(bottom: 16.h),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
+          color: Colors.black.withAlpha(77), // 0.3 * 255
           borderRadius: BorderRadius.circular(16.r),
           border: Border.all(color: borderColor),
         ),

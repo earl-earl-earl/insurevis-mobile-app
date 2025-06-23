@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/other-screens/result-screen.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 import 'package:insurevis/utils/pdf_service.dart';
+import 'package:insurevis/utils/network_helper.dart';
 
 class MultipleResultsScreen extends StatefulWidget {
   final List<String> imagePaths;
@@ -655,21 +655,18 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   }
 
   Future<Map<String, dynamic>?> _sendImageToAPI(String imagePath) async {
-    final url = Uri.parse(
-      'https://rooster-faithful-terminally.ngrok-free.app/predict',
-    );
+    final url = 'https://rooster-faithful-terminally.ngrok-free.app/predict';
 
     try {
       print("Uploading image: $imagePath");
 
-      final ioClient =
-          HttpClient()..badCertificateCallback = (cert, host, port) => true;
-      final client = IOClient(ioClient);
+      // Use NetworkHelper for sending multipart request
+      final streamedResponse = await NetworkHelper.sendMultipartRequest(
+        url: url,
+        filePath: imagePath,
+        fileFieldName: 'image_file',
+      );
 
-      final request = http.MultipartRequest('POST', url)
-        ..files.add(await http.MultipartFile.fromPath('image_file', imagePath));
-
-      final streamedResponse = await client.send(request);
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {

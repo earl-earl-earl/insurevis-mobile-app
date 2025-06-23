@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Add this
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,6 +9,7 @@ import 'package:insurevis/main-screens/main_container.dart';
 import 'package:insurevis/onboarding/app_onboarding_page.dart';
 import 'package:insurevis/onboarding/welcome.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
+import 'package:insurevis/providers/theme_provider.dart';
 // ignore: depend_on_referenced_packages
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:io'; // Add this import for Platform
@@ -54,41 +53,22 @@ class MainApp extends StatelessWidget {
         return MultiProvider(
           providers: [
             ChangeNotifierProvider(create: (_) => AssessmentProvider()),
-            // Add other providers if needed
+            ChangeNotifierProvider(create: (_) => ThemeProvider()),
           ],
-          child: MaterialApp(
-            title: 'Insurevis',
-            theme: ThemeData(
-              fontFamily: GoogleFonts.poppins().fontFamily,
-              primarySwatch: GlobalStyles.richVibrantPurple,
-              // Add these lines for smoother scrolling
-              scrollbarTheme: ScrollbarThemeData(
-                thickness: MaterialStateProperty.all(4),
-                thumbColor: MaterialStateProperty.all(
-                  GlobalStyles.primaryColor.withOpacity(0.5),
-                ),
-              ),
-              // Note: For image optimization, set quality on individual Image widgets
-              primaryColor: GlobalStyles.primaryColor,
-              scaffoldBackgroundColor: Colors.transparent,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: GlobalStyles.primaryColor,
-                brightness: Brightness.dark,
-              ),
-              useMaterial3: true,
-            ),
-            // Add this for better performance
-            debugShowCheckedModeBanner: false,
-
-            // Your existing routes
-            home: const Welcome(),
-            routes: {
-              '/signin': (context) => const SignIn(),
-              '/signin_email': (context) => const SignInEmail(),
-              '/app_onboarding': (context) => const AppOnboardingScreen(),
-              '/home':
-                  (context) =>
-                      const MainContainer(), // Changed from Home to MainContainer
+          child: Consumer<ThemeProvider>(
+            builder: (context, themeProvider, child) {
+              return MaterialApp(
+                title: 'Insurevis',
+                theme: themeProvider.themeData,
+                debugShowCheckedModeBanner: false,
+                home: const Welcome(),
+                routes: {
+                  '/signin': (context) => const SignIn(),
+                  '/signin_email': (context) => const SignInEmail(),
+                  '/app_onboarding': (context) => const AppOnboardingScreen(),
+                  '/home': (context) => const MainContainer(),
+                },
+              );
             },
           ),
         );

@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/main-screens/home.dart';
 import 'package:insurevis/main-screens/status_screen.dart';
 import 'package:insurevis/main-screens/history_screen.dart';
+import 'package:insurevis/main-screens/documents_screen.dart';
 import 'package:insurevis/main-screens/profile_screen.dart';
-import 'package:insurevis/providers/theme_provider.dart';
-import 'package:provider/provider.dart';
 
 class MainContainer extends StatefulWidget {
   const MainContainer({super.key});
@@ -22,13 +20,24 @@ class _MainContainerState extends State<MainContainer>
   int _selectedIndex = 0;
   late PageController _pageController;
   late AnimationController _animationController;
+  late AnimationController _drawerAnimationController;
+  late AnimationController _fabAnimationController;
 
-  // Core screens with Profile back in navigation
+  // Track selected drawer item for visual feedback
+  int _selectedDrawerIndex = -1;
+  bool _isLoading = false;
+
+  // Notification badges for enhanced UX
+  final Map<int, int> _notificationBadges = {
+    1: 2, // Status has 2 notifications
+    2: 5, // History has 5 notifications
+  };
+
+  // Core screens (Documents and Profile moved to drawer)
   final List<Widget> _screens = [
     const Home(),
     const StatusScreen(),
     const HistoryScreen(),
-    const ProfileScreen(),
   ];
 
   @override
@@ -85,214 +94,168 @@ class _MainContainerState extends State<MainContainer>
 
     setState(() => _isLoading = true);
 
-    // Show loading feedback with modern SnackBar
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Opening ${screenName ?? 'screen'}...'),
-          duration: const Duration(milliseconds: 800),
-          backgroundColor: GlobalStyles.primaryColor.withAlpha(230),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.r),
-          ),
-          margin: EdgeInsets.all(16.w),
-          showCloseIcon: true,
-          closeIconColor: Colors.white,
+    // Show loading feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Opening ${screenName ?? 'screen'}...'),
+        duration: const Duration(milliseconds: 800),
+        backgroundColor: GlobalStyles.primaryColor.withAlpha(230), // 0.9 * 255
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
         ),
-      );
-    }
+        margin: EdgeInsets.all(16.w),
+      ),
+    );
 
     await Future.delayed(const Duration(milliseconds: 150));
 
     if (mounted) {
-      try {
-        await Navigator.push(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => screen,
-            transitionsBuilder: (
-              context,
-              animation,
-              secondaryAnimation,
-              child,
-            ) {
-              return SlideTransition(
-                position: animation.drive(
-                  Tween(
-                    begin: const Offset(1.0, 0.0),
-                    end: Offset.zero,
-                  ).chain(CurveTween(curve: Curves.easeOutCubic)),
-                ),
-                child: FadeTransition(opacity: animation, child: child),
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 350),
-            reverseTransitionDuration: const Duration(milliseconds: 250),
-          ),
-        );
-      } catch (e) {
-        // Handle navigation errors gracefully
-        debugPrint('Navigation error: $e');
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _selectedDrawerIndex = -1;
-          });
-        }
-      }
+      await Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => screen,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position: animation.drive(
+                Tween(
+                  begin: const Offset(1.0, 0.0),
+                  end: Offset.zero,
+                ).chain(CurveTween(curve: Curves.easeOutCubic)),
+              ),
+              child: FadeTransition(opacity: animation, child: child),
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+      );
+
+      setState(() {
+        _isLoading = false;
+        _selectedDrawerIndex = -1;
+      });
     }
-  }
-
-  // Build the main app bar
-  PreferredSizeWidget _buildAppBar() {
-    final List<String> titles = ['Home', 'Status', 'History'];
-
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      leading: Builder(
-        builder:
-            (context) => IconButton(
-              icon: Icon(Icons.menu, color: Colors.white, size: 24.sp),
-              onPressed: () => Scaffold.of(context).openDrawer(),
-            ),
-      ),
-      title: Text(
-        titles[_selectedIndex],
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 24.sp,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      actions: [
-        // Notification bell
-        Container(
-          width: 40.w,
-          height: 40.w,
-          margin: EdgeInsets.only(right: 10.w),
-          decoration: const BoxDecoration(
-            color: Colors.transparent,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.notifications_none_rounded,
-            color: Colors.white,
-            size: 30.sp,
-          ),
-        ),
-      ],
-    );
   }
 
   // Enhanced side drawer with comprehensive UX improvements
   Widget _buildSideDrawer() {
     return Drawer(
+      backgroundColor: GlobalStyles.backgroundColorStart,
       elevation: 16,
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Enhanced user header with improved visual hierarchy
-            _buildUserHeader(),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              GlobalStyles.backgroundColorStart,
+              GlobalStyles.backgroundColorEnd,
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Enhanced user header with improved visual hierarchy
+              _buildUserHeader(),
 
-            // Main content area
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.symmetric(vertical: 12.h),
-                children: [
-                  // Primary actions
-                  _buildSectionHeader('Quick Actions'),
-                  _buildDrawerItem(
-                    icon: Icons.upload_file_outlined,
-                    title: 'Documents',
-                    subtitle: 'Submit insurance documents',
-                    index: 0,
-                    badge: 3, // Show pending documents
-                    onTap: () {
-                      setState(() => _selectedDrawerIndex = 0);
-                      _navigateToScreen(
-                        const DocumentsScreen(),
-                        screenName: 'Documents',
-                      );
-                    },
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.person_outline,
-                    title: 'Profile',
-                    subtitle: 'Manage your account settings',
-                    index: 1,
-                    onTap: () {
-                      setState(() => _selectedDrawerIndex = 1);
-                      _navigateToScreen(
-                        const ProfileScreen(),
-                        screenName: 'Profile',
-                      );
-                    },
-                  ),
+              // Main navigation section
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
+                  children: [
+                    // Primary actions
+                    _buildSectionHeader('Quick Actions'),
+                    _buildDrawerItem(
+                      icon: Icons.upload_file_outlined,
+                      title: 'Documents',
+                      subtitle: 'Submit insurance documents',
+                      index: 0,
+                      badge: 3, // Show pending documents
+                      onTap: () {
+                        setState(() => _selectedDrawerIndex = 0);
+                        _navigateToScreen(
+                          const DocumentsScreen(),
+                          screenName: 'Documents',
+                        );
+                      },
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.person_outline,
+                      title: 'Profile',
+                      subtitle: 'Manage your account settings',
+                      index: 1,
+                      onTap: () {
+                        setState(() => _selectedDrawerIndex = 1);
+                        _navigateToScreen(
+                          const ProfileScreen(),
+                          screenName: 'Profile',
+                        );
+                      },
+                    ),
 
-                  SizedBox(height: 16.h),
+                    SizedBox(height: 16.h),
 
-                  // Utility section
-                  _buildSectionHeader('Utilities'),
-                  _buildDrawerItem(
-                    icon: Icons.settings_outlined,
-                    title: 'Settings',
-                    subtitle: 'App preferences & configuration',
-                    index: 2,
-                    onTap: () {
-                      setState(() => _selectedDrawerIndex = 2);
-                      Navigator.pop(context);
-                      _showEnhancedSettingsDialog();
-                    },
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.help_outline,
-                    title: 'Help & Support',
-                    subtitle: 'Get assistance & tutorials',
-                    index: 3,
-                    onTap: () {
-                      setState(() => _selectedDrawerIndex = 3);
-                      Navigator.pop(context);
-                      _showEnhancedHelpDialog();
-                    },
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.info_outline,
-                    title: 'About',
-                    subtitle: 'App information & version',
-                    index: 4,
-                    onTap: () {
-                      setState(() => _selectedDrawerIndex = 4);
-                      Navigator.pop(context);
-                      _showEnhancedAboutDialog();
-                    },
-                  ),
+                    // Utility section
+                    _buildSectionHeader('Utilities'),
+                    _buildDrawerItem(
+                      icon: Icons.settings_outlined,
+                      title: 'Settings',
+                      subtitle: 'App preferences & configuration',
+                      index: 2,
+                      onTap: () {
+                        setState(() => _selectedDrawerIndex = 2);
+                        Navigator.pop(context);
+                        _showEnhancedSettingsDialog();
+                      },
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.help_outline,
+                      title: 'Help & Support',
+                      subtitle: 'Get assistance & tutorials',
+                      index: 3,
+                      onTap: () {
+                        setState(() => _selectedDrawerIndex = 3);
+                        Navigator.pop(context);
+                        _showEnhancedHelpDialog();
+                      },
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.info_outline,
+                      title: 'About',
+                      subtitle: 'App information & version',
+                      index: 4,
+                      onTap: () {
+                        setState(() => _selectedDrawerIndex = 4);
+                        Navigator.pop(context);
+                        _showEnhancedAboutDialog();
+                      },
+                    ),
 
-                  SizedBox(height: 16.h),
+                    SizedBox(height: 16.h),
 
-                  // Account section
-                  _buildSectionHeader('Account'),
-                  _buildDrawerItem(
-                    icon: Icons.logout,
-                    title: 'Sign Out',
-                    subtitle: 'Securely logout from your account',
-                    index: 5,
-                    isDestructive: true,
-                    onTap: () {
-                      setState(() => _selectedDrawerIndex = 5);
-                      Navigator.pop(context);
-                      _showEnhancedLogoutDialog();
-                    },
-                  ),
-                ],
+                    // Account section
+                    _buildSectionHeader('Account'),
+                    _buildDrawerItem(
+                      icon: Icons.logout,
+                      title: 'Sign Out',
+                      subtitle: 'Securely logout from your account',
+                      index: 5,
+                      isDestructive: true,
+                      onTap: () {
+                        setState(() => _selectedDrawerIndex = 5);
+                        Navigator.pop(context);
+                        _showEnhancedLogoutDialog();
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            // Enhanced footer with swipe hint
-            _buildDrawerFooter(),
-          ],
+              // Enhanced footer with swipe hint
+              _buildDrawerFooter(),
+            ],
+          ),
         ),
       ),
     );
@@ -305,7 +268,7 @@ class _MainContainerState extends State<MainContainer>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            GlobalStyles.primaryColor.withAlpha(242),
+            GlobalStyles.primaryColor.withAlpha(242), // 0.95 * 255
             GlobalStyles.primaryColor,
           ],
           begin: Alignment.topLeft,
@@ -317,7 +280,7 @@ class _MainContainerState extends State<MainContainer>
         ),
         boxShadow: [
           BoxShadow(
-            color: GlobalStyles.primaryColor.withAlpha(77),
+            color: GlobalStyles.primaryColor.withAlpha(77), // 0.3 * 255
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -339,7 +302,7 @@ class _MainContainerState extends State<MainContainer>
                         border: Border.all(color: Colors.white, width: 3),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color.fromRGBO(0, 0, 0, 0.2),
+                            color: Colors.black.withAlpha(51), // 0.2 * 255
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -388,7 +351,7 @@ class _MainContainerState extends State<MainContainer>
                       Text(
                         'regine@email.com',
                         style: TextStyle(
-                          color: const Color.fromRGBO(255, 255, 255, 0.9),
+                          color: Colors.white.withAlpha(230), // 0.9 * 255
                           fontSize: 13.sp,
                         ),
                       ),
@@ -399,10 +362,10 @@ class _MainContainerState extends State<MainContainer>
                           vertical: 4.h,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color.fromRGBO(255, 255, 255, 0.25),
+                          color: Colors.white.withAlpha(64), // 0.25 * 255
                           borderRadius: BorderRadius.circular(16.r),
                           border: Border.all(
-                            color: const Color.fromRGBO(255, 255, 255, 0.3),
+                            color: Colors.white.withAlpha(77), // 0.3 * 255
                             width: 1,
                           ),
                         ),
@@ -454,7 +417,7 @@ class _MainContainerState extends State<MainContainer>
         Container(
           padding: EdgeInsets.all(6.w),
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(255, 255, 255, 0.15),
+            color: Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(8.r),
           ),
           child: Icon(icon, color: Colors.white, size: 16.sp),
@@ -471,7 +434,7 @@ class _MainContainerState extends State<MainContainer>
         Text(
           label,
           style: TextStyle(
-            color: const Color.fromRGBO(255, 255, 255, 0.8),
+            color: Colors.white.withOpacity(0.8),
             fontSize: 10.sp,
           ),
         ),
@@ -486,7 +449,7 @@ class _MainContainerState extends State<MainContainer>
       child: Text(
         title,
         style: TextStyle(
-          color: const Color.fromRGBO(255, 255, 255, 0.6),
+          color: Colors.white.withOpacity(0.6),
           fontSize: 12.sp,
           fontWeight: FontWeight.w600,
           letterSpacing: 1.2,
@@ -516,11 +479,11 @@ class _MainContainerState extends State<MainContainer>
         duration: const Duration(milliseconds: 200),
         margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 2.h),
         decoration: BoxDecoration(
-          color: isSelected ? color.withAlpha(38) : Colors.transparent,
+          color: isSelected ? color.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(12.r),
           border:
               isSelected
-                  ? Border.all(color: color.withAlpha(77), width: 1)
+                  ? Border.all(color: color.withOpacity(0.3), width: 1)
                   : null,
         ),
         child: Material(
@@ -543,13 +506,13 @@ class _MainContainerState extends State<MainContainer>
                         decoration: BoxDecoration(
                           color:
                               isDestructive
-                                  ? const Color.fromRGBO(255, 0, 0, 0.1)
-                                  : color.withAlpha(26),
+                                  ? Colors.red.withOpacity(0.1)
+                                  : color.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(10.r),
                           border:
                               isSelected
                                   ? Border.all(
-                                    color: color.withAlpha(77),
+                                    color: color.withOpacity(0.3),
                                     width: 1,
                                   )
                                   : null,
@@ -604,7 +567,7 @@ class _MainContainerState extends State<MainContainer>
                           style: TextStyle(
                             color:
                                 isDestructive
-                                    ? const Color.fromRGBO(255, 0, 0, 0.7)
+                                    ? Colors.red.withOpacity(0.7)
                                     : Colors.white70,
                             fontSize: 12.sp,
                           ),
@@ -620,7 +583,8 @@ class _MainContainerState extends State<MainContainer>
             ),
           ),
         ),
-      );
+      ),
+    );
   }
 
   // Enhanced drawer footer
@@ -629,10 +593,7 @@ class _MainContainerState extends State<MainContainer>
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(
-            color: const Color.fromRGBO(255, 255, 255, 0.1),
-            width: 1,
-          ),
+          top: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
         ),
       ),
       child: Row(
@@ -656,16 +617,14 @@ class _MainContainerState extends State<MainContainer>
       ),
     );
   }
+
   // Enhanced Settings Dialog
   void _showEnhancedSettingsDialog() {
     showDialog(
       context: context,
-      useSafeArea: true,
-      builder: (context) => Consumer<ThemeProvider>(
-        builder: (context, themeProvider, child) {
-          return AlertDialog(
-            backgroundColor: themeProvider.surfaceColor,
-            surfaceTintColor: Colors.transparent,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: GlobalStyles.backgroundColorStart,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16.r),
             ),
@@ -673,16 +632,13 @@ class _MainContainerState extends State<MainContainer>
               children: [
                 Icon(
                   Icons.settings,
-                  color: themeProvider.primaryColor,
+                  color: GlobalStyles.primaryColor,
                   size: 24.sp,
                 ),
                 SizedBox(width: 12.w),
                 Text(
                   'Settings',
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontSize: 18.sp,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 18.sp),
                 ),
               ],
             ),
@@ -696,7 +652,7 @@ class _MainContainerState extends State<MainContainer>
                     true,
                     Icons.notifications,
                   ),
-                  _buildThemeToggleItem(themeProvider),
+                  _buildEnhancedSettingItem('Dark Mode', true, Icons.dark_mode),
                   _buildEnhancedSettingItem(
                     'Auto-sync Data',
                     false,
@@ -720,61 +676,11 @@ class _MainContainerState extends State<MainContainer>
                 onPressed: () => Navigator.pop(context),
                 child: Text(
                   'Close',
-                  style: TextStyle(color: themeProvider.primaryColor),
+                  style: TextStyle(color: GlobalStyles.primaryColor),
                 ),
               ),
             ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildThemeToggleItem(ThemeProvider themeProvider) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      child: Row(
-        children: [
-          Icon(
-            themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-            color: themeProvider.textSecondaryColor,
-            size: 20.sp,
           ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Text(
-              'Dark Mode',
-              style: TextStyle(
-                color: themeProvider.textColor,
-                fontSize: 14.sp,
-              ),
-            ),
-          ),
-          Switch(
-            value: themeProvider.isDarkMode,
-            onChanged: (val) {
-              HapticFeedback.lightImpact();
-              themeProvider.toggleTheme();
-            },
-            thumbColor: WidgetStateProperty.resolveWith<Color?>((
-              Set<WidgetState> states,
-            ) {
-              if (states.contains(WidgetState.selected)) {
-                return themeProvider.primaryColor;
-              }
-              return Colors.grey[300];
-            }),
-            trackColor: WidgetStateProperty.resolveWith<Color?>((
-              Set<WidgetState> states,
-            ) {
-              if (states.contains(WidgetState.selected)) {
-                return themeProvider.primaryColor.withAlpha(77);
-              }
-              return Colors.grey[400];
-            }),
-          ),
-        ],
-      ),
     );
   }
 
@@ -797,22 +703,8 @@ class _MainContainerState extends State<MainContainer>
               HapticFeedback.lightImpact();
               // Add setting change logic here
             },
-            thumbColor: WidgetStateProperty.resolveWith<Color?>((
-              Set<WidgetState> states,
-            ) {
-              if (states.contains(WidgetState.selected)) {
-                return GlobalStyles.primaryColor;
-              }
-              return null;
-            }),
-            trackColor: WidgetStateProperty.resolveWith<Color?>((
-              Set<WidgetState> states,
-            ) {
-              if (states.contains(WidgetState.selected)) {
-                return GlobalStyles.primaryColor.withAlpha(77);
-              }
-              return null;
-            }),
+            activeColor: GlobalStyles.primaryColor,
+            activeTrackColor: GlobalStyles.primaryColor.withOpacity(0.3),
           ),
         ],
       ),
@@ -823,11 +715,9 @@ class _MainContainerState extends State<MainContainer>
   void _showEnhancedHelpDialog() {
     showDialog(
       context: context,
-      useSafeArea: true,
       builder:
           (context) => AlertDialog(
             backgroundColor: GlobalStyles.backgroundColorStart,
-            surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16.r),
             ),
@@ -848,31 +738,31 @@ class _MainContainerState extends State<MainContainer>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildEnhancedHelpItem(
-                      Icons.camera_alt,
+                      '📱',
                       'Taking Photos',
                       'Best practices for capturing vehicle damage clearly',
                       () => _showHelpDetail('Photo Guide'),
                     ),
                     _buildEnhancedHelpItem(
-                      Icons.cloud_upload,
+                      '📋',
                       'Document Upload',
                       'Step-by-step guide for submitting documents',
                       () => _showHelpDetail('Upload Guide'),
                     ),
                     _buildEnhancedHelpItem(
-                      Icons.search,
+                      '🔍',
                       'Understanding Reports',
                       'How to interpret AI damage assessment results',
                       () => _showHelpDetail('Report Guide'),
                     ),
                     _buildEnhancedHelpItem(
-                      Icons.support_agent,
+                      '💬',
                       'Contact Support',
                       'Get direct help from our support team',
                       () => _showContactOptions(),
                     ),
                     _buildEnhancedHelpItem(
-                      Icons.school,
+                      '🎯',
                       'Quick Tutorial',
                       'Interactive walkthrough of app features',
                       () => _startTutorial(),
@@ -895,7 +785,7 @@ class _MainContainerState extends State<MainContainer>
   }
 
   Widget _buildEnhancedHelpItem(
-    IconData icon,
+    String emoji,
     String title,
     String description,
     VoidCallback onTap,
@@ -909,18 +799,7 @@ class _MainContainerState extends State<MainContainer>
           padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 8.w),
           child: Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(8.w),
-                decoration: BoxDecoration(
-                  color: GlobalStyles.primaryColor.withAlpha(51),
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Icon(
-                  icon,
-                  color: GlobalStyles.primaryColor,
-                  size: 20.sp,
-                ),
-              ),
+              Text(emoji, style: TextStyle(fontSize: 24.sp)),
               SizedBox(width: 16.w),
               Expanded(
                 child: Column(
@@ -954,11 +833,9 @@ class _MainContainerState extends State<MainContainer>
   void _showEnhancedAboutDialog() {
     showDialog(
       context: context,
-      useSafeArea: true,
       builder:
           (context) => AlertDialog(
             backgroundColor: GlobalStyles.backgroundColorStart,
-            surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16.r),
             ),
@@ -986,7 +863,7 @@ class _MainContainerState extends State<MainContainer>
                             width: 64.w,
                             height: 64.h,
                             decoration: BoxDecoration(
-                              color: GlobalStyles.primaryColor.withAlpha(26),
+                              color: GlobalStyles.primaryColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(16.r),
                             ),
                             child: Icon(
@@ -1031,26 +908,23 @@ class _MainContainerState extends State<MainContainer>
                       ),
                     ),
                     SizedBox(height: 12.h),
-                    ...const [
-                      {'icon': '🤖', 'text': 'AI Damage Detection'},
-                      {'icon': '💰', 'text': 'Cost Estimation'},
-                      {'icon': '📄', 'text': 'PDF Report Generation'},
-                      {'icon': '📁', 'text': 'Document Management'},
-                      {'icon': '📊', 'text': 'Multi-image Analysis'},
-                      {'icon': '🔒', 'text': 'Secure Data Handling'},
+                    ...[
+                      ('🤖', 'AI Damage Detection'),
+                      ('💰', 'Cost Estimation'),
+                      ('📄', 'PDF Report Generation'),
+                      ('📁', 'Document Management'),
+                      ('📊', 'Multi-image Analysis'),
+                      ('🔒', 'Secure Data Handling'),
                     ].map(
                       (feature) => Padding(
                         padding: EdgeInsets.symmetric(vertical: 4.h),
                         child: Row(
                           children: [
-                            Text(
-                              feature['icon']!,
-                              style: TextStyle(fontSize: 16.sp),
-                            ),
+                            Text(feature.$1, style: TextStyle(fontSize: 16.sp)),
                             SizedBox(width: 12.w),
                             Expanded(
                               child: Text(
-                                feature['text']!,
+                                feature.$2,
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12.sp,
@@ -1067,7 +941,7 @@ class _MainContainerState extends State<MainContainer>
                     Container(
                       padding: EdgeInsets.all(12.w),
                       decoration: BoxDecoration(
-                        color: const Color.fromRGBO(255, 255, 255, 0.05),
+                        color: Colors.white.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Column(
@@ -1121,11 +995,9 @@ class _MainContainerState extends State<MainContainer>
   void _showEnhancedLogoutDialog() {
     showDialog(
       context: context,
-      useSafeArea: true,
       builder:
           (context) => AlertDialog(
             backgroundColor: GlobalStyles.backgroundColorStart,
-            surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16.r),
             ),
@@ -1154,11 +1026,9 @@ class _MainContainerState extends State<MainContainer>
                 Container(
                   padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
-                    color: const Color.fromRGBO(255, 165, 0, 0.1),
+                    color: Colors.orange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(
-                      color: const Color.fromRGBO(255, 165, 0, 0.3),
-                    ),
+                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
@@ -1207,21 +1077,12 @@ class _MainContainerState extends State<MainContainer>
   // Helper methods for dialog actions
   void _showHelpDetail(String topic) {
     Navigator.pop(context);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Opening $topic...'),
-          backgroundColor: GlobalStyles.primaryColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8.r),
-          ),
-          margin: EdgeInsets.all(16.w),
-          showCloseIcon: true,
-          closeIconColor: Colors.white,
-        ),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Opening $topic...'),
+        backgroundColor: GlobalStyles.primaryColor,
+      ),
+    );
   }
 
   void _showContactOptions() {
@@ -1236,15 +1097,13 @@ class _MainContainerState extends State<MainContainer>
 
   void _performLogout() {
     // Add actual logout logic
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
-    }
+    Navigator.pushReplacementNamed(context, '/login');
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GlobalStyles.gradientBackgroundStart,
-      extendBody: true,
+      drawer: _buildSideDrawer(),
       body: Stack(
         children: [
           // Main content
@@ -1254,77 +1113,180 @@ class _MainContainerState extends State<MainContainer>
             children: _screens,
           ),
 
-          // Loading overlay with modern design
+          // Loading overlay
           if (_isLoading)
             Container(
-              color: const Color.fromRGBO(0, 0, 0, 0.3),
+              color: Colors.black.withOpacity(0.3),
               child: Center(
-                child: Card(
-                  color: GlobalStyles.backgroundColorStart,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.r),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(24.w),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(
-                          color: GlobalStyles.primaryColor,
-                          strokeWidth: 3,
-                        ),
-                        SizedBox(height: 16.h),
-                        Text(
-                          'Loading...',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14.sp,
-                          ),
-                        ),
-                      ],
-                    ),
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    GlobalStyles.primaryColor,
                   ),
                 ),
               ),
             ),
         ],
       ),
-      bottomNavigationBar: _buildModernBottomNav(),
+      bottomNavigationBar: _buildEnhancedBottomNav(),
     );
   }
 
-  // Modern glassmorphic bottom navigation
-  Widget _buildModernBottomNav() {
+  // Enhanced bottom navigation with improved feedback
+  Widget _buildEnhancedBottomNav() {
     return Container(
-      margin: EdgeInsets.all(16.w),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(25.r),
-        child: Container(
-          decoration: BoxDecoration(
+      padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 8.w),
+      height: 75.h,
+      decoration: BoxDecoration(
+        color: GlobalStyles.backgroundColorStart,
+        boxShadow: [
+          BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(25.r),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1,
-            ),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              height: 80.h,
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildEnhancedNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
+          _buildEnhancedNavItem(
+            1,
+            Icons.access_time_outlined,
+            Icons.access_time,
+            'Status',
+          ),
+          _buildEnhancedNavItem(
+            2,
+            Icons.history_outlined,
+            Icons.history,
+            'History',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnhancedNavItem(
+    int index,
+    IconData icon,
+    IconData activeIcon,
+    String label,
+  ) {
+    bool isSelected = _selectedIndex == index;
+    final badgeCount = _notificationBadges[index];
+
+    return Expanded(
+      child: Semantics(
+        label: label,
+        selected: isSelected,
+        button: true,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24.r),
+            onTap: () => _onItemTapped(index),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(25.r),
+                color:
+                    isSelected
+                        ? GlobalStyles.primaryColor.withOpacity(0.15)
+                        : Colors.transparent,
+                borderRadius: BorderRadius.circular(24.r),
+                border:
+                    isSelected
+                        ? Border.all(
+                          color: GlobalStyles.primaryColor.withOpacity(0.3),
+                          width: 1,
+                        )
+                        : null,
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildNavItem(Icons.home_rounded, 0),
-                  _buildNavItem(Icons.analytics_rounded, 1),
-                  _buildCenterButton(),
-                  _buildNavItem(Icons.history_rounded, 2),
-                  _buildNavItem(Icons.person_rounded, 3),
+                  // Icon with badge
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (
+                          Widget child,
+                          Animation<double> animation,
+                        ) {
+                          return ScaleTransition(
+                            scale: animation,
+                            child: child,
+                          );
+                        },
+                        child: Icon(
+                          isSelected ? activeIcon : icon,
+                          key: ValueKey<bool>(isSelected),
+                          color:
+                              isSelected
+                                  ? GlobalStyles.primaryColor
+                                  : Colors.white54,
+                          size: 24.sp,
+                        ),
+                      ),
+                      // Notification badge
+                      if (badgeCount != null && badgeCount > 0)
+                        Positioned(
+                          right: -6,
+                          top: -6,
+                          child: Container(
+                            padding: EdgeInsets.all(4.w),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1),
+                            ),
+                            constraints: BoxConstraints(
+                              minWidth: 16.w,
+                              minHeight: 16.h,
+                            ),
+                            child: Text(
+                              badgeCount > 99 ? '99+' : badgeCount.toString(),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  // Label with smooth transition
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    child:
+                        isSelected
+                            ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(width: 8.w),
+                                Text(
+                                  label,
+                                  style: TextStyle(
+                                    color: GlobalStyles.primaryColor,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.clip,
+                                ),
+                              ],
+                            )
+                            : const SizedBox.shrink(),
+                  ),
                 ],
               ),
             ),
@@ -1333,61 +1295,4 @@ class _MainContainerState extends State<MainContainer>
       ),
     );
   }
-
-  Widget _buildNavItem(IconData icon, int index) {
-    bool isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () => _onItemTapped(index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: EdgeInsets.all(12.w),
-        decoration: BoxDecoration(
-          color: isSelected 
-            ? GlobalStyles.primaryColor.withOpacity(0.2)
-            : Colors.transparent,
-          borderRadius: BorderRadius.circular(16.r),
-        ),
-        child: Icon(
-          icon,
-          color: isSelected ? GlobalStyles.primaryColor : Colors.white70,
-          size: 24.sp,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCenterButton() {
-    return GestureDetector(
-      onTap: () {
-        // Navigate to insurance processing/camera screen
-        Navigator.pushNamed(context, '/camera');
-      },
-      child: Container(
-        width: 56.w,
-        height: 56.w,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.primaryColor,
-              GlobalStyles.primaryColor.withOpacity(0.8),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(28.r),
-          boxShadow: [
-            BoxShadow(
-              color: GlobalStyles.primaryColor.withOpacity(0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(
-          Icons.add_a_photo_rounded,
-          color: Colors.white,
-          size: 28.sp,
-        ),
-      ),
-    );
-  }
+}

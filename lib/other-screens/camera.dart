@@ -314,7 +314,7 @@ class _CameraScreenState extends State<CameraScreen> {
           if (_isInitializing)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withAlpha(128), // 0.5 * 255
                 child: const Center(
                   child: CircularProgressIndicator(color: Colors.white),
                 ),
@@ -330,7 +330,7 @@ class _CameraScreenState extends State<CameraScreen> {
             left: GlobalStyles.leadingPaddingLeft,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withAlpha(77), // 0.3 * 255
                 shape: BoxShape.circle,
               ),
               child: IconButton(
@@ -357,7 +357,7 @@ class _CameraScreenState extends State<CameraScreen> {
             right: GlobalStyles.leadingPaddingLeft,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withAlpha(77), // 0.3 * 255
                 shape: BoxShape.circle,
               ),
               child: IconButton(
@@ -413,7 +413,7 @@ class _CameraScreenState extends State<CameraScreen> {
                         width: 55.w,
                         height: 55.w,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withAlpha(51), // 0.2 * 255
                           borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(color: Colors.white54, width: 1),
                         ),
