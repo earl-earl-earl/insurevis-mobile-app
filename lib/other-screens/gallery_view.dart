@@ -13,7 +13,7 @@ class GalleryScreen extends StatefulWidget {
 }
 
 class _GalleryScreenState extends State<GalleryScreen> {
-  List<AssetEntity> _allPhotos = [];
+  final List<AssetEntity> _allPhotos = [];
   List<AssetPathEntity> _albums = [];
   bool _isLoading = true;
   bool _hasPermission = false;
@@ -27,7 +27,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
   bool _hasMorePhotos = true;
 
   // For multi-selection
-  Set<AssetEntity> _selectedAssets = <AssetEntity>{};
+  final Set<AssetEntity> _selectedAssets = <AssetEntity>{};
   bool _isSelectionMode = false;
 
   @override
@@ -312,7 +312,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
           Container(
             width: double.infinity,
             padding: EdgeInsets.all(16.w),
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             child: Row(
               children: [
                 Icon(
@@ -322,7 +322,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 ),
                 SizedBox(width: 8.w),
                 Text(
-                  '${_albums[_selectedAlbumIndex].name}',
+                  _albums[_selectedAlbumIndex].name,
                   style: TextStyle(
                     fontSize: 16.sp,
                     fontWeight: FontWeight.w600,
@@ -379,7 +379,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
             color:
                 isSelected
                     ? GlobalStyles.primaryColor
-                    : Colors.white.withOpacity(0.1),
+                    : Colors.white.withValues(alpha: 0.1),
             width: isSelected ? 3 : 1,
           ),
         ),
@@ -433,7 +433,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
               // Selection overlay
               if (isSelected)
-                Container(color: GlobalStyles.primaryColor.withOpacity(0.3)),
+                Container(
+                  color: GlobalStyles.primaryColor.withValues(alpha: 0.3),
+                ),
 
               // Video indicator
               if (asset.type == AssetType.video)
@@ -465,7 +467,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     color:
                         isSelected
                             ? GlobalStyles.primaryColor
-                            : Colors.white.withOpacity(0.7),
+                            : Colors.white.withValues(alpha: 0.7),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),

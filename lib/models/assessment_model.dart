@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
-
 enum AssessmentStatus { processing, completed, failed }
 
 class Assessment {

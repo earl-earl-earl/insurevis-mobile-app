@@ -5,7 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:insurevis/global_ui_variables.dart';
-import 'package:insurevis/other-screens/result-screen.dart';
+import 'package:insurevis/other-screens/result_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 
@@ -19,11 +19,14 @@ class MultipleResultsScreen extends StatefulWidget {
 }
 
 class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
-  Map<String, String> _uploadResults = {}; // Track upload status for each image
-  Map<String, String> _assessmentIds = {}; // Track assessment IDs
-  Map<String, Map<String, dynamic>> _apiResponses = {}; // Store API responses
-  Map<String, bool> _expandedCards = {}; // Track expanded state for each card
-  Map<String, Widget> _cachedImages = {}; // Cache for image widgets
+  final Map<String, String> _uploadResults =
+      {}; // Track upload status for each image
+  final Map<String, String> _assessmentIds = {}; // Track assessment IDs
+  final Map<String, Map<String, dynamic>> _apiResponses =
+      {}; // Store API responses
+  final Map<String, bool> _expandedCards =
+      {}; // Track expanded state for each card
+  final Map<String, Widget> _cachedImages = {}; // Cache for image widgets
   bool _isUploading = false;
   bool _allUploaded = false;
   @override
@@ -193,7 +196,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     String? assessmentId,
     Map<String, dynamic>? apiResponse,
   ) {
-    Color borderColor = Colors.white.withOpacity(0.3);
+    Color borderColor = Colors.white.withValues(alpha: 0.3);
     Widget statusWidget = Container();
     bool canTap = false;
     bool isExpanded = _expandedCards[imagePath] ?? false;
@@ -204,9 +207,9 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       statusWidget = Container(
         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
         decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.2),
+          color: Colors.green.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Colors.green.withOpacity(0.3)),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -229,9 +232,9 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       statusWidget = Container(
         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
         decoration: BoxDecoration(
-          color: Colors.red.withOpacity(0.2),
+          color: Colors.red.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Colors.red.withOpacity(0.3)),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -254,7 +257,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: borderColor, width: 2),
       ),
@@ -338,7 +341,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                 ),
               ),
               child: Material(
@@ -417,8 +420,10 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+        color: Colors.black.withValues(alpha: 0.2),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,10 +460,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
               ),
             ),
             SizedBox(height: 8.h),
-            ...damages
-                .take(3)
-                .map((damage) => _buildDamageItem(damage))
-                .toList(),
+            ...damages.take(3).map((damage) => _buildDamageItem(damage)),
             if (damages.length > 3)
               Padding(
                 padding: EdgeInsets.only(top: 4.h),
@@ -481,9 +483,9 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,7 +523,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       margin: EdgeInsets.only(bottom: 6.h),
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8.r),
       ),
       child: Row(
@@ -542,7 +544,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
               decoration: BoxDecoration(
-                color: _getSeverityColor(severity).withOpacity(0.2),
+                color: _getSeverityColor(severity).withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(4.r),
               ),
               child: Text(
@@ -634,7 +636,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     );
 
     try {
-      print("Uploading image: $imagePath");
+      // DEBUG: print("Uploading image: $imagePath");
 
       final ioClient =
           HttpClient()..badCertificateCallback = (cert, host, port) => true;
@@ -649,11 +651,11 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        print("API Error: ${response.statusCode}");
+        // DEBUG: print("API Error: ${response.statusCode}");
         return null;
       }
     } catch (e) {
-      print("Error uploading image: $e");
+      // DEBUG: print("Error uploading image: $e");
       return null;
     }
   }

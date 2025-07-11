@@ -30,7 +30,7 @@ class NetworkHelper {
 
       return response.statusCode < 500; // Accept any non-server error
     } catch (e) {
-      print('API endpoint check failed: $e');
+      // DEBUG: print('API endpoint check failed: $e');
       return false;
     }
   }

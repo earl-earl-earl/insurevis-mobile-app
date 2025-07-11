@@ -1,16 +1,16 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/assessment_model.dart';
 
 class AssessmentProvider with ChangeNotifier {
   final List<Assessment> _assessments = [];
-  bool _isLoading = false;
+  final bool _isLoading = false;
   final Uuid _uuid = const Uuid();
+
+  // Callback for notification provider
+  Function(String, String, String)? onNotificationNeeded;
 
   List<Assessment> get assessments => List.unmodifiable(_assessments);
   List<Assessment> get activeAssessments =>
@@ -34,6 +34,15 @@ class AssessmentProvider with ChangeNotifier {
     _assessments.add(assessment);
     notifyListeners();
 
+    // Trigger notification
+    if (onNotificationNeeded != null) {
+      onNotificationNeeded!(
+        'assessment_started',
+        'Assessment Started',
+        'Your image is being analyzed. This usually takes 30 seconds.',
+      );
+    }
+
     // Simulate API call/processing
     await _processAssessment(assessment);
 
@@ -52,7 +61,7 @@ class AssessmentProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print("Error preparing assessment: $e");
+      // DEBUG: print("Error preparing assessment: $e");
       final index = _assessments.indexWhere((a) => a.id == assessment.id);
       if (index >= 0) {
         _assessments[index] = _assessments[index].copyWith(
@@ -79,10 +88,10 @@ class AssessmentProvider with ChangeNotifier {
         orElse: () => throw Exception('Assessment not found with ID: $id'),
       );
 
-      print('Found assessment with ID: $id');
+      // DEBUG: print('Found assessment with ID: $id');
       return assessment;
     } catch (e) {
-      print('Error finding assessment: $e');
+      // DEBUG: print('Error finding assessment: $e');
       return null;
     }
   }
@@ -100,7 +109,7 @@ class AssessmentProvider with ChangeNotifier {
         try {
           results = jsonDecode(apiResponse);
         } catch (e) {
-          print("Warning: Could not parse API response as JSON: $e");
+          // DEBUG: print("Warning: Could not parse API response as JSON: $e");
         }
 
         _assessments[index] = _assessments[index].copyWith(
@@ -108,10 +117,20 @@ class AssessmentProvider with ChangeNotifier {
           apiResponse: apiResponse,
           results: results,
         );
+
+        // Trigger completion notification
+        if (onNotificationNeeded != null) {
+          onNotificationNeeded!(
+            'assessment_completed',
+            'Assessment Complete',
+            'Your vehicle damage assessment is ready for review',
+          );
+        }
+
         notifyListeners();
       }
     } catch (e) {
-      print("Error updating assessment with API response: $e");
+      // DEBUG: print("Error updating assessment with API response: $e");
     }
   }
 }

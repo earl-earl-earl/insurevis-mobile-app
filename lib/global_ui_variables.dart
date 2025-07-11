@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class GlobalStyles {
   static const MaterialColor richVibrantPurple =
@@ -27,41 +28,39 @@ class GlobalStyles {
   static final EdgeInsets defaultPadding = EdgeInsets.symmetric(
     horizontal: 30.w,
   );
-
-  static final TextStyle headingStyle = TextStyle(
+  static final TextStyle headingStyle = GoogleFonts.poppins(
     color: primaryColor,
     fontSize: 60.sp,
     fontWeight: FontWeight.w900,
     height: 1,
   );
 
-  static final TextStyle subheadingStyle = TextStyle(
+  static final TextStyle subheadingStyle = GoogleFonts.poppins(
     color: textColor,
     fontSize: 20.sp,
     fontWeight: FontWeight.w900,
     height: 1,
   );
 
-  static final TextStyle buttonTextStyle = TextStyle(
+  static final TextStyle buttonTextStyle = GoogleFonts.poppins(
     color: textSecondaryColor,
     fontWeight: FontWeight.w900,
     fontSize: 14.sp,
   );
-
   // Onboarding styles
-  static final TextStyle onboardingTitleStyle = TextStyle(
+  static final TextStyle onboardingTitleStyle = GoogleFonts.poppins(
     color: textColor,
     fontSize: 35.sp,
     fontWeight: FontWeight.w900,
     height: 1,
   );
 
-  static final TextStyle onboardingDescriptionStyle = TextStyle(
+  static final TextStyle onboardingDescriptionStyle = GoogleFonts.poppins(
     color: textColor,
     fontSize: 13.sp,
   );
 
-  static final TextStyle buttonNextTextStyle = TextStyle(
+  static final TextStyle buttonNextTextStyle = GoogleFonts.poppins(
     color: Color(0xFF2B1D6B),
     fontSize: 16.sp,
     fontWeight: FontWeight.w900,
@@ -73,20 +72,19 @@ class GlobalStyles {
   static const Color gradientBackgroundStart = Color(0xFF1E1E1E);
   static const Color gradientBackgroundEnd = Color.fromARGB(255, 7, 7, 7);
   static const Color circularButtonColor = Color(0xFF6B4AFF);
-
-  static final TextStyle welcomeHeadingStyle = TextStyle(
+  static final TextStyle welcomeHeadingStyle = GoogleFonts.poppins(
     color: primaryColor,
     fontSize: 40.sp,
     fontWeight: FontWeight.w900,
   );
 
-  static final TextStyle welcomeSubheadingStyle = TextStyle(
+  static final TextStyle welcomeSubheadingStyle = GoogleFonts.poppins(
     color: textColor,
     fontSize: 40.sp,
     fontWeight: FontWeight.w900,
   );
 
-  static final TextStyle loadingTextStyle = TextStyle(
+  static final TextStyle loadingTextStyle = GoogleFonts.poppins(
     color: textColor,
     fontSize: 16.sp,
   );

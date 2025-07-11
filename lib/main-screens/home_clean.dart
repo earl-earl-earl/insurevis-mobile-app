@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/other-screens/camera.dart';
-import 'package:insurevis/other-screens/notification_center.dart';
-import 'package:insurevis/providers/notification_provider.dart';
-import 'package:insurevis/providers/user_provider.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -16,16 +12,16 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
+  // Insurance-related state variables
+  final int _totalClaims = 3;
+  final int _pendingClaims = 1;
+  final double _coverageAmount = 50000.0;
+  final String _nextPaymentDate = "15 Jul 2025";
+
   @override
   void initState() {
     super.initState();
-    // Initialize UserProvider with demo data if no user is logged in
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      if (userProvider.currentUser == null) {
-        userProvider.initializeDemoUser();
-      }
-    });
+    // Initialize insurance data if needed
   }
 
   @override
@@ -41,112 +37,29 @@ class _HomeState extends State<Home> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Greeting section with notification bell
+                // Greeting section
                 SizedBox(height: 20.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Consumer<UserProvider>(
-                      builder: (context, userProvider, child) {
-                        final userName =
-                            userProvider.currentUser?.name.split(' ').first ??
-                            'User';
-                        return RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'Hey, ',
-                                style: TextStyle(
-                                  fontSize: 26.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              TextSpan(
-                                text: '$userName!',
-                                style: TextStyle(
-                                  fontSize: 26.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF9F8EE7),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-
-                    // Notification bell with badge
-                    Consumer<NotificationProvider>(
-                      builder: (context, notificationProvider, child) {
-                        final unreadCount = notificationProvider.unreadCount;
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (context) => const NotificationCenter(),
-                              ),
-                            );
-                          },
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                width: 45.w,
-                                height: 45.h,
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.notifications_none_rounded,
-                                  color: Colors.white,
-                                  size: 24.sp,
-                                ),
-                              ),
-                              if (unreadCount > 0)
-                                Positioned(
-                                  right: -2,
-                                  top: -2,
-                                  child: Container(
-                                    padding: EdgeInsets.all(4.w),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    constraints: BoxConstraints(
-                                      minWidth: 20.w,
-                                      minHeight: 20.h,
-                                    ),
-                                    child: Text(
-                                      unreadCount > 99
-                                          ? '99+'
-                                          : unreadCount.toString(),
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 8.sp,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Hey, ',
+                        style: TextStyle(
+                          fontSize: 26.sp,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'dabiii!',
+                        style: TextStyle(
+                          fontSize: 26.sp,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF9F8EE7),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 SizedBox(height: 24.h),
 
@@ -410,63 +323,50 @@ class _HomeState extends State<Home> {
               child: Column(
                 children: [
                   // Top row - Claims and Coverage
-                  Consumer<UserProvider>(
-                    builder: (context, userProvider, child) {
-                      final user = userProvider.currentUser;
-                      final stats = user?.stats;
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDashboardCard(
+                          'Total Claims',
+                          '$_totalClaims',
+                          Icons.assessment,
+                          GlobalStyles.primaryColor,
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: _buildDashboardCard(
+                          'Coverage Amount',
+                          '\$${(_coverageAmount / 1000).toStringAsFixed(0)}K',
+                          Icons.security,
+                          Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
 
-                      return Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildDashboardCard(
-                                  'Total Assessments',
-                                  '${stats?.totalAssessments ?? 0}',
-                                  Icons.assessment,
-                                  GlobalStyles.primaryColor,
-                                ),
-                              ),
-                              SizedBox(width: 12.w),
-                              Expanded(
-                                child: _buildDashboardCard(
-                                  'Insurance Status',
-                                  user?.membershipType == MembershipType.premium
-                                      ? 'Premium'
-                                      : 'Active',
-                                  Icons.security,
-                                  Colors.green,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 12.h),
-
-                          // Bottom row - Documents and Savings
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildDashboardCard(
-                                  'Documents Submitted',
-                                  '${stats?.documentsSubmitted ?? 0}',
-                                  Icons.description,
-                                  Colors.orange,
-                                ),
-                              ),
-                              SizedBox(width: 12.w),
-                              Expanded(
-                                child: _buildDashboardCard(
-                                  'Total Saved',
-                                  '₱${(stats?.totalSaved ?? 0).toStringAsFixed(0)}',
-                                  Icons.savings,
-                                  Colors.blue,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
+                  // Bottom row - Pending and Payment
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDashboardCard(
+                          'Pending Claims',
+                          '$_pendingClaims',
+                          Icons.pending,
+                          Colors.orange,
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: _buildDashboardCard(
+                          'Next Payment',
+                          _nextPaymentDate,
+                          Icons.calendar_today,
+                          Colors.blue,
+                        ),
+                      ),
+                    ],
                   ),
 
                   SizedBox(height: 16.h),

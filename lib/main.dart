@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Add this
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/login-signup/signin.dart';
-import 'package:insurevis/login-signup/signin_email.dart';
 import 'package:insurevis/main-screens/main_container.dart';
 import 'package:insurevis/onboarding/app_onboarding_page.dart';
 import 'package:insurevis/onboarding/welcome.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
-import 'package:insurevis/providers/theme_provider.dart';
+import 'package:insurevis/providers/notification_provider.dart';
+import 'package:insurevis/providers/user_provider.dart';
 // ignore: depend_on_referenced_packages
-import 'package:google_fonts/google_fonts.dart';
 import 'dart:io'; // Add this import for Platform
 
 void main() {
@@ -52,23 +50,43 @@ class MainApp extends StatelessWidget {
       builder: (context, child) {
         return MultiProvider(
           providers: [
-            ChangeNotifierProvider(create: (_) => AssessmentProvider()),
-            ChangeNotifierProvider(create: (_) => ThemeProvider()),
+            ChangeNotifierProvider(create: (_) => UserProvider()),
+            ChangeNotifierProvider(create: (_) => NotificationProvider()),
+            ChangeNotifierProxyProvider<
+              NotificationProvider,
+              AssessmentProvider
+            >(
+              create: (_) => AssessmentProvider(),
+              update: (_, notificationProvider, assessmentProvider) {
+                if (assessmentProvider != null) {
+                  assessmentProvider.onNotificationNeeded = (
+                    type,
+                    title,
+                    message,
+                  ) {
+                    if (type == 'assessment_started') {
+                      notificationProvider.addAssessmentStarted(title);
+                    } else if (type == 'assessment_completed') {
+                      notificationProvider.addAssessmentCompleted(title);
+                    }
+                  };
+                }
+                return assessmentProvider ?? AssessmentProvider();
+              },
+            ),
           ],
-          child: Consumer<ThemeProvider>(
-            builder: (context, themeProvider, child) {
-              return MaterialApp(
-                title: 'Insurevis',
-                theme: themeProvider.themeData,
-                debugShowCheckedModeBanner: false,
-                home: const Welcome(),
-                routes: {
-                  '/signin': (context) => const SignIn(),
-                  '/signin_email': (context) => const SignInEmail(),
-                  '/app_onboarding': (context) => const AppOnboardingScreen(),
-                  '/home': (context) => const MainContainer(),
-                },
-              );
+          child: MaterialApp(
+            title: 'Insurevis',
+            theme: ThemeData(
+              primarySwatch: Colors.blue,
+              brightness: Brightness.light,
+            ),
+            debugShowCheckedModeBanner: false,
+            home: const Welcome(),
+            routes: {
+              '/signin': (context) => const SignIn(),
+              '/app_onboarding': (context) => const AppOnboardingScreen(),
+              '/home': (context) => const MainContainer(),
             },
           ),
         );

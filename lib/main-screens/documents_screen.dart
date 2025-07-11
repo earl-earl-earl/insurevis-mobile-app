@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
+import 'package:insurevis/providers/notification_provider.dart';
 import 'package:file_picker/file_picker.dart';
 
 class DocumentsScreen extends StatefulWidget {
@@ -11,7 +13,7 @@ class DocumentsScreen extends StatefulWidget {
 }
 
 class _DocumentsScreenState extends State<DocumentsScreen> {
-  List<PlatformFile> _selectedFiles = [];
+  final List<PlatformFile> _selectedFiles = [];
   bool _isUploading = false;
   String _selectedInsuranceCompany = 'Select Insurance Company';
   final List<String> _insuranceCompanies = [
@@ -201,16 +203,14 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
         SizedBox(height: 16.h),
 
-        ...documentTypes
-            .map(
-              (doc) => _buildDocumentTypeCard(
-                title: doc['title'] as String,
-                description: doc['description'] as String,
-                icon: doc['icon'] as IconData,
-                required: doc['required'] as bool,
-              ),
-            )
-            .toList(),
+        ...documentTypes.map(
+          (doc) => _buildDocumentTypeCard(
+            title: doc['title'] as String,
+            description: doc['description'] as String,
+            icon: doc['icon'] as IconData,
+            required: doc['required'] as bool,
+          ),
+        ),
       ],
     );
   }
@@ -404,7 +404,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         _selectedFiles.isNotEmpty &&
         _selectedInsuranceCompany != 'Select Insurance Company';
 
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: canSubmit && !_isUploading ? _submitDocuments : null,
@@ -467,12 +467,14 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error picking files: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking files: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -496,14 +498,25 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       // Simulate API call
       await Future.delayed(const Duration(seconds: 3));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Documents submitted successfully to $_selectedInsuranceCompany!',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Documents submitted successfully to $_selectedInsuranceCompany!',
+            ),
+            backgroundColor: Colors.green,
           ),
-          backgroundColor: Colors.green,
-        ),
-      );
+        );
+      }
+
+      // Trigger notification
+      if (mounted) {
+        final notificationProvider = Provider.of<NotificationProvider>(
+          context,
+          listen: false,
+        );
+        notificationProvider.addDocumentSubmitted(_selectedInsuranceCompany);
+      }
 
       // Clear form after successful submission
       setState(() {
@@ -511,12 +524,14 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         _selectedInsuranceCompany = 'Select Insurance Company';
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to submit documents: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit documents: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       setState(() {
         _isUploading = false;

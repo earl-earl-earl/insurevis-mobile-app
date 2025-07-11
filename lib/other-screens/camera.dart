@@ -3,7 +3,7 @@ import 'package:camera/camera.dart'; // Make sure camera types like FlashMode ar
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 // import 'package:google_fonts/google_fonts.dart'; // Not used in this version
 import 'package:insurevis/global_ui_variables.dart';
-import 'package:insurevis/other-screens/result-screen.dart';
+import 'package:insurevis/other-screens/result_screen.dart';
 import 'package:insurevis/other-screens/gallery_view.dart';
 // import 'package:photo_manager/photo_manager.dart'; // REMOVED: No longer used
 import 'package:provider/provider.dart';
@@ -59,7 +59,7 @@ class _CameraScreenState extends State<CameraScreen> {
       _cameras = await availableCameras();
       // Handle case where no cameras are available
       if (_cameras.isEmpty) {
-        print("No cameras found on device.");
+        // DEBUG: print("No cameras found on device.");
         if (mounted) {
           setState(() => _isInitializing = false); // Stop loading
           // Show an error message to the user
@@ -96,21 +96,21 @@ class _CameraScreenState extends State<CameraScreen> {
           if (mounted) {
             // Set initial flash mode on the actual controller
             _controller!.setFlashMode(_currentFlashMode).catchError((e) {
-              print("Error setting initial flash mode: $e");
+              // DEBUG: print("Error setting initial flash mode: $e");
               // Optionally inform user if setting flash fails
             });
           }
         })
         .catchError((e) {
-          print("Error initializing camera: $e");
+          // DEBUG: print("Error initializing camera: $e");
           if (e is CameraException) {
             switch (e.code) {
               case 'CameraAccessDenied':
-                print("Camera access denied");
+                // DEBUG: print("Camera access denied");
                 // Handle access denial - show message
                 break;
               default:
-                print("Camera Error: ${e.description}");
+                // DEBUG: print("Camera Error: ${e.description}");
                 // Handle other errors
                 break;
             }
@@ -136,7 +136,7 @@ class _CameraScreenState extends State<CameraScreen> {
       await _initializeControllerFuture;
     } catch (e) {
       // Error already handled in catchError block above
-      print("Initialization future caught error (already handled)");
+      // DEBUG: print("Initialization future caught error (already handled)");
     }
 
     // Update state if switching cameras and already mounted
@@ -177,19 +177,21 @@ class _CameraScreenState extends State<CameraScreen> {
         );
 
         // Navigate to results screen with the assessment ID
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder:
-                (context) => ResultsScreen(
-                  imagePath: imageFile.path,
-                  assessmentId: assessment.id,
-                ),
-          ),
-        );
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => ResultsScreen(
+                    imagePath: imageFile.path,
+                    assessmentId: assessment.id,
+                  ),
+            ),
+          );
+        }
       }
     } catch (e) {
-      print("Error taking picture: $e");
+      // DEBUG: print("Error taking picture: $e");
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -214,7 +216,7 @@ class _CameraScreenState extends State<CameraScreen> {
     if (_controller == null ||
         !_controller!.value.isInitialized ||
         _isInitializing) {
-      print("Camera not ready to change flash mode.");
+      // DEBUG: print("Camera not ready to change flash mode.");
       return;
     }
 
@@ -241,10 +243,10 @@ class _CameraScreenState extends State<CameraScreen> {
         setState(() {
           _currentFlashMode = nextFlashMode;
         });
-        print("Flash mode set to: $nextFlashMode");
+        // DEBUG: print("Flash mode set to: $nextFlashMode");
       }
     } catch (e) {
-      print("Error setting flash mode to $nextFlashMode: $e");
+      // DEBUG: print("Error setting flash mode to $nextFlashMode: $e");
       if (mounted) {
         ScaffoldMessenger.of(
           context,

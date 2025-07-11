@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:insurevis/global_ui_variables.dart';
+import 'package:insurevis/other-screens/settings_screen.dart';
+import 'package:insurevis/other-screens/terms_of_service_screen.dart';
+import 'package:insurevis/other-screens/privacy_policy_screen.dart';
+import 'package:insurevis/other-screens/contact_us_screen.dart';
+import 'package:insurevis/other-screens/faq_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,6 +15,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _notificationsEnabled = true;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,24 +92,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.person_outline,
                     title: 'Personal Data',
                     subtitle: 'Change name, email id',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   _buildSettingItem(
                     icon: Icons.backup_outlined,
                     title: 'Data Backup/Restore',
                     subtitle: 'Change number, email id',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   _buildSettingItem(
                     icon: Icons.settings_outlined,
                     title: 'Preferences',
                     subtitle: 'Theme, other preferences',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   _buildSettingItem(
                     icon: Icons.language_outlined,
                     title: 'Language',
                     subtitle: 'Change language preference',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   SizedBox(height: 20.h),
@@ -123,6 +162,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.notifications_outlined,
                     title: 'Enable Notification',
                     subtitle: 'Turn on updates/verifications',
+                    value: _notificationsEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _notificationsEnabled = value;
+                      });
+                    },
                   ),
 
                   SizedBox(height: 20.h),
@@ -143,18 +188,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.contact_support_outlined,
                     title: 'Contact Us',
                     subtitle: 'Contact our Customer Service',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ContactUsScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   _buildSettingItem(
                     icon: Icons.policy_outlined,
                     title: 'Privacy Policy',
                     subtitle: 'Security notifications',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PrivacyPolicyScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   _buildSettingItem(
                     icon: Icons.help_outline,
                     title: 'FAQ',
                     subtitle: 'Get in touch with us',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FAQScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  _buildSettingItem(
+                    icon: Icons.description_outlined,
+                    title: 'Terms of Service',
+                    subtitle: 'Terms and conditions',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TermsOfServiceScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   SizedBox(height: 80.h),
@@ -171,6 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required IconData icon,
     required String title,
     required String subtitle,
+    VoidCallback? onTap,
   }) {
     return Container(
       margin: EdgeInsets.only(bottom: 15.h),
@@ -193,7 +277,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: TextStyle(color: Colors.white54, fontSize: 12.sp),
         ),
         trailing: Icon(Icons.chevron_right, color: Colors.white54, size: 20.sp),
-        onTap: () {},
+        onTap: onTap,
       ),
     );
   }
@@ -202,6 +286,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required IconData icon,
     required String title,
     required String subtitle,
+    bool? value,
+    ValueChanged<bool>? onChanged,
   }) {
     return Container(
       margin: EdgeInsets.only(bottom: 15.h),
@@ -223,9 +309,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle,
           style: TextStyle(color: Colors.white54, fontSize: 12.sp),
         ),
-        value: true,
+        value: value ?? true,
         activeColor: GlobalStyles.primaryColor,
-        onChanged: (value) {},
+        onChanged: onChanged ?? (value) {},
       ),
     );
   }

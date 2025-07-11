@@ -253,7 +253,7 @@ class PDFService {
         'damage_assessment_${DateTime.now().millisecondsSinceEpoch}.pdf',
       );
     } catch (e) {
-      print('Error generating PDF: $e');
+      // DEBUG: print('Error generating PDF: $e');
       return null;
     }
   }
@@ -378,7 +378,7 @@ class PDFService {
                   imagePath,
                   apiResponse,
                 );
-              }).toList(),
+              }),
 
               pw.SizedBox(height: 30),
 
@@ -403,7 +403,7 @@ class PDFService {
         'multi_damage_assessment_${DateTime.now().millisecondsSinceEpoch}.pdf',
       );
     } catch (e) {
-      print('Error generating multi-results PDF: $e');
+      // DEBUG: print('Error generating multi-results PDF: $e');
       return null;
     }
   }
@@ -513,7 +513,7 @@ class PDFService {
       // Request storage permission
       final status = await Permission.storage.request();
       if (!status.isGranted) {
-        print('Storage permission denied');
+        // DEBUG: print('Storage permission denied');
         return null;
       }
 
@@ -529,17 +529,17 @@ class PDFService {
       }
 
       if (directory == null) {
-        print('Could not get directory');
+        // DEBUG: print('Could not get directory');
         return null;
       }
 
       final file = File('${directory.path}/$fileName');
       await file.writeAsBytes(await pdf.save());
 
-      print('PDF saved to: ${file.path}');
+      // DEBUG: print('PDF saved to: ${file.path}');
       return file.path;
     } catch (e) {
-      print('Error saving PDF: $e');
+      // DEBUG: print('Error saving PDF: $e');
       return null;
     }
   }

@@ -1,7 +1,6 @@
-// filepath: c:\Users\Regine Torremoro\Desktop\Earl John\insurevis\lib\other-screens\result-screen.dart
+// filepath: c:\Users\Regine Torremoro\Desktop\Earl John\insurevis\lib\other-screens\result_screen.dart
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:insurevis/global_ui_variables.dart';
@@ -42,6 +41,81 @@ class ResultsScreenState extends State<ResultsScreen> {
 
   // Add this to track expanded state for damage cards
   final Map<int, bool> _expandedCards = {};
+
+  // Add these state variables at the top of the class
+  final Map<int, String> _selectedRepairOptions =
+      {}; // Track repair/replace selection for each damage
+
+  // Add these sample data structures for repair/replace costs
+  Map<String, Map<String, dynamic>> _getRepairCosts(
+    String damageType,
+    String severity,
+  ) {
+    // Sample cost data - in a real app, this would come from your API or database
+    final baseCosts = {
+      'bumper': {'labor': 150.0, 'materials': 200.0, 'tools': 50.0},
+      'door': {'labor': 200.0, 'materials': 300.0, 'tools': 75.0},
+      'fender': {'labor': 180.0, 'materials': 250.0, 'tools': 60.0},
+      'hood': {'labor': 220.0, 'materials': 350.0, 'tools': 80.0},
+      'mirror': {'labor': 100.0, 'materials': 120.0, 'tools': 30.0},
+      'headlight': {'labor': 120.0, 'materials': 180.0, 'tools': 40.0},
+      'taillight': {'labor': 100.0, 'materials': 150.0, 'tools': 35.0},
+      'windshield': {'labor': 250.0, 'materials': 400.0, 'tools': 100.0},
+    };
+
+    // Get base costs for the damage type
+    String normalizedType = damageType.toLowerCase();
+    Map<String, dynamic>? costs;
+
+    for (String key in baseCosts.keys) {
+      if (normalizedType.contains(key)) {
+        costs = baseCosts[key];
+        break;
+      }
+    }
+
+    costs ??= {
+      'labor': 150.0,
+      'materials': 200.0,
+      'tools': 50.0,
+    }; // Default costs
+
+    // Apply severity multiplier
+    double multiplier = 1.0;
+    String lowerSeverity = severity.toLowerCase();
+    if (lowerSeverity.contains('high') || lowerSeverity.contains('severe')) {
+      multiplier = 1.5;
+    } else if (lowerSeverity.contains('medium') ||
+        lowerSeverity.contains('moderate')) {
+      multiplier = 1.2;
+    }
+
+    return {
+      'repair': {
+        'labor': costs['labor']! * multiplier,
+        'materials':
+            costs['materials']! *
+            multiplier *
+            0.6, // Repair uses less materials
+        'tools': costs['tools']! * multiplier,
+        'total':
+            (costs['labor']! + costs['materials']! * 0.6 + costs['tools']!) *
+            multiplier,
+      },
+      'replace': {
+        'part_price':
+            costs['materials']! * multiplier * 1.3, // New part costs more
+        'labor': costs['labor']! * multiplier * 0.8, // Replace takes less labor
+        'tools': costs['tools']! * multiplier * 0.7, // Fewer tools needed
+        'total':
+            (costs['materials']! * 1.3 +
+                costs['labor']! * 0.8 +
+                costs['tools']! * 0.7) *
+            multiplier,
+      },
+    };
+  }
+
   @override
   void initState() {
     super.initState();
@@ -75,7 +149,7 @@ class ResultsScreenState extends State<ResultsScreen> {
     try {
       // Verify if image exists
       if (!_imageFile.existsSync()) {
-        print("ERROR: Image file doesn't exist!");
+        // DEBUG: print("ERROR: Image file doesn't exist!");
         setState(() {
           _apiResponse = 'Error: Image file not found';
           _isLoading = false;
@@ -83,7 +157,7 @@ class ResultsScreenState extends State<ResultsScreen> {
         return;
       }
 
-      print("Uploading image from: ${_imageFile.path}");
+      // DEBUG: print("Uploading image from: ${_imageFile.path}");
 
       // Use NetworkHelper for sending multipart request
       final streamedResponse = await NetworkHelper.sendMultipartRequest(
@@ -92,16 +166,14 @@ class ResultsScreenState extends State<ResultsScreen> {
         fileFieldName: 'image_file',
       );
 
-      print("Response received: ${streamedResponse.statusCode}");
+      // DEBUG: print("Response received: ${streamedResponse.statusCode}");
 
       final response = await http.Response.fromStream(streamedResponse);
-      print(
-        "Response body: ${response.body.substring(0, min(100, response.body.length))}...",
-      );
+      // DEBUG: print("Response body: ${response.body.substring(0, min(100, response.body.length))}...");
 
       if (response.statusCode == 200) {
         // Process data outside of setState to avoid UI jank
-        print("Success! Processing response...");
+        // DEBUG: print("Success! Processing response...");
         await _processApiResponse(response.body);
 
         if (mounted) {
@@ -111,7 +183,7 @@ class ResultsScreenState extends State<ResultsScreen> {
           });
         }
       } else {
-        print("Error: ${response.statusCode} - ${response.body}");
+        // DEBUG: print("Error: ${response.statusCode} - ${response.body}");
         if (mounted) {
           setState(() {
             _apiResponse = 'Error: ${response.statusCode} - ${response.body}';
@@ -120,7 +192,7 @@ class ResultsScreenState extends State<ResultsScreen> {
         }
       }
     } catch (e) {
-      print("Exception: $e");
+      // DEBUG: print("Exception: $e");
       if (mounted) {
         setState(() {
           _apiResponse = 'Error: $e';
@@ -132,7 +204,7 @@ class ResultsScreenState extends State<ResultsScreen> {
 
   // Add this method after initState()
   Future<void> _loadDataFromAssessment() async {
-    print("Loading data from assessment ID: ${widget.assessmentId}");
+    // DEBUG: print("Loading data from assessment ID: ${widget.assessmentId}");
 
     try {
       // Create a proper assessment provider and load real data
@@ -170,7 +242,7 @@ class ResultsScreenState extends State<ResultsScreen> {
         _uploadImage();
       }
     } catch (e) {
-      print("Error loading assessment: $e");
+      // DEBUG: print("Error loading assessment: $e");
       setState(() {
         _apiResponse = 'Error loading assessment: $e';
         _isLoading = false;
@@ -222,28 +294,32 @@ class ResultsScreenState extends State<ResultsScreen> {
         apiResponse: _cachedResultData!,
       );
 
-      if (filePath != null) {
+      if (mounted) {
+        if (filePath != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PDF downloaded successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to generate PDF'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('PDF downloaded successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to generate PDF'),
+          SnackBar(
+            content: Text('Error generating PDF: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error generating PDF: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     } finally {
       setState(() {
         _isGeneratingPdf = false;
@@ -257,8 +333,8 @@ class ResultsScreenState extends State<ResultsScreen> {
       _cachedResultData = resultData;
 
       // Debug print to see what's in the response
-      print("API Response Keys: ${resultData.keys.toList()}");
-      print("Total Cost: ${resultData['total_cost']}");
+      // DEBUG: print("API Response Keys: ${resultData.keys.toList()}");
+      // DEBUG: print("Total Cost: ${resultData['total_cost']}");
 
       // Extract damage information
       _cachedDamageInfo = 'No damage information available';
@@ -298,7 +374,7 @@ class ResultsScreenState extends State<ResultsScreen> {
           }
         } catch (e) {
           // If parsing fails, just prepend a dollar sign
-          print("Error formatting cost: $e");
+          // DEBUG: print("Error formatting cost: $e");
           _cachedCostEstimate = '₱$_cachedCostEstimate';
         }
       }
@@ -311,7 +387,7 @@ class ResultsScreenState extends State<ResultsScreen> {
         );
       }
     } catch (e) {
-      print("Error processing API response: $e");
+      // DEBUG: print("Error processing API response: $e");
       _cachedResultData = null;
     }
   }
@@ -461,9 +537,12 @@ class ResultsScreenState extends State<ResultsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.15),
+        color: Colors.black.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,9 +573,9 @@ class ResultsScreenState extends State<ResultsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
+        color: Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withOpacity(0.3), width: 1),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -532,9 +611,12 @@ class ResultsScreenState extends State<ResultsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.15),
+        color: Colors.black.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
       ),
       child: Text(
         displayValue,
@@ -549,10 +631,10 @@ class ResultsScreenState extends State<ResultsScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: _getSeverityColor(displayValue).withOpacity(0.2),
+          color: _getSeverityColor(displayValue).withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: _getSeverityColor(displayValue).withOpacity(0.3),
+            color: _getSeverityColor(displayValue).withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -653,9 +735,12 @@ class ResultsScreenState extends State<ResultsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.15),
+        color: Colors.black.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -732,15 +817,17 @@ class ResultsScreenState extends State<ResultsScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    _getSeverityColor(overallSeverity!).withOpacity(0.15),
-                    Colors.black.withOpacity(0.1),
+                    _getSeverityColor(overallSeverity!).withValues(alpha: 0.15),
+                    Colors.black.withValues(alpha: 0.1),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _getSeverityColor(overallSeverity).withOpacity(0.3),
+                  color: _getSeverityColor(
+                    overallSeverity,
+                  ).withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -771,12 +858,12 @@ class ResultsScreenState extends State<ResultsScreen> {
                                 decoration: BoxDecoration(
                                   color: _getSeverityColor(
                                     overallSeverity,
-                                  ).withOpacity(0.2),
+                                  ).withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: _getSeverityColor(
                                       overallSeverity,
-                                    ).withOpacity(0.5),
+                                    ).withValues(alpha: 0.5),
                                     width: 1,
                                   ),
                                 ),
@@ -847,7 +934,7 @@ class ResultsScreenState extends State<ResultsScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: GlobalStyles.primaryColor.withOpacity(0.2),
+                        color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
@@ -931,7 +1018,7 @@ class ResultsScreenState extends State<ResultsScreen> {
         ],
       );
     } catch (e) {
-      print("Error building results content: $e");
+      // DEBUG: print("Error building results content: $e");
       return _buildErrorCard('Error displaying results: $e');
     }
   }
@@ -1020,7 +1107,7 @@ class ResultsScreenState extends State<ResultsScreen> {
           return _buildDamageInfoDisplay(damageMap);
         }
       } catch (e) {
-        print("Error parsing damage info string: $e");
+        // DEBUG: print("Error parsing damage info string: $e");
         // Fall through to default display if parsing fails
       }
     }
@@ -1042,9 +1129,12 @@ class ResultsScreenState extends State<ResultsScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.15),
+          color: Colors.black.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.1),
+            width: 1,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1063,7 +1153,7 @@ class ResultsScreenState extends State<ResultsScreen> {
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.2),
+                          color: Colors.green.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -1094,7 +1184,7 @@ class ResultsScreenState extends State<ResultsScreen> {
               ),
             ),
             Divider(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               height: 16,
               thickness: 1,
             ),
@@ -1134,6 +1224,12 @@ class ResultsScreenState extends State<ResultsScreen> {
                         ],
                       ),
                     ),
+
+                  // Add repair/replace section for each damage
+                  _buildRepairReplaceSection(
+                    index,
+                    damage as Map<String, dynamic>,
+                  ),
                 ],
               ),
           ],
@@ -1149,5 +1245,228 @@ class ResultsScreenState extends State<ResultsScreen> {
         index: index, // Allow collapsing for these too
       );
     }
+  }
+
+  Widget _buildRepairReplaceSection(
+    int damageIndex,
+    Map<String, dynamic> damage,
+  ) {
+    String damageType =
+        damage['type']?.toString() ??
+        damage['damage_type']?.toString() ??
+        damage['part']?.toString() ??
+        'Unknown';
+    String severity = damage['severity']?.toString() ?? 'medium';
+
+    String selectedOption = _selectedRepairOptions[damageIndex] ?? 'none';
+    Map<String, Map<String, dynamic>> costs = _getRepairCosts(
+      damageType,
+      severity,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Choose Repair Option:',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Repair/Replace Buttons
+          Row(
+            children: [
+              Expanded(
+                child: _buildOptionButton(
+                  'Repair',
+                  Icons.build,
+                  selectedOption == 'repair',
+                  () {
+                    setState(() {
+                      _selectedRepairOptions[damageIndex] = 'repair';
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildOptionButton(
+                  'Replace',
+                  Icons.autorenew,
+                  selectedOption == 'replace',
+                  () {
+                    setState(() {
+                      _selectedRepairOptions[damageIndex] = 'replace';
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+
+          // Cost Breakdown
+          if (selectedOption != 'none') ...[
+            const SizedBox(height: 16),
+            _buildCostBreakdown(selectedOption, costs[selectedOption]!),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionButton(
+    String title,
+    IconData icon,
+    bool isSelected,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? GlobalStyles.primaryColor.withValues(alpha: 0.2)
+                  : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color:
+                isSelected
+                    ? GlobalStyles.primaryColor
+                    : Colors.white.withValues(alpha: 0.3),
+            width: 2,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? GlobalStyles.primaryColor : Colors.white70,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                color: isSelected ? GlobalStyles.primaryColor : Colors.white70,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCostBreakdown(String option, Map<String, dynamic> costs) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: GlobalStyles.primaryColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                option == 'repair' ? Icons.build : Icons.autorenew,
+                color: GlobalStyles.primaryColor,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${option.toUpperCase()} COST BREAKDOWN',
+                style: TextStyle(
+                  color: GlobalStyles.primaryColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Cost items
+          if (option == 'repair') ...[
+            _buildCostItem('Labor Cost', costs['labor']),
+            _buildCostItem('Materials & Supplies', costs['materials']),
+            _buildCostItem('Tools & Equipment', costs['tools']),
+          ] else ...[
+            _buildCostItem('New Part Price', costs['part_price']),
+            _buildCostItem('Installation Labor', costs['labor']),
+            _buildCostItem('Tools & Equipment', costs['tools']),
+          ],
+
+          const Divider(color: Colors.white30, height: 20),
+
+          // Total
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'TOTAL COST',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                '₱${costs['total'].toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: GlobalStyles.primaryColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCostItem(String label, double amount) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          Text(
+            '₱${amount.toStringAsFixed(2)}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

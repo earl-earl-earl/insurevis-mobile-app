@@ -7,7 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
-import 'package:insurevis/other-screens/result-screen.dart';
+import 'package:insurevis/other-screens/result_screen.dart';
 
 class MultipleImageUpload extends StatefulWidget {
   const MultipleImageUpload({super.key});
@@ -555,7 +555,7 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
     );
 
     try {
-      print("Uploading image: ${image.path}");
+      // DEBUG: print("Uploading image: ${image.path}");
 
       final ioClient =
           HttpClient()..badCertificateCallback = (cert, host, port) => true;
@@ -577,7 +577,7 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
 
       return response.statusCode == 200;
     } catch (e) {
-      print("Error uploading image: $e");
+      // DEBUG: print("Error uploading image: $e");
       return false;
     }
   }

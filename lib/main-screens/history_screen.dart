@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/models/assessment_model.dart';
-import 'package:insurevis/other-screens/result-screen.dart';
+import 'package:insurevis/other-screens/result_screen.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 import 'package:intl/intl.dart';
 

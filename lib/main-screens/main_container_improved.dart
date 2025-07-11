@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/main-screens/home.dart';
 import 'package:insurevis/main-screens/status_screen.dart';
 import 'package:insurevis/main-screens/history_screen.dart';
 import 'package:insurevis/main-screens/documents_screen.dart';
 import 'package:insurevis/main-screens/profile_screen.dart';
+import 'package:insurevis/providers/notification_provider.dart';
 
 class MainContainer extends StatefulWidget {
   const MainContainer({super.key});
@@ -26,12 +28,6 @@ class _MainContainerState extends State<MainContainer>
   // Track selected drawer item for visual feedback
   int _selectedDrawerIndex = -1;
   bool _isLoading = false;
-
-  // Notification badges for enhanced UX
-  final Map<int, int> _notificationBadges = {
-    1: 2, // Status has 2 notifications
-    2: 5, // History has 5 notifications
-  };
 
   // Core screens (Documents and Profile moved to drawer)
   final List<Widget> _screens = [
@@ -56,6 +52,15 @@ class _MainContainerState extends State<MainContainer>
       vsync: this,
       duration: const Duration(milliseconds: 250),
     );
+
+    // Initialize sample notifications
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final notificationProvider = Provider.of<NotificationProvider>(
+        context,
+        listen: false,
+      );
+      notificationProvider.initializeSampleNotifications();
+    });
   }
 
   @override
@@ -166,17 +171,21 @@ class _MainContainerState extends State<MainContainer>
                   children: [
                     // Primary actions
                     _buildSectionHeader('Quick Actions'),
-                    _buildDrawerItem(
-                      icon: Icons.upload_file_outlined,
-                      title: 'Documents',
-                      subtitle: 'Submit insurance documents',
-                      index: 0,
-                      badge: 3, // Show pending documents
-                      onTap: () {
-                        setState(() => _selectedDrawerIndex = 0);
-                        _navigateToScreen(
-                          const DocumentsScreen(),
-                          screenName: 'Documents',
+                    Consumer<NotificationProvider>(
+                      builder: (context, notificationProvider, child) {
+                        return _buildDrawerItem(
+                          icon: Icons.upload_file_outlined,
+                          title: 'Documents',
+                          subtitle: 'Submit insurance documents',
+                          index: 0,
+                          badge: notificationProvider.documentsBadgeCount,
+                          onTap: () {
+                            setState(() => _selectedDrawerIndex = 0);
+                            _navigateToScreen(
+                              const DocumentsScreen(),
+                              screenName: 'Documents',
+                            );
+                          },
                         );
                       },
                     ),
@@ -417,7 +426,7 @@ class _MainContainerState extends State<MainContainer>
         Container(
           padding: EdgeInsets.all(6.w),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
+            color: Colors.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8.r),
           ),
           child: Icon(icon, color: Colors.white, size: 16.sp),
@@ -434,7 +443,7 @@ class _MainContainerState extends State<MainContainer>
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             fontSize: 10.sp,
           ),
         ),
@@ -449,7 +458,7 @@ class _MainContainerState extends State<MainContainer>
       child: Text(
         title,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.6),
+          color: Colors.white.withValues(alpha: 0.6),
           fontSize: 12.sp,
           fontWeight: FontWeight.w600,
           letterSpacing: 1.2,
@@ -479,11 +488,11 @@ class _MainContainerState extends State<MainContainer>
         duration: const Duration(milliseconds: 200),
         margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 2.h),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.15) : Colors.transparent,
+          color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(12.r),
           border:
               isSelected
-                  ? Border.all(color: color.withOpacity(0.3), width: 1)
+                  ? Border.all(color: color.withValues(alpha: 0.3), width: 1)
                   : null,
         ),
         child: Material(
@@ -506,13 +515,13 @@ class _MainContainerState extends State<MainContainer>
                         decoration: BoxDecoration(
                           color:
                               isDestructive
-                                  ? Colors.red.withOpacity(0.1)
-                                  : color.withOpacity(0.1),
+                                  ? Colors.red.withValues(alpha: 0.1)
+                                  : color.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10.r),
                           border:
                               isSelected
                                   ? Border.all(
-                                    color: color.withOpacity(0.3),
+                                    color: color.withValues(alpha: 0.3),
                                     width: 1,
                                   )
                                   : null,
@@ -567,7 +576,7 @@ class _MainContainerState extends State<MainContainer>
                           style: TextStyle(
                             color:
                                 isDestructive
-                                    ? Colors.red.withOpacity(0.7)
+                                    ? Colors.red.withValues(alpha: 0.7)
                                     : Colors.white70,
                             fontSize: 12.sp,
                           ),
@@ -593,7 +602,7 @@ class _MainContainerState extends State<MainContainer>
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1),
         ),
       ),
       child: Row(
@@ -704,7 +713,7 @@ class _MainContainerState extends State<MainContainer>
               // Add setting change logic here
             },
             activeColor: GlobalStyles.primaryColor,
-            activeTrackColor: GlobalStyles.primaryColor.withOpacity(0.3),
+            activeTrackColor: GlobalStyles.primaryColor.withValues(alpha: 0.3),
           ),
         ],
       ),
@@ -863,7 +872,7 @@ class _MainContainerState extends State<MainContainer>
                             width: 64.w,
                             height: 64.h,
                             decoration: BoxDecoration(
-                              color: GlobalStyles.primaryColor.withOpacity(0.1),
+                              color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(16.r),
                             ),
                             child: Icon(
@@ -910,8 +919,7 @@ class _MainContainerState extends State<MainContainer>
                     SizedBox(height: 12.h),
                     ...[
                       ('🤖', 'AI Damage Detection'),
-                      ('💰', 'Cost Estimation'),
-                      ('📄', 'PDF Report Generation'),
+                      ('', 'PDF Report Generation'),
                       ('📁', 'Document Management'),
                       ('📊', 'Multi-image Analysis'),
                       ('🔒', 'Secure Data Handling'),
@@ -941,7 +949,7 @@ class _MainContainerState extends State<MainContainer>
                     Container(
                       padding: EdgeInsets.all(12.w),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
+                        color: Colors.white.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Column(
@@ -1026,9 +1034,9 @@ class _MainContainerState extends State<MainContainer>
                 Container(
                   padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
@@ -1116,7 +1124,7 @@ class _MainContainerState extends State<MainContainer>
           // Loading overlay
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               child: Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(
@@ -1140,7 +1148,7 @@ class _MainContainerState extends State<MainContainer>
         color: GlobalStyles.backgroundColorStart,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -1173,126 +1181,150 @@ class _MainContainerState extends State<MainContainer>
     IconData activeIcon,
     String label,
   ) {
-    bool isSelected = _selectedIndex == index;
-    final badgeCount = _notificationBadges[index];
+    return Consumer<NotificationProvider>(
+      builder: (context, notificationProvider, child) {
+        bool isSelected = _selectedIndex == index;
+        int? badgeCount;
 
-    return Expanded(
-      child: Semantics(
-        label: label,
-        selected: isSelected,
-        button: true,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(24.r),
-            onTap: () => _onItemTapped(index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-              decoration: BoxDecoration(
-                color:
-                    isSelected
-                        ? GlobalStyles.primaryColor.withOpacity(0.15)
-                        : Colors.transparent,
+        // Map bottom nav indices to notification types
+        switch (index) {
+          case 1: // Status screen
+            badgeCount = notificationProvider.statusBadgeCount;
+            break;
+          case 2: // History screen
+            badgeCount = notificationProvider.historyBadgeCount;
+            break;
+          default:
+            badgeCount = null;
+        }
+
+        return Expanded(
+          child: Semantics(
+            label: label,
+            selected: isSelected,
+            button: true,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
                 borderRadius: BorderRadius.circular(24.r),
-                border:
-                    isSelected
-                        ? Border.all(
-                          color: GlobalStyles.primaryColor.withOpacity(0.3),
-                          width: 1,
-                        )
-                        : null,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Icon with badge
-                  Stack(
-                    clipBehavior: Clip.none,
+                onTap: () => _onItemTapped(index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12.w,
+                    vertical: 8.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        isSelected
+                            ? GlobalStyles.primaryColor.withValues(alpha: 0.15)
+                            : Colors.transparent,
+                    borderRadius: BorderRadius.circular(24.r),
+                    border:
+                        isSelected
+                            ? Border.all(
+                              color: GlobalStyles.primaryColor.withValues(alpha: 0.3),
+                              width: 1,
+                            )
+                            : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (
-                          Widget child,
-                          Animation<double> animation,
-                        ) {
-                          return ScaleTransition(
-                            scale: animation,
-                            child: child,
-                          );
-                        },
-                        child: Icon(
-                          isSelected ? activeIcon : icon,
-                          key: ValueKey<bool>(isSelected),
-                          color:
-                              isSelected
-                                  ? GlobalStyles.primaryColor
-                                  : Colors.white54,
-                          size: 24.sp,
-                        ),
-                      ),
-                      // Notification badge
-                      if (badgeCount != null && badgeCount > 0)
-                        Positioned(
-                          right: -6,
-                          top: -6,
-                          child: Container(
-                            padding: EdgeInsets.all(4.w),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 1),
-                            ),
-                            constraints: BoxConstraints(
-                              minWidth: 16.w,
-                              minHeight: 16.h,
-                            ),
-                            child: Text(
-                              badgeCount > 99 ? '99+' : badgeCount.toString(),
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 8.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
+                      // Icon with badge
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            transitionBuilder: (
+                              Widget child,
+                              Animation<double> animation,
+                            ) {
+                              return ScaleTransition(
+                                scale: animation,
+                                child: child,
+                              );
+                            },
+                            child: Icon(
+                              isSelected ? activeIcon : icon,
+                              key: ValueKey<bool>(isSelected),
+                              color:
+                                  isSelected
+                                      ? GlobalStyles.primaryColor
+                                      : Colors.white54,
+                              size: 24.sp,
                             ),
                           ),
-                        ),
+                          // Notification badge
+                          if (badgeCount != null && badgeCount > 0)
+                            Positioned(
+                              right: -6,
+                              top: -6,
+                              child: Container(
+                                padding: EdgeInsets.all(4.w),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1,
+                                  ),
+                                ),
+                                constraints: BoxConstraints(
+                                  minWidth: 16.w,
+                                  minHeight: 16.h,
+                                ),
+                                child: Text(
+                                  badgeCount > 99
+                                      ? '99+'
+                                      : badgeCount.toString(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      // Label with smooth transition
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                        child:
+                            isSelected
+                                ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(width: 8.w),
+                                    Text(
+                                      label,
+                                      style: TextStyle(
+                                        color: GlobalStyles.primaryColor,
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.clip,
+                                    ),
+                                  ],
+                                )
+                                : const SizedBox.shrink(),
+                      ),
                     ],
                   ),
-
-                  // Label with smooth transition
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
-                    child:
-                        isSelected
-                            ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(width: 8.w),
-                                Text(
-                                  label,
-                                  style: TextStyle(
-                                    color: GlobalStyles.primaryColor,
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.clip,
-                                ),
-                              ],
-                            )
-                            : const SizedBox.shrink(),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

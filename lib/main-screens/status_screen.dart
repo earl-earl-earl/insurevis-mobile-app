@@ -1,11 +1,14 @@
 import 'dart:io';
-import 'package:insurevis/other-screens/result-screen.dart';
+import 'package:insurevis/other-screens/result_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 import 'package:insurevis/models/assessment_model.dart';
+import 'package:insurevis/components/analytics_dashboard_simple.dart';
+import 'package:insurevis/services/enhanced_pdf_service_simple.dart';
+import 'package:insurevis/services/export_service_simple.dart';
 import 'package:intl/intl.dart';
 
 class StatusScreen extends StatefulWidget {
@@ -22,7 +25,7 @@ class _StatusScreenState extends State<StatusScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -54,7 +57,11 @@ class _StatusScreenState extends State<StatusScreen>
               controller: _tabController,
               indicatorColor: GlobalStyles.primaryColor,
               indicatorWeight: 3,
-              tabs: [Tab(text: 'Active'), Tab(text: 'Completed')],
+              tabs: [
+                Tab(text: 'Active'),
+                Tab(text: 'Completed'),
+                Tab(text: 'Analytics'),
+              ],
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white54,
             ),
@@ -62,7 +69,11 @@ class _StatusScreenState extends State<StatusScreen>
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: [_buildActiveTab(), _buildCompletedTab()],
+                children: [
+                  _buildActiveTab(),
+                  _buildCompletedTab(),
+                  _buildAnalyticsTab(),
+                ],
               ),
             ),
           ],
@@ -85,13 +96,13 @@ class _StatusScreenState extends State<StatusScreen>
                   width: 150.w,
                   height: 150.w,
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.hourglass_empty,
                     size: 60.sp,
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
                 SizedBox(height: 24.h),
@@ -132,9 +143,11 @@ class _StatusScreenState extends State<StatusScreen>
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: GlobalStyles.primaryColor.withOpacity(0.3)),
+        border: Border.all(
+          color: GlobalStyles.primaryColor.withValues(alpha: 0.3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +166,7 @@ class _StatusScreenState extends State<StatusScreen>
 
                   // Processing overlay
                   Container(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -231,13 +244,13 @@ class _StatusScreenState extends State<StatusScreen>
                   width: 150.w,
                   height: 150.w,
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.check_circle_outline,
                     size: 60.sp,
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
                 SizedBox(height: 24.h),
@@ -300,9 +313,9 @@ class _StatusScreenState extends State<StatusScreen>
       child: Container(
         margin: EdgeInsets.only(bottom: 16.h),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
+          color: Colors.black.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(color: Colors.green.withOpacity(0.3)),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,7 +385,7 @@ class _StatusScreenState extends State<StatusScreen>
   }
 
   List<Widget> _buildResultSummary(Map<String, dynamic> results) {
-    final priorityFields = ['damage_type', 'severity', 'repair_cost'];
+    final priorityFields = ['damage_type', 'severity'];
     final displayFields = <Widget>[];
 
     // Add priority fields first if they exist
@@ -416,5 +429,122 @@ class _StatusScreenState extends State<StatusScreen>
     } else {
       return const Icon(Icons.info_outline, color: Colors.blue, size: 16);
     }
+  }
+
+  Widget _buildAnalyticsTab() {
+    return Consumer<AssessmentProvider>(
+      builder: (context, provider, child) {
+        final allAssessments = provider.assessments;
+
+        return AnalyticsDashboard(
+          assessments: allAssessments,
+          onExportData: () async {
+            try {
+              final exportService = ExportService();
+
+              // Show export options dialog
+              final result = await showDialog<String>(
+                context: context,
+                builder:
+                    (context) => AlertDialog(
+                      title: const Text('Export Options'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.table_chart),
+                            title: const Text('Export as CSV'),
+                            onTap: () => Navigator.pop(context, 'csv'),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.description),
+                            title: const Text('Export as Excel'),
+                            onTap: () => Navigator.pop(context, 'excel'),
+                          ),
+                        ],
+                      ),
+                    ),
+              );
+
+              if (result != null) {
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                String filePath;
+
+                if (result == 'csv') {
+                  filePath = await exportService.exportToCSV(allAssessments);
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(content: Text('CSV exported to: $filePath')),
+                  );
+                } else {
+                  filePath = await exportService.exportToExcel(allAssessments);
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(content: Text('Excel exported to: $filePath')),
+                  );
+                }
+
+                // Offer to share the file
+                await exportService.shareFile(filePath);
+              }
+            } catch (e) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+            }
+          },
+          onGenerateReport: () async {
+            try {
+              final pdfService = EnhancedPDFService();
+
+              // Show report type options
+              final reportType = await showDialog<String>(
+                context: context,
+                builder:
+                    (context) => AlertDialog(
+                      title: const Text('Report Type'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.summarize),
+                            title: const Text('Summary Report'),
+                            onTap: () => Navigator.pop(context, 'summary'),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.business),
+                            title: const Text('Insurance Report'),
+                            onTap: () => Navigator.pop(context, 'insurance'),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.engineering),
+                            title: const Text('Technical Report'),
+                            onTap: () => Navigator.pop(context, 'technical'),
+                          ),
+                        ],
+                      ),
+                    ),
+              );
+
+              if (reportType != null) {
+                final filePath = await pdfService.generateReport(
+                  allAssessments,
+                  reportType: reportType,
+                );
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('PDF report generated: $filePath')),
+                );
+
+                // Offer to share the PDF
+                await pdfService.sharePDF(filePath);
+              }
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Report generation failed: $e')),
+              );
+            }
+          },
+        );
+      },
+    );
   }
 }

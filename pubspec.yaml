@@ -30,6 +30,12 @@ dependencies:
   pdf: ^3.11.3
   file_picker: ^8.1.2
   shared_preferences: ^2.3.2
+  fl_chart: ^0.69.0
+  csv: ^6.0.0
+  excel: ^4.0.3
+  mailer: ^6.1.2
+  url_launcher: ^6.3.1
+  share_plus: ^10.1.2
 
 dev_dependencies:
   flutter_test:

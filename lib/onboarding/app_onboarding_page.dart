@@ -87,7 +87,7 @@ class _AppOnboardingScreenState extends State<AppOnboardingScreen> {
           }
         })
         .catchError((error) {
-          print("Error loading image: $error");
+          // DEBUG: print("Error loading image: $error");
           // If image fails to load, still set imageLoaded to show a fallback
           if (mounted) {
             setState(() {
