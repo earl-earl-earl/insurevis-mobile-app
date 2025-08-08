@@ -20,6 +20,13 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
+
+    // Ensure concurrent-futures is available to all modules
+    afterEvaluate {
+        dependencies {
+            add("implementation", "androidx.concurrent:concurrent-futures:1.1.0")
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")

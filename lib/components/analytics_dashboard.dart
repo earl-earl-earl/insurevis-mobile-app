@@ -97,16 +97,20 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
   Widget _buildOverviewTab() {
     final filteredAssessments = _getFilteredAssessments();
     final totalAssessments = filteredAssessments.length;
-    final totalCost = filteredAssessments.fold<double>(
-      0.0,
-      (sum, assessment) => sum + (assessment.estimatedCost ?? 0.0),
-    );
+    final totalCost = filteredAssessments.fold<double>(0.0, (sum, assessment) {
+      final cost = assessment.results?['estimatedCost'] as double?;
+      return sum + (cost ?? 0.0);
+    });
     final avgCost = totalAssessments > 0 ? totalCost / totalAssessments : 0.0;
 
     final pendingCount =
-        filteredAssessments.where((a) => a.status == 'pending').length;
+        filteredAssessments
+            .where((a) => a.status == AssessmentStatus.processing)
+            .length;
     final completedCount =
-        filteredAssessments.where((a) => a.status == 'completed').length;
+        filteredAssessments
+            .where((a) => a.status == AssessmentStatus.completed)
+            .length;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -514,20 +518,20 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
     );
   }
 
-  Widget _buildActivityItem(AssessmentModel assessment) {
+  Widget _buildActivityItem(Assessment assessment) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: _getStatusColor(assessment.status ?? 'pending'),
+        backgroundColor: _getStatusColor(assessment.status),
         child: const Icon(Icons.directions_car, color: Colors.white),
       ),
       title: Text(
-        '${assessment.vehicleInfo?['make'] ?? 'Unknown'} ${assessment.vehicleInfo?['model'] ?? ''}',
+        '${assessment.results?['vehicleInfo']?['make'] ?? 'Unknown'} ${assessment.results?['vehicleInfo']?['model'] ?? ''}',
       ),
       subtitle: Text(
-        '${assessment.damageAnalysis?['type'] ?? 'Unknown damage'} - \$${assessment.estimatedCost?.toStringAsFixed(0) ?? '0'}',
+        '${assessment.results?['damageAnalysis']?['type'] ?? 'Unknown damage'} - \$${assessment.results?['estimatedCost']?.toString() ?? '0'}',
       ),
       trailing: Text(
-        assessment.date ?? '',
+        assessment.timestamp.toString().split(' ')[0],
         style: const TextStyle(fontSize: 12, color: Colors.grey),
       ),
     );
@@ -560,7 +564,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
     );
   }
 
-  List<AssessmentModel> _getFilteredAssessments() {
+  List<Assessment> _getFilteredAssessments() {
     final now = DateTime.now();
     DateTime cutoffDate;
 
@@ -582,25 +586,17 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
     }
 
     return widget.assessments.where((assessment) {
-      final dateStr = assessment.date;
-      if (dateStr == null) return false;
-      final date = DateTime.tryParse(dateStr);
-      return date != null && date.isAfter(cutoffDate);
+      return assessment.timestamp.isAfter(cutoffDate);
     }).toList();
   }
 
   Map<String, Map<String, dynamic>> _getMonthlyData(
-    List<AssessmentModel> assessments,
+    List<Assessment> assessments,
   ) {
     final monthlyData = <String, Map<String, dynamic>>{};
 
     for (final assessment in assessments) {
-      final dateStr = assessment.date;
-      if (dateStr == null) continue;
-
-      final date = DateTime.tryParse(dateStr);
-      if (date == null) continue;
-
+      final date = assessment.timestamp;
       final monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
 
       if (!monthlyData.containsKey(monthKey)) {
@@ -613,12 +609,14 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
 
       monthlyData[monthKey]!['count'] =
           (monthlyData[monthKey]!['count'] as int) + 1;
+
+      final cost = assessment.results?['estimatedCost'] as double? ?? 0.0;
       monthlyData[monthKey]!['totalCost'] =
-          (monthlyData[monthKey]!['totalCost'] as double) +
-          (assessment.estimatedCost ?? 0.0);
+          (monthlyData[monthKey]!['totalCost'] as double) + cost;
 
       final severity =
-          assessment.damageAnalysis?['severity'] as String? ?? 'Unknown';
+          assessment.results?['damageAnalysis']?['severity'] as String? ??
+          'Unknown';
       final severityCounts =
           monthlyData[monthKey]!['severityCounts'] as Map<String, int>;
       severityCounts[severity] = (severityCounts[severity] ?? 0) + 1;
@@ -627,42 +625,40 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
     return monthlyData;
   }
 
-  Map<String, int> _getDamageTypeDistribution(
-    List<AssessmentModel> assessments,
-  ) {
+  Map<String, int> _getDamageTypeDistribution(List<Assessment> assessments) {
     final distribution = <String, int>{};
 
     for (final assessment in assessments) {
       final damageType =
-          assessment.damageAnalysis?['type'] as String? ?? 'Unknown';
+          assessment.results?['damageAnalysis']?['type'] as String? ??
+          'Unknown';
       distribution[damageType] = (distribution[damageType] ?? 0) + 1;
     }
 
     return distribution;
   }
 
-  Map<String, int> _getSeverityDistribution(List<AssessmentModel> assessments) {
+  Map<String, int> _getSeverityDistribution(List<Assessment> assessments) {
     final distribution = <String, int>{};
 
     for (final assessment in assessments) {
       final severity =
-          assessment.damageAnalysis?['severity'] as String? ?? 'Unknown';
+          assessment.results?['damageAnalysis']?['severity'] as String? ??
+          'Unknown';
       distribution[severity] = (distribution[severity] ?? 0) + 1;
     }
 
     return distribution;
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'completed':
+  Color _getStatusColor(AssessmentStatus status) {
+    switch (status) {
+      case AssessmentStatus.completed:
         return Colors.green;
-      case 'pending':
+      case AssessmentStatus.processing:
         return Colors.orange;
-      case 'review':
-        return Colors.blue;
-      default:
-        return Colors.grey;
+      case AssessmentStatus.failed:
+        return Colors.red;
     }
   }
 
@@ -866,11 +862,12 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
     );
   }
 
-  BarChartData _buildVehicleMakeChart(List<AssessmentModel> assessments) {
+  BarChartData _buildVehicleMakeChart(List<Assessment> assessments) {
     final makeDistribution = <String, int>{};
 
     for (final assessment in assessments) {
-      final make = assessment.vehicleInfo?['make'] as String? ?? 'Unknown';
+      final make =
+          assessment.results?['vehicleInfo']?['make'] as String? ?? 'Unknown';
       makeDistribution[make] = (makeDistribution[make] ?? 0) + 1;
     }
 
@@ -929,13 +926,14 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
     );
   }
 
-  BarChartData _buildCostByDamageTypeChart(List<AssessmentModel> assessments) {
+  BarChartData _buildCostByDamageTypeChart(List<Assessment> assessments) {
     final damageTypeCosts = <String, List<double>>{};
 
     for (final assessment in assessments) {
       final damageType =
-          assessment.damageAnalysis?['type'] as String? ?? 'Unknown';
-      final cost = assessment.estimatedCost ?? 0.0;
+          assessment.results?['damageAnalysis']?['type'] as String? ??
+          'Unknown';
+      final cost = assessment.results?['estimatedCost'] as double? ?? 0.0;
       damageTypeCosts.putIfAbsent(damageType, () => []).add(cost);
     }
 
@@ -1000,13 +998,14 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
     );
   }
 
-  BarChartData _buildCostBySeverityChart(List<AssessmentModel> assessments) {
+  BarChartData _buildCostBySeverityChart(List<Assessment> assessments) {
     final severityCosts = <String, List<double>>{};
 
     for (final assessment in assessments) {
       final severity =
-          assessment.damageAnalysis?['severity'] as String? ?? 'Unknown';
-      final cost = assessment.estimatedCost ?? 0.0;
+          assessment.results?['damageAnalysis']?['severity'] as String? ??
+          'Unknown';
+      final cost = assessment.results?['estimatedCost'] as double? ?? 0.0;
       severityCosts.putIfAbsent(severity, () => []).add(cost);
     }
 
@@ -1082,7 +1081,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
     );
   }
 
-  List<Widget> _buildCostRangeList(List<AssessmentModel> assessments) {
+  List<Widget> _buildCostRangeList(List<Assessment> assessments) {
     final costRanges = {
       'Under \$500': 0,
       '\$500 - \$1,000': 0,
@@ -1093,7 +1092,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
     };
 
     for (final assessment in assessments) {
-      final cost = assessment.estimatedCost ?? 0.0;
+      final cost = assessment.results?['estimatedCost'] as double? ?? 0.0;
 
       if (cost < 500) {
         costRanges['Under \$500'] = costRanges['Under \$500']! + 1;
@@ -1155,16 +1154,16 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
               .map(
                 (assessment) => {
                   'id': assessment.id,
-                  'date': assessment.date,
-                  'vehicleInfo': assessment.vehicleInfo,
-                  'damageAnalysis': assessment.damageAnalysis,
-                  'estimatedCost': assessment.estimatedCost,
-                  'status': assessment.status,
-                  'metadata': assessment.metadata,
-                  'images': assessment.images,
-                  'notes': assessment.notes,
-                  'createdAt': assessment.createdAt,
-                  'updatedAt': assessment.updatedAt,
+                  'date': assessment.timestamp.toIso8601String(),
+                  'vehicleInfo': assessment.results?['vehicleInfo'] ?? {},
+                  'damageAnalysis': assessment.results?['damageAnalysis'] ?? {},
+                  'estimatedCost': assessment.results?['estimatedCost'] ?? 0.0,
+                  'status': assessment.status.name,
+                  'metadata': assessment.results?['metadata'] ?? {},
+                  'images': assessment.results?['images'] ?? [],
+                  'notes': assessment.results?['notes'] ?? '',
+                  'createdAt': assessment.timestamp.toIso8601String(),
+                  'updatedAt': assessment.timestamp.toIso8601String(),
                 },
               )
               .toList();

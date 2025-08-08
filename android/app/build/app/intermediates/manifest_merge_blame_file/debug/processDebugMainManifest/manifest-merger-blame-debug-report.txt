@@ -1,0 +1,334 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.example.insurevis"
+4    android:versionCode="1"
+5    android:versionName="0.1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="21"
+9        android:targetSdkVersion="35" />
+10    <!--
+11         The INTERNET permission is required for development. Specifically,
+12         the Flutter tool needs it to communicate with the running application
+13         to allow setting breakpoints, to provide hot reload, etc.
+14    -->
+15    <uses-permission android:name="android.permission.INTERNET" />
+15-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:1:74-136
+15-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:1:91-133
+16    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" /> <!-- Camera permissions -->
+16-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:2:5-79
+16-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:2:22-76
+17    <uses-permission android:name="android.permission.CAMERA" />
+17-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:5:5-65
+17-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:5:22-62
+18
+19    <uses-feature
+19-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:6:5-85
+20        android:name="android.hardware.camera"
+20-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:6:19-57
+21        android:required="false" /> <!-- Storage permissions for photo_manager -->
+21-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:6:58-82
+22    <uses-permission
+22-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:9:5-80
+23        android:name="android.permission.READ_EXTERNAL_STORAGE"
+23-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:9:22-77
+24        android:maxSdkVersion="32" />
+24-->[:photo_manager] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\photo_manager-3.7.1\android\build\photo_manager\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:9:9-35
+25    <uses-permission
+25-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:10:5-108
+26        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+26-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:10:22-78
+27        android:maxSdkVersion="28" /> <!-- Android 13+ photo/video permissions -->
+27-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:10:79-105
+28    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+28-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:12:5-76
+28-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:12:22-73
+29    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" /> <!-- For Android 10+ scoped storage -->
+29-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:13:5-75
+29-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:13:22-72
+30    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" /> <!-- Network state for API connectivity -->
+30-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:15:5-80
+30-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:15:22-77
+31    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+31-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:18:5-76
+31-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:18:22-73
+32    <!--
+33 Required to query activities that can process text, see:
+34         https://developer.android.com/training/package-visibility and
+35         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+36
+37         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin.
+38    -->
+39    <queries>
+39-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:67:5-72:15
+40        <intent>
+40-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:68:9-71:18
+41            <action android:name="android.intent.action.PROCESS_TEXT" />
+41-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:69:13-72
+41-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:69:21-70
+42
+43            <data android:mimeType="text/plain" />
+43-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:70:13-50
+43-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:70:19-48
+44        </intent>
+45        <intent>
+45-->[:file_picker] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\file_picker-8.3.7\android\build\file_picker\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:8:9-12:18
+46            <action android:name="android.intent.action.GET_CONTENT" />
+46-->[:file_picker] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\file_picker-8.3.7\android\build\file_picker\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:9:13-72
+46-->[:file_picker] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\file_picker-8.3.7\android\build\file_picker\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:9:21-69
+47
+48            <data android:mimeType="*/*" />
+48-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:70:13-50
+48-->C:\Users\Regine Torremoro\Desktop\Earl John\insurevis\android\app\src\main\AndroidManifest.xml:70:19-48
+49        </intent>
+50    </queries>
+51
+52    <uses-feature android:name="android.hardware.camera.any" />
+52-->[:camera_android_camerax] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\camera_android_camerax-0.6.19\android\build\camera_android_camerax\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:7:5-64
+52-->[:camera_android_camerax] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\camera_android_camerax-0.6.19\android\build\camera_android_camerax\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:7:19-61
+53
+54    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+54-->[:camera_android_camerax] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\camera_android_camerax-0.6.19\android\build\camera_android_camerax\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:10:5-71
+54-->[:camera_android_camerax] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\camera_android_camerax-0.6.19\android\build\camera_android_camerax\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:10:22-68
+55
+56    <permission
+56-->[androidx.core:core:1.13.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\deb838f5c4813d0c441214e1ddf497cc\transformed\core-1.13.1\AndroidManifest.xml:22:5-24:47
+57        android:name="com.example.insurevis.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+57-->[androidx.core:core:1.13.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\deb838f5c4813d0c441214e1ddf497cc\transformed\core-1.13.1\AndroidManifest.xml:23:9-81
+58        android:protectionLevel="signature" />
+58-->[androidx.core:core:1.13.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\deb838f5c4813d0c441214e1ddf497cc\transformed\core-1.13.1\AndroidManifest.xml:24:9-44
+59
+60    <uses-permission android:name="com.example.insurevis.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+60-->[androidx.core:core:1.13.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\deb838f5c4813d0c441214e1ddf497cc\transformed\core-1.13.1\AndroidManifest.xml:26:5-97
+60-->[androidx.core:core:1.13.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\deb838f5c4813d0c441214e1ddf497cc\transformed\core-1.13.1\AndroidManifest.xml:26:22-94
+61
+62    <application
+63        android:name="android.app.Application"
+64        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+64-->[androidx.core:core:1.13.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\deb838f5c4813d0c441214e1ddf497cc\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
+65        android:debuggable="true"
+66        android:extractNativeLibs="true"
+67        android:icon="@mipmap/ic_launcher"
+68        android:label="insurevis"
+69        android:networkSecurityConfig="@xml/network_security_config"
+70        android:usesCleartextTraffic="true" >
+71        <activity
+72            android:name="com.example.insurevis.MainActivity"
+73            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+74            android:exported="true"
+75            android:hardwareAccelerated="true"
+76            android:launchMode="singleTop"
+77            android:taskAffinity=""
+78            android:theme="@style/LaunchTheme"
+79            android:windowSoftInputMode="adjustResize" >
+80
+81            <!--
+82                 Specifies an Android theme to apply to this Activity as soon as
+83                 the Android process has started. This theme is visible to the user
+84                 while the Flutter UI initializes. After that, this theme continues
+85                 to determine the Window background behind the Flutter UI.
+86            -->
+87            <meta-data
+88                android:name="io.flutter.embedding.android.NormalTheme"
+89                android:resource="@style/NormalTheme" />
+90
+91            <intent-filter>
+92                <action android:name="android.intent.action.MAIN" />
+93
+94                <category android:name="android.intent.category.LAUNCHER" />
+95            </intent-filter>
+96        </activity>
+97        <!--
+98             Don't delete the meta-data below.
+99             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java
+100        -->
+101        <meta-data
+102            android:name="flutterEmbedding"
+103            android:value="2" />
+104        <!-- Force OpenGL ES instead of Vulkan -->
+105        <meta-data
+106            android:name="io.flutter.embedding.android.ImpellerBackend"
+107            android:value="opengles" />
+108        <!-- Disable Vulkan validation -->
+109        <meta-data
+110            android:name="io.flutter.embedding.android.EnableVulkanValidation"
+111            android:value="false" />
+112        <!--
+113           Declares a provider which allows us to store files to share in
+114           '.../caches/share_plus' and grant the receiving action access
+115        -->
+116        <provider
+116-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:13:9-21:20
+117            android:name="dev.fluttercommunity.plus.share.ShareFileProvider"
+117-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:14:13-77
+118            android:authorities="com.example.insurevis.flutter.share_provider"
+118-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:15:13-74
+119            android:exported="false"
+119-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:16:13-37
+120            android:grantUriPermissions="true" >
+120-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:17:13-47
+121            <meta-data
+121-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:18:13-20:68
+122                android:name="android.support.FILE_PROVIDER_PATHS"
+122-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:19:17-67
+123                android:resource="@xml/flutter_share_file_paths" />
+123-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:20:17-65
+124        </provider>
+125        <!--
+126           This manifest declared broadcast receiver allows us to use an explicit
+127           Intent when creating a PendingItent to be informed of the user's choice
+128        -->
+129        <receiver
+129-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:26:9-32:20
+130            android:name="dev.fluttercommunity.plus.share.SharePlusPendingIntent"
+130-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:27:13-82
+131            android:exported="false" >
+131-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:28:13-37
+132            <intent-filter>
+132-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:29:13-31:29
+133                <action android:name="EXTRA_CHOSEN_COMPONENT" />
+133-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:30:17-65
+133-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:30:25-62
+134            </intent-filter>
+135        </receiver>
+136
+137        <service
+137-->[androidx.camera:camera-camera2:1.5.0-beta01] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\0c3f2422feca0a64dbc3f726e900092f\transformed\jetified-camera-camera2-1.5.0-beta01\AndroidManifest.xml:24:9-33:19
+138            android:name="androidx.camera.core.impl.MetadataHolderService"
+138-->[androidx.camera:camera-camera2:1.5.0-beta01] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\0c3f2422feca0a64dbc3f726e900092f\transformed\jetified-camera-camera2-1.5.0-beta01\AndroidManifest.xml:25:13-75
+139            android:enabled="false"
+139-->[androidx.camera:camera-camera2:1.5.0-beta01] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\0c3f2422feca0a64dbc3f726e900092f\transformed\jetified-camera-camera2-1.5.0-beta01\AndroidManifest.xml:26:13-36
+140            android:exported="false" >
+140-->[androidx.camera:camera-camera2:1.5.0-beta01] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\0c3f2422feca0a64dbc3f726e900092f\transformed\jetified-camera-camera2-1.5.0-beta01\AndroidManifest.xml:27:13-37
+141            <meta-data
+141-->[androidx.camera:camera-camera2:1.5.0-beta01] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\0c3f2422feca0a64dbc3f726e900092f\transformed\jetified-camera-camera2-1.5.0-beta01\AndroidManifest.xml:30:13-32:89
+142                android:name="androidx.camera.core.impl.MetadataHolderService.DEFAULT_CONFIG_PROVIDER"
+142-->[androidx.camera:camera-camera2:1.5.0-beta01] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\0c3f2422feca0a64dbc3f726e900092f\transformed\jetified-camera-camera2-1.5.0-beta01\AndroidManifest.xml:31:17-103
+143                android:value="androidx.camera.camera2.Camera2Config$DefaultProvider" />
+143-->[androidx.camera:camera-camera2:1.5.0-beta01] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\0c3f2422feca0a64dbc3f726e900092f\transformed\jetified-camera-camera2-1.5.0-beta01\AndroidManifest.xml:32:17-86
+144        </service>
+145
+146        <provider
+146-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:9:9-17:20
+147            android:name="io.flutter.plugins.imagepicker.ImagePickerFileProvider"
+147-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:10:13-82
+148            android:authorities="com.example.insurevis.flutter.image_provider"
+148-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:11:13-74
+149            android:exported="false"
+149-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:12:13-37
+150            android:grantUriPermissions="true" >
+150-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:13:13-47
+151            <meta-data
+151-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:18:13-20:68
+152                android:name="android.support.FILE_PROVIDER_PATHS"
+152-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:19:17-67
+153                android:resource="@xml/flutter_image_picker_file_paths" />
+153-->[:share_plus] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\share_plus-10.1.4\android\build\share_plus\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:20:17-65
+154        </provider> <!-- Trigger Google Play services to install the backported photo picker module. -->
+155        <service
+155-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:19:9-31:19
+156            android:name="com.google.android.gms.metadata.ModuleDependencies"
+156-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:20:13-78
+157            android:enabled="false"
+157-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:21:13-36
+158            android:exported="false" >
+158-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:22:13-37
+159            <intent-filter>
+159-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:24:13-26:29
+160                <action android:name="com.google.android.gms.metadata.MODULE_DEPENDENCIES" />
+160-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:25:17-94
+160-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:25:25-91
+161            </intent-filter>
+162
+163            <meta-data
+163-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:28:13-30:36
+164                android:name="photopicker_activity:0:required"
+164-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:29:17-63
+165                android:value="" />
+165-->[:image_picker_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.12+23\android\build\image_picker_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:30:17-33
+166        </service>
+167
+168        <activity
+168-->[:url_launcher_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\url_launcher_android-6.3.16\android\build\url_launcher_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:8:9-11:74
+169            android:name="io.flutter.plugins.urllauncher.WebViewActivity"
+169-->[:url_launcher_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\url_launcher_android-6.3.16\android\build\url_launcher_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:9:13-74
+170            android:exported="false"
+170-->[:url_launcher_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\url_launcher_android-6.3.16\android\build\url_launcher_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:10:13-37
+171            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
+171-->[:url_launcher_android] C:\Users\Regine Torremoro\AppData\Local\Pub\Cache\hosted\pub.dev\url_launcher_android-6.3.16\android\build\url_launcher_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:11:13-71
+172
+173        <provider
+173-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\e920d985392df03e5b02e06877a52d21\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:24:9-32:20
+174            android:name="androidx.startup.InitializationProvider"
+174-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\e920d985392df03e5b02e06877a52d21\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:25:13-67
+175            android:authorities="com.example.insurevis.androidx-startup"
+175-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\e920d985392df03e5b02e06877a52d21\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:26:13-68
+176            android:exported="false" >
+176-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\e920d985392df03e5b02e06877a52d21\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:27:13-37
+177            <meta-data
+177-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\e920d985392df03e5b02e06877a52d21\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:29:13-31:52
+178                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+178-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\e920d985392df03e5b02e06877a52d21\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:30:17-78
+179                android:value="androidx.startup" />
+179-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\e920d985392df03e5b02e06877a52d21\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:31:17-49
+180            <meta-data
+180-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+181                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+181-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+182                android:value="androidx.startup" />
+182-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+183        </provider>
+184
+185        <uses-library
+185-->[androidx.window:window:1.2.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\970764a81dd610c772147726baa7dca5\transformed\jetified-window-1.2.0\AndroidManifest.xml:23:9-25:40
+186            android:name="androidx.window.extensions"
+186-->[androidx.window:window:1.2.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\970764a81dd610c772147726baa7dca5\transformed\jetified-window-1.2.0\AndroidManifest.xml:24:13-54
+187            android:required="false" />
+187-->[androidx.window:window:1.2.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\970764a81dd610c772147726baa7dca5\transformed\jetified-window-1.2.0\AndroidManifest.xml:25:13-37
+188        <uses-library
+188-->[androidx.window:window:1.2.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\970764a81dd610c772147726baa7dca5\transformed\jetified-window-1.2.0\AndroidManifest.xml:26:9-28:40
+189            android:name="androidx.window.sidecar"
+189-->[androidx.window:window:1.2.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\970764a81dd610c772147726baa7dca5\transformed\jetified-window-1.2.0\AndroidManifest.xml:27:13-51
+190            android:required="false" />
+190-->[androidx.window:window:1.2.0] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\970764a81dd610c772147726baa7dca5\transformed\jetified-window-1.2.0\AndroidManifest.xml:28:13-37
+191
+192        <receiver
+192-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+193            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+193-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+194            android:directBootAware="false"
+194-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+195            android:enabled="true"
+195-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+196            android:exported="true"
+196-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+197            android:permission="android.permission.DUMP" >
+197-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+198            <intent-filter>
+198-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+199                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+199-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+199-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+200            </intent-filter>
+201            <intent-filter>
+201-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+202                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+202-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+202-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+203            </intent-filter>
+204            <intent-filter>
+204-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+205                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+205-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+205-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+206            </intent-filter>
+207            <intent-filter>
+207-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+208                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+208-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+208-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Regine Torremoro\.gradle\caches\8.10.2\transforms\eabc1325411a824ae74b9b450245750e\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
+209            </intent-filter>
+210        </receiver>
+211    </application>
+212
+213</manifest>

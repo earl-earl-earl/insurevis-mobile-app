@@ -42,3 +42,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Fix for missing CallbackToFutureAdapter
+    implementation("androidx.concurrent:concurrent-futures:1.1.0")
+}

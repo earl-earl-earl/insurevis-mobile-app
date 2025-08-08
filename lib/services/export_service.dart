@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -7,8 +6,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:excel/excel.dart';
 
 class ExportService {
-  static const String _exportVersion = '1.0';
-
   /// Export assessments to CSV format
   static Future<String?> exportToCSV({
     required List<Map<String, dynamic>> assessments,
@@ -190,8 +187,8 @@ class ExportService {
       cell.value = headers[i] as CellValue?;
       cell.cellStyle = CellStyle(
         bold: true,
-        backgroundColorHex: ExcelColor.fromHex("#4472C4"),
-        fontColorHex: ExcelColor.fromHex('#FFFFFF'),
+        backgroundColorHex: ExcelColor.blue,
+        fontColorHex: ExcelColor.white,
       );
     }
 
@@ -235,11 +232,6 @@ class ExportService {
           ),
         );
         cell.value = rowData[colIndex] as CellValue?;
-
-        // Apply alternating row colors
-        if (rowIndex % 2 == 1) {
-          cell.cellStyle = CellStyle(backgroundColor: ExcelColor.fromHex('#F2F2F2'));
-        }
       }
     }
   }
@@ -425,7 +417,8 @@ class ExportService {
           .value = totalCost.toStringAsFixed(2) as CellValue?;
       sheet
           .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
-          .value = (count > 0 ? (totalCost / count).toStringAsFixed(2) : '0.00') as CellValue?;
+          .value = (count > 0 ? (totalCost / count).toStringAsFixed(2) : '0.00')
+              as CellValue?;
       rowIndex++;
     }
   }
