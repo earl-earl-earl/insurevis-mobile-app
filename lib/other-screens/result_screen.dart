@@ -53,14 +53,54 @@ class ResultsScreenState extends State<ResultsScreen> {
   ) {
     // Sample cost data - in a real app, this would come from your API or database
     final baseCosts = {
-      'bumper': {'labor': 150.0, 'materials': 200.0, 'tools': 50.0},
-      'door': {'labor': 200.0, 'materials': 300.0, 'tools': 75.0},
-      'fender': {'labor': 180.0, 'materials': 250.0, 'tools': 60.0},
-      'hood': {'labor': 220.0, 'materials': 350.0, 'tools': 80.0},
-      'mirror': {'labor': 100.0, 'materials': 120.0, 'tools': 30.0},
-      'headlight': {'labor': 120.0, 'materials': 180.0, 'tools': 40.0},
-      'taillight': {'labor': 100.0, 'materials': 150.0, 'tools': 35.0},
-      'windshield': {'labor': 250.0, 'materials': 400.0, 'tools': 100.0},
+      'bumper': {
+        'labor': 150.0,
+        'materials': 200.0,
+        'paint': 100.0,
+        'tools': 50.0,
+      },
+      'door': {
+        'labor': 200.0,
+        'materials': 300.0,
+        'paint': 150.0,
+        'tools': 75.0,
+      },
+      'fender': {
+        'labor': 180.0,
+        'materials': 250.0,
+        'paint': 120.0,
+        'tools': 60.0,
+      },
+      'hood': {
+        'labor': 220.0,
+        'materials': 350.0,
+        'paint': 180.0,
+        'tools': 80.0,
+      },
+      'mirror': {
+        'labor': 100.0,
+        'materials': 120.0,
+        'paint': 50.0,
+        'tools': 30.0,
+      },
+      'headlight': {
+        'labor': 120.0,
+        'materials': 180.0,
+        'paint': 0.0,
+        'tools': 40.0,
+      },
+      'taillight': {
+        'labor': 100.0,
+        'materials': 150.0,
+        'paint': 0.0,
+        'tools': 35.0,
+      },
+      'windshield': {
+        'labor': 250.0,
+        'materials': 400.0,
+        'paint': 0.0,
+        'tools': 100.0,
+      },
     };
 
     // Get base costs for the damage type
@@ -77,6 +117,7 @@ class ResultsScreenState extends State<ResultsScreen> {
     costs ??= {
       'labor': 150.0,
       'materials': 200.0,
+      'paint': 100.0,
       'tools': 50.0,
     }; // Default costs
 
@@ -97,6 +138,7 @@ class ResultsScreenState extends State<ResultsScreen> {
             costs['materials']! *
             multiplier *
             0.6, // Repair uses less materials
+        'paint': costs['paint']! * multiplier, // Paint cost for repair
         'tools': costs['tools']! * multiplier,
         'total':
             (costs['labor']! + costs['materials']! * 0.6 + costs['tools']!) *
@@ -106,10 +148,13 @@ class ResultsScreenState extends State<ResultsScreen> {
         'part_price':
             costs['materials']! * multiplier * 1.3, // New part costs more
         'labor': costs['labor']! * multiplier * 0.8, // Replace takes less labor
+        'paint':
+            costs['paint']! * multiplier * 0.8, // Paint cost for replacement
         'tools': costs['tools']! * multiplier * 0.7, // Fewer tools needed
         'total':
             (costs['materials']! * 1.3 +
                 costs['labor']! * 0.8 +
+                costs['paint']! * 0.8 +
                 costs['tools']! * 0.7) *
             multiplier,
       },
@@ -514,8 +559,24 @@ class ResultsScreenState extends State<ResultsScreen> {
                             _imageFile,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            cacheHeight: 600,
-                            filterQuality: FilterQuality.medium,
+                            cacheHeight:
+                                400, // Reduced from 600 to reduce memory usage
+                            filterQuality:
+                                FilterQuality.low, // Reduced from medium to low
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: double.infinity,
+                                height: 200,
+                                color: Colors.grey[800],
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.error_outline,
+                                    color: Colors.white,
+                                    size: 50,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -660,8 +721,13 @@ class ResultsScreenState extends State<ResultsScreen> {
     if (value == null) return "N/A";
     if (value is bool) return value ? "Yes" : "No";
 
-    // Format cost values with dollar sign and 2 decimal places
+    // Special handling for damage_type - only show class_name
     final lowerField = fieldName.toLowerCase();
+    if (lowerField.contains('damage_type') && value is Map) {
+      return value['class_name']?.toString() ?? "Unknown";
+    }
+
+    // Format cost values with dollar sign and 2 decimal places
     if (lowerField.contains('cost')) {
       if (value is num) {
         return '₱${value.toStringAsFixed(2)}';
@@ -952,68 +1018,6 @@ class ResultsScreenState extends State<ResultsScreen> {
                 _buildDamageInfoDisplay(damageInfo),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-          _buildResultCard(
-            title: 'Cost Estimate',
-            icon: Icons.attach_money,
-            content: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.trending_up,
-                      color: hasCost ? GlobalStyles.primaryColor : Colors.grey,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Estimated repair cost',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  costEstimate,
-                  style: TextStyle(
-                    color: hasCost ? GlobalStyles.primaryColor : Colors.white70,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Based on detected damage',
-                  style: TextStyle(color: Colors.white54, fontSize: 14),
-                ),
-                if (hasCost)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              // Save or share estimate
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: GlobalStyles.primaryColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text('Save Estimate'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
           ), // Add some bottom padding
         ],
       );
@@ -1193,37 +1197,39 @@ class ResultsScreenState extends State<ResultsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (final subEntry in damage.entries)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              _getFieldIcon(subEntry.key.toString()),
-                              const SizedBox(width: 8),
-                              Text(
-                                "${_formatFieldName(subEntry.key.toString())}:",
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                    // Skip bounding_box field from display
+                    if (subEntry.key.toString().toLowerCase() != 'bounding_box')
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                _getFieldIcon(subEntry.key.toString()),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "${_formatFieldName(subEntry.key.toString())}:",
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          // Corrected: Use _buildFormattedDamageItem for key-value pairs
-                          _buildFormattedDamageItem(
-                            subEntry.key.toString(),
-                            _formatValue(
-                              subEntry.key.toString(),
-                              subEntry.value,
+                              ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            // Corrected: Use _buildFormattedDamageItem for key-value pairs
+                            _buildFormattedDamageItem(
+                              subEntry.key.toString(),
+                              _formatValue(
+                                subEntry.key.toString(),
+                                subEntry.value,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
 
                   // Add repair/replace section for each damage
                   _buildRepairReplaceSection(
@@ -1252,8 +1258,7 @@ class ResultsScreenState extends State<ResultsScreen> {
     Map<String, dynamic> damage,
   ) {
     String damageType =
-        damage['type']?.toString() ??
-        damage['damage_type']?.toString() ??
+        damage['damage_type']['class_name']?.toString() ??
         damage['part']?.toString() ??
         'Unknown';
     String severity = damage['severity']?.toString() ?? 'medium';
@@ -1415,6 +1420,7 @@ class ResultsScreenState extends State<ResultsScreen> {
           ] else ...[
             _buildCostItem('New Part Price', costs['part_price']),
             _buildCostItem('Installation Labor', costs['labor']),
+            _buildCostItem('Paint & Finishing', costs['paint']),
             _buildCostItem('Tools & Equipment', costs['tools']),
           ],
 

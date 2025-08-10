@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Configure camera buffer settings to prevent ImageReader buffer overflow -->
+    <integer name="camera_max_images">3</integer>
+    <integer name="camera_buffer_count">2</integer>
+</resources>

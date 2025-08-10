@@ -28,6 +28,11 @@ android {
         targetSdk = 35  // Target Android 14
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Add camera buffer configuration to prevent ImageReader buffer overflow
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
     }
 
     buildTypes {

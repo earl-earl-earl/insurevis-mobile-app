@@ -8,6 +8,7 @@ import 'package:insurevis/other-screens/gallery_view.dart';
 // import 'package:photo_manager/photo_manager.dart'; // REMOVED: No longer used
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
+import 'package:insurevis/services/camera_buffer_service.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -30,6 +31,8 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize camera buffer optimization
+    CameraBufferService.initializeBufferOptimization();
     // Request permissions (only Camera needed now for core function) and initialize camera
     _initCameraOnly(); // Renamed from _initCameraAndGallery
   }
@@ -82,9 +85,10 @@ class _CameraScreenState extends State<CameraScreen> {
     final camera = _cameras[cameraIndex];
     _controller = CameraController(
       camera,
-      ResolutionPreset.high,
+      ResolutionPreset
+          .medium, // Reduced from high to medium to reduce buffer load
       enableAudio: false, // Disable audio if not needed
-      imageFormatGroup: ImageFormatGroup.jpeg, // Or nv21 / yuv420
+      imageFormatGroup: ImageFormatGroup.jpeg,
     );
 
     // Assign the future for the FutureBuilder
@@ -148,7 +152,10 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   void dispose() {
-    _controller?.dispose(); // Dispose the controller when the widget is removed
+    // Clear camera buffers before disposing
+    CameraBufferService.clearBuffers();
+    // Ensure controller is properly disposed to free image buffers
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -164,7 +171,18 @@ class _CameraScreenState extends State<CameraScreen> {
     try {
       await _initializeControllerFuture;
 
+      // Clear buffers before taking picture to prevent overflow
+      await CameraBufferService.clearBuffers();
+
+      // Ensure we don't capture multiple images simultaneously
+      if (!_controller!.value.isInitialized) {
+        throw Exception("Camera not initialized");
+      }
+
       final XFile imageFile = await _controller!.takePicture();
+
+      // Optimize memory after taking picture
+      await CameraBufferService.optimizeMemory();
 
       if (mounted) {
         // Add the photo to assessments before navigating
