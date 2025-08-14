@@ -431,9 +431,7 @@ class _HomeState extends State<Home> {
                               Expanded(
                                 child: _buildDashboardCard(
                                   'Insurance Status',
-                                  user?.membershipType == MembershipType.premium
-                                      ? 'Premium'
-                                      : 'Active',
+                                  'Active',
                                   Icons.security,
                                   Colors.green,
                                 ),

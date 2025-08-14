@@ -51,11 +51,26 @@ API: Supabase Edge Functions or Firebase Functions
 CREATE TABLE users (
   id UUID PRIMARY KEY,
   email VARCHAR UNIQUE NOT NULL,
+  password_hash VARCHAR NOT NULL,
   name VARCHAR NOT NULL,
   phone VARCHAR,
-  role VARCHAR DEFAULT 'individual',
-  subscription_status VARCHAR DEFAULT 'free',
+  profile_image_url VARCHAR,
+  join_date TIMESTAMP DEFAULT NOW(),
+  is_email_verified BOOLEAN DEFAULT FALSE,
+  preferences JSONB,
   created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- User Statistics table  
+CREATE TABLE user_stats (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  total_assessments INTEGER DEFAULT 0,
+  completed_assessments INTEGER DEFAULT 0,
+  documents_submitted INTEGER DEFAULT 0,
+  total_saved DECIMAL DEFAULT 0,
+  last_active_date TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Vehicles table
@@ -87,7 +102,405 @@ CREATE TABLE assessments (
 );
 ```
 
-#### **2. Authentication Implementation**
+#### **3. Supabase Implementation Code**
+
+**Database Setup Script:**
+```sql
+-- Enable Row Level Security
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assessments ENABLE ROW LEVEL SECURITY;
+
+-- Users can only access their own data
+CREATE POLICY "Users can view own profile" ON users
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile" ON users
+  FOR UPDATE USING (auth.uid() = id);
+
+-- User stats policies
+CREATE POLICY "Users can view own stats" ON user_stats
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Vehicles policies
+CREATE POLICY "Users can manage own vehicles" ON vehicles
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Assessments policies
+CREATE POLICY "Users can manage own assessments" ON assessments
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Create indexes for better performance
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_user_stats_user_id ON user_stats(user_id);
+CREATE INDEX idx_vehicles_user_id ON vehicles(user_id);
+CREATE INDEX idx_assessments_user_id ON assessments(user_id);
+CREATE INDEX idx_assessments_status ON assessments(status);
+```
+
+**Supabase Edge Functions:**
+```typescript
+// supabase/functions/auth/register.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const { email, password, name, phone } = await req.json()
+
+    // Create auth user
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    })
+
+    if (authError) throw authError
+
+    // Create user profile
+    const { error: profileError } = await supabase
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        email,
+        name,
+        phone,
+        preferences: {
+          notifications: true,
+          darkMode: false,
+          language: 'en',
+          autoSync: true,
+          biometricLogin: false,
+        }
+      })
+
+    if (profileError) throw profileError
+
+    // Create initial user stats
+    const { error: statsError } = await supabase
+      .from('user_stats')
+      .insert({
+        user_id: authData.user.id,
+      })
+
+    if (statsError) throw statsError
+
+    return new Response(
+      JSON.stringify({ user: authData.user }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+    )
+  }
+})
+```
+
+**Flutter Integration:**
+```dart
+// lib/services/supabase_service.dart
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class SupabaseService {
+  static final _client = Supabase.instance.client;
+  
+  // Initialize Supabase
+  static Future<void> initialize() async {
+    await Supabase.initialize(
+      url: 'YOUR_SUPABASE_URL',
+      anonKey: 'YOUR_SUPABASE_ANON_KEY',
+    );
+  }
+
+  // Authentication methods
+  static Future<AuthResponse> signUp({
+    required String email,
+    required String password,
+    required String name,
+    String? phone,
+  }) async {
+    return await _client.auth.signUp(
+      email: email,
+      password: password,
+      data: {
+        'name': name,
+        'phone': phone,
+      },
+    );
+  }
+
+  static Future<AuthResponse> signIn({
+    required String email,
+    required String password,
+  }) async {
+    return await _client.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
+  }
+
+  static Future<void> signOut() async {
+    await _client.auth.signOut();
+  }
+
+  // User profile methods
+  static Future<Map<String, dynamic>?> getUserProfile(String userId) async {
+    final response = await _client
+        .from('users')
+        .select('*, user_stats(*)')
+        .eq('id', userId)
+        .single();
+    
+    return response;
+  }
+
+  static Future<void> updateUserProfile({
+    required String userId,
+    String? name,
+    String? phone,
+    String? profileImageUrl,
+    Map<String, dynamic>? preferences,
+  }) async {
+    final updates = <String, dynamic>{};
+    if (name != null) updates['name'] = name;
+    if (phone != null) updates['phone'] = phone;
+    if (profileImageUrl != null) updates['profile_image_url'] = profileImageUrl;
+    if (preferences != null) updates['preferences'] = preferences;
+
+    await _client
+        .from('users')
+        .update(updates)
+        .eq('id', userId);
+  }
+
+  // User stats methods
+  static Future<void> updateUserStats({
+    required String userId,
+    int? totalAssessments,
+    int? completedAssessments,
+    int? documentsSubmitted,
+    double? totalSaved,
+  }) async {
+    final updates = <String, dynamic>{
+      'last_active_date': DateTime.now().toIso8601String(),
+    };
+    
+    if (totalAssessments != null) updates['total_assessments'] = totalAssessments;
+    if (completedAssessments != null) updates['completed_assessments'] = completedAssessments;
+    if (documentsSubmitted != null) updates['documents_submitted'] = documentsSubmitted;
+    if (totalSaved != null) updates['total_saved'] = totalSaved;
+
+    await _client
+        .from('user_stats')
+        .update(updates)
+        .eq('user_id', userId);
+  }
+
+  // Assessment methods
+  static Future<String> createAssessment({
+    required String userId,
+    String? vehicleId,
+    required List<String> imageUrls,
+    Map<String, dynamic>? aiResults,
+    double? estimatedCost,
+    DateTime? incidentDate,
+  }) async {
+    final response = await _client
+        .from('assessments')
+        .insert({
+          'user_id': userId,
+          'vehicle_id': vehicleId,
+          'image_urls': imageUrls,
+          'ai_results': aiResults,
+          'estimated_cost': estimatedCost,
+          'incident_date': incidentDate?.toIso8601String(),
+        })
+        .select()
+        .single();
+
+    return response['id'];
+  }
+
+  static Future<List<Map<String, dynamic>>> getUserAssessments(String userId) async {
+    final response = await _client
+        .from('assessments')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', ascending: false);
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  // File upload
+  static Future<String> uploadFile({
+    required String bucket,
+    required String fileName,
+    required List<int> fileBytes,
+  }) async {
+    await _client.storage
+        .from(bucket)
+        .uploadBinary(fileName, fileBytes);
+
+    return _client.storage
+        .from(bucket)
+        .getPublicUrl(fileName);
+  }
+
+  // Real-time subscriptions
+  static RealtimeChannel subscribeToUserData(String userId, Function(Map<String, dynamic>) onUpdate) {
+    return _client
+        .channel('user_data_$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'assessments',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (payload) => onUpdate(payload.newRecord),
+        )
+        .subscribe();
+  }
+}
+```
+
+**Updated UserProvider Integration:**
+```dart
+// lib/providers/user_provider.dart (additional methods)
+class UserProvider with ChangeNotifier {
+  // ... existing code ...
+
+  // Authentication methods
+  Future<bool> signUp({
+    required String email,
+    required String password,
+    required String name,
+    String? phone,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await SupabaseService.signUp(
+        email: email,
+        password: password,
+        name: name,
+        phone: phone,
+      );
+
+      if (response.user != null) {
+        await _loadUserProfile(response.user!.id);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = 'Failed to sign up: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> signIn({
+    required String email,
+    required String password,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await SupabaseService.signIn(
+        email: email,
+        password: password,
+      );
+
+      if (response.user != null) {
+        await _loadUserProfile(response.user!.id);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = 'Failed to sign in: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadUserProfile(String userId) async {
+    try {
+      final profileData = await SupabaseService.getUserProfile(userId);
+      if (profileData != null) {
+        _currentUser = UserProfile.fromJson(profileData);
+      }
+    } catch (e) {
+      _error = 'Failed to load profile: $e';
+    }
+  }
+
+  // Override existing methods to sync with Supabase
+  @override
+  Future<void> updateProfile({
+    String? name,
+    String? email,
+    String? phone,
+    String? profileImageUrl,
+  }) async {
+    if (_currentUser == null) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await SupabaseService.updateUserProfile(
+        userId: _currentUser!.id,
+        name: name,
+        phone: phone,
+        profileImageUrl: profileImageUrl,
+      );
+
+      _currentUser = _currentUser!.copyWith(
+        name: name,
+        phone: phone,
+        profileImageUrl: profileImageUrl,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Failed to update profile: $e';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+}
+```
+
+#### **4. Authentication Implementation**
 
 **User Flow Design:**
 1. **Onboarding**: Email/password with optional social login

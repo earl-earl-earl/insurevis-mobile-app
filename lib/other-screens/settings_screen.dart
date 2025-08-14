@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
+import 'package:insurevis/providers/theme_provider.dart';
 import 'package:insurevis/other-screens/terms_of_service_screen.dart';
 import 'package:insurevis/other-screens/privacy_policy_screen.dart';
 import 'package:insurevis/other-screens/contact_us_screen.dart';
@@ -54,7 +56,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -62,13 +65,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(
+            Icons.arrow_back,
+            color: GlobalStyles.getTextColor(isDarkMode),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Settings',
           style: TextStyle(
-            color: Colors.white,
+            color: GlobalStyles.getTextColor(isDarkMode),
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
           ),
@@ -77,11 +83,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              GlobalStyles.backgroundColorStart,
-              GlobalStyles.backgroundColorEnd,
+              GlobalStyles.getBackgroundColorStart(isDarkMode),
+              GlobalStyles.getBackgroundColorEnd(isDarkMode),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -104,12 +110,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Dark Mode',
                     subtitle: 'Toggle between light and dark theme',
                     trailing: Switch(
-                      value:
-                          false, // Temporarily disabled - themeProvider.isDarkMode,
+                      value: themeProvider.isDarkMode,
                       activeColor: GlobalStyles.primaryColor,
                       onChanged: (value) {
-                        // themeProvider.toggleTheme();
-                        // Theme toggle temporarily disabled
+                        themeProvider.toggleTheme();
                       },
                     ),
                   ),
@@ -336,12 +340,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Widget? trailing,
     VoidCallback? onTap,
   }) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = themeProvider.isDarkMode;
+
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color:
+            isDarkMode
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(
+          color:
+              isDarkMode
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.grey.withValues(alpha: 0.2),
+        ),
       ),
       child: ListTile(
         leading: Container(
@@ -355,19 +370,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(
           title,
           style: TextStyle(
-            color: Colors.white,
+            color: GlobalStyles.getTextColor(isDarkMode),
             fontSize: 16.sp,
             fontWeight: FontWeight.w500,
           ),
         ),
         subtitle: Text(
           subtitle,
-          style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+          style: TextStyle(
+            color: GlobalStyles.getTextSecondaryColor(isDarkMode),
+            fontSize: 12.sp,
+          ),
         ),
         trailing:
             trailing ??
             (onTap != null
-                ? Icon(Icons.chevron_right, color: Colors.white54, size: 20.sp)
+                ? Icon(
+                  Icons.chevron_right,
+                  color: GlobalStyles.getTextSecondaryColor(isDarkMode),
+                  size: 20.sp,
+                )
                 : null),
         onTap: onTap,
       ),
@@ -375,14 +397,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showLanguageDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = themeProvider.isDarkMode;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text(
+          backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+          title: Text(
             'Select Language',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: GlobalStyles.getTextColor(isDarkMode)),
           ),
           content: SizedBox(
             width: double.maxFinite,
@@ -393,7 +418,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 return RadioListTile<String>(
                   title: Text(
                     _languages[index],
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(
+                      color: GlobalStyles.getTextColor(isDarkMode),
+                    ),
                   ),
                   value: _languages[index],
                   groupValue: _selectedLanguage,

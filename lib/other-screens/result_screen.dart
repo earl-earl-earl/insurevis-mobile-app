@@ -295,6 +295,13 @@ class ResultsScreenState extends State<ResultsScreen> {
     }
   }
 
+  // Helper method to determine which fields should be displayed
+  bool _shouldShowField(String fieldName) {
+    final lowerField = fieldName.toLowerCase();
+    // Only show damage_type and damaged_part
+    return lowerField == 'damage_type' || lowerField == 'damaged_part';
+  }
+
   // Helper method to capitalize the first letter of a string
   String _capitalizeFirst(String text) {
     if (text.isEmpty) return text;
@@ -724,7 +731,10 @@ class ResultsScreenState extends State<ResultsScreen> {
     // Special handling for damage_type - only show class_name
     final lowerField = fieldName.toLowerCase();
     if (lowerField.contains('damage_type') && value is Map) {
-      return value['class_name']?.toString() ?? "Unknown";
+      final mapValue = value as Map<String, dynamic>;
+      return mapValue.containsKey('class_name')
+          ? mapValue['class_name']?.toString() ?? "Unknown"
+          : "Unknown";
     }
 
     // Format cost values with dollar sign and 2 decimal places
@@ -958,10 +968,17 @@ class ResultsScreenState extends State<ResultsScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            resultData.containsKey('damages') &&
-                                    resultData['damages'] is List
-                                ? "${(resultData['damages'] as List).length}"
-                                : "0", // Fallback if 'damages' is not a list or not present
+                            () {
+                              if (resultData.containsKey('damages')) {
+                                final damages = resultData['damages'];
+                                if (damages is List) {
+                                  return "${damages.length}";
+                                } else if (damages is Map) {
+                                  return "${damages.length}";
+                                }
+                              }
+                              return "0";
+                            }(),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 20,
@@ -1059,7 +1076,7 @@ class ResultsScreenState extends State<ResultsScreen> {
       );
     }
 
-    if (damageInfo is Map) {
+    if (damageInfo is Map<String, dynamic>) {
       return _buildDamageCard(
         // Using generic card for single map
         title: "DAMAGE DETECTED",
@@ -1067,34 +1084,36 @@ class ResultsScreenState extends State<ResultsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final entry in damageInfo.entries)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        _getFieldIcon(entry.key.toString()),
-                        const SizedBox(width: 8),
-                        Text(
-                          "${_formatFieldName(entry.key.toString())}:",
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+              // Only show damage_type and damaged_part fields
+              if (_shouldShowField(entry.key.toString()))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          _getFieldIcon(entry.key.toString()),
+                          const SizedBox(width: 8),
+                          Text(
+                            "${_formatFieldName(entry.key.toString())}:",
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    _buildFormattedDamageItem(
-                      // Use formatted item for key-value
-                      entry.key.toString(),
-                      _formatValue(entry.key.toString(), entry.value),
-                    ),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      _buildFormattedDamageItem(
+                        // Use formatted item for key-value
+                        entry.key.toString(),
+                        _formatValue(entry.key.toString(), entry.value),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
           ],
         ),
       );
@@ -1127,7 +1146,7 @@ class ResultsScreenState extends State<ResultsScreen> {
   Widget _buildDamageListItem(int index, dynamic damage) {
     bool isExpanded = _expandedCards[index] ?? true; // Default to expanded
 
-    if (damage is Map) {
+    if (damage is Map<String, dynamic>) {
       return Container(
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 12),
@@ -1197,8 +1216,8 @@ class ResultsScreenState extends State<ResultsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (final subEntry in damage.entries)
-                    // Skip bounding_box field from display
-                    if (subEntry.key.toString().toLowerCase() != 'bounding_box')
+                    // Only show damage_type and damaged_part fields
+                    if (_shouldShowField(subEntry.key.toString()))
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10.0),
                         child: Column(
@@ -1232,10 +1251,7 @@ class ResultsScreenState extends State<ResultsScreen> {
                       ),
 
                   // Add repair/replace section for each damage
-                  _buildRepairReplaceSection(
-                    index,
-                    damage as Map<String, dynamic>,
-                  ),
+                  _buildRepairReplaceSection(index, damage),
                 ],
               ),
           ],
@@ -1257,11 +1273,22 @@ class ResultsScreenState extends State<ResultsScreen> {
     int damageIndex,
     Map<String, dynamic> damage,
   ) {
-    String damageType =
-        damage['damage_type']['class_name']?.toString() ??
-        damage['part']?.toString() ??
-        'Unknown';
-    String severity = damage['severity']?.toString() ?? 'medium';
+    String damageType = 'Unknown';
+
+    // Safe access to damage_type with type checking
+    if (damage.containsKey('damage_type') && damage['damage_type'] is Map) {
+      final damageTypeMap = damage['damage_type'] as Map<String, dynamic>;
+      if (damageTypeMap.containsKey('class_name')) {
+        damageType = damageTypeMap['class_name']?.toString() ?? 'Unknown';
+      }
+    } else if (damage.containsKey('part')) {
+      damageType = damage['part']?.toString() ?? 'Unknown';
+    }
+
+    String severity =
+        damage.containsKey('severity')
+            ? damage['severity']?.toString() ?? 'medium'
+            : 'medium';
 
     String selectedOption = _selectedRepairOptions[damageIndex] ?? 'none';
     Map<String, Map<String, dynamic>> costs = _getRepairCosts(

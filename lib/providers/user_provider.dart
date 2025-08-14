@@ -1,18 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum UserRole { individual, business, agent }
-
-enum MembershipType { basic, premium, enterprise }
-
 class UserProfile {
   final String id;
   final String name;
   final String email;
   final String? phone;
   final String? profileImageUrl;
-  final UserRole role;
-  final MembershipType membershipType;
   final DateTime joinDate;
   final bool isEmailVerified;
   final Map<String, dynamic> preferences;
@@ -24,8 +18,6 @@ class UserProfile {
     required this.email,
     this.phone,
     this.profileImageUrl,
-    required this.role,
-    required this.membershipType,
     required this.joinDate,
     this.isEmailVerified = false,
     this.preferences = const {},
@@ -38,8 +30,6 @@ class UserProfile {
     String? email,
     String? phone,
     String? profileImageUrl,
-    UserRole? role,
-    MembershipType? membershipType,
     DateTime? joinDate,
     bool? isEmailVerified,
     Map<String, dynamic>? preferences,
@@ -51,8 +41,6 @@ class UserProfile {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      role: role ?? this.role,
-      membershipType: membershipType ?? this.membershipType,
       joinDate: joinDate ?? this.joinDate,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       preferences: preferences ?? this.preferences,
@@ -67,8 +55,6 @@ class UserProfile {
       'email': email,
       'phone': phone,
       'profileImageUrl': profileImageUrl,
-      'role': role.index,
-      'membershipType': membershipType.index,
       'joinDate': joinDate.toIso8601String(),
       'isEmailVerified': isEmailVerified,
       'preferences': preferences,
@@ -77,18 +63,45 @@ class UserProfile {
   }
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
+    // Handle both local storage format and Supabase format
+    Map<String, dynamic> userStats = {};
+
+    // If the JSON contains a 'user_stats' array (Supabase format)
+    if (json['user_stats'] != null && json['user_stats'] is List) {
+      final statsList = json['user_stats'] as List;
+      if (statsList.isNotEmpty) {
+        userStats = statsList.first as Map<String, dynamic>;
+      }
+    }
+    // If the JSON contains a 'stats' object (local format)
+    else if (json['stats'] != null) {
+      userStats = json['stats'] as Map<String, dynamic>;
+    }
+
     return UserProfile(
       id: json['id'],
       name: json['name'],
       email: json['email'],
       phone: json['phone'],
-      profileImageUrl: json['profileImageUrl'],
-      role: UserRole.values[json['role']],
-      membershipType: MembershipType.values[json['membershipType']],
-      joinDate: DateTime.parse(json['joinDate']),
-      isEmailVerified: json['isEmailVerified'] ?? false,
+      profileImageUrl: json['profile_image_url'] ?? json['profileImageUrl'],
+      joinDate: DateTime.parse(
+        json['join_date'] ??
+            json['joinDate'] ??
+            DateTime.now().toIso8601String(),
+      ),
+      isEmailVerified:
+          json['is_email_verified'] ?? json['isEmailVerified'] ?? false,
       preferences: Map<String, dynamic>.from(json['preferences'] ?? {}),
-      stats: UserStats.fromJson(json['stats']),
+      stats:
+          userStats.isNotEmpty
+              ? UserStats.fromJson(userStats)
+              : UserStats(
+                totalAssessments: 0,
+                completedAssessments: 0,
+                documentsSubmitted: 0,
+                totalSaved: 0.0,
+                lastActiveDate: DateTime.now(),
+              ),
     );
   }
 }
@@ -136,12 +149,17 @@ class UserStats {
 
   factory UserStats.fromJson(Map<String, dynamic> json) {
     return UserStats(
-      totalAssessments: json['totalAssessments'] ?? 0,
-      completedAssessments: json['completedAssessments'] ?? 0,
-      documentsSubmitted: json['documentsSubmitted'] ?? 0,
-      totalSaved: (json['totalSaved'] ?? 0.0).toDouble(),
+      totalAssessments:
+          json['total_assessments'] ?? json['totalAssessments'] ?? 0,
+      completedAssessments:
+          json['completed_assessments'] ?? json['completedAssessments'] ?? 0,
+      documentsSubmitted:
+          json['documents_submitted'] ?? json['documentsSubmitted'] ?? 0,
+      totalSaved: (json['total_saved'] ?? json['totalSaved'] ?? 0.0).toDouble(),
       lastActiveDate:
-          json['lastActiveDate'] != null
+          json['last_active_date'] != null
+              ? DateTime.parse(json['last_active_date'])
+              : json['lastActiveDate'] != null
               ? DateTime.parse(json['lastActiveDate'])
               : DateTime.now(),
     );
@@ -158,9 +176,6 @@ class UserProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isLoggedIn => _currentUser != null;
-  bool get isPremiumUser =>
-      _currentUser?.membershipType == MembershipType.premium ||
-      _currentUser?.membershipType == MembershipType.enterprise;
 
   // Initialize with demo user data (replace with actual auth in production)
   Future<void> initializeUser() async {
@@ -349,8 +364,6 @@ class UserProvider with ChangeNotifier {
       'email': 'regine@email.com',
       'phone': '+63 912 345 6789',
       'profileImageUrl': null,
-      'role': UserRole.individual.index,
-      'membershipType': MembershipType.premium.index,
       'joinDate':
           DateTime.now().subtract(const Duration(days: 90)).toIso8601String(),
       'isEmailVerified': true,

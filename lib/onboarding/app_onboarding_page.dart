@@ -153,7 +153,7 @@ class _AppOnboardingScreenState extends State<AppOnboardingScreen> {
                       padding: EdgeInsets.only(top: screenHeight * 0.05),
                       child: Text.rich(
                         TextSpan(
-                          text: "Insurevis",
+                          text: "InsureVis",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 35.sp,

@@ -378,7 +378,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                           ),
                           GestureDetector(
                             onTap: () {
-                              Navigator.pushNamed(context, '/app_onboarding');
+                              Navigator.pushNamed(context, '/signup');
                             },
                             child: Text(
                               "Sign Up",

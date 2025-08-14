@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
+import 'package:insurevis/providers/auth_provider.dart';
+import 'package:insurevis/services/supabase_service.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -46,12 +49,118 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
   }
 
   void _handleSignIn() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Clear any previous errors
+    authProvider.clearError();
+
     // Validate inputs first
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty) {
+      _showErrorSnackBar("Please fill in all fields");
+      return;
+    }
+
+    // Validate email format
+    final emailError = SupabaseService.validateEmail(
+      _emailController.text.trim(),
+    );
+    if (emailError != null) {
+      _showErrorSnackBar(emailError);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final success = await authProvider.signIn(
+        email: _emailController.text.trim().toLowerCase(),
+        password: _passwordController.text,
+      );
+
+      setState(() => _isLoading = false);
+
+      if (success && mounted) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Signed in successfully!"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            margin: const EdgeInsets.all(20),
+          ),
+        );
+
+        // Navigate to home screen
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/home',
+          (Route<dynamic> route) => false,
+        );
+      } else if (mounted) {
+        // Show error message
+        final errorMessage =
+            authProvider.error ?? 'Sign-in failed. Please try again.';
+        _showErrorSnackBar(errorMessage);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+
+      if (mounted) {
+        _showErrorSnackBar("An unexpected error occurred. Please try again.");
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.r),
+        ),
+        margin: const EdgeInsets.all(20),
+      ),
+    );
+  }
+
+  void _handleForgotPassword() async {
+    if (_emailController.text.trim().isEmpty) {
+      _showErrorSnackBar("Please enter your email address first");
+      return;
+    }
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => AlertDialog(
+            title: const Text("Reset Password"),
+            content: const Text("Sending password reset email..."),
+            backgroundColor: GlobalStyles.backgroundColorStart,
+            titleTextStyle: TextStyle(color: Colors.white, fontSize: 18.sp),
+            contentTextStyle: TextStyle(color: Colors.white70, fontSize: 14.sp),
+          ),
+    );
+
+    final success = await authProvider.resetPassword(
+      email: _emailController.text.trim().toLowerCase(),
+    );
+
+    Navigator.of(context).pop(); // Close loading dialog
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Please fill in all fields"),
-          backgroundColor: Colors.redAccent,
+          content: const Text("Password reset email sent! Check your inbox."),
+          backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10.r),
@@ -59,23 +168,10 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
           margin: const EdgeInsets.all(20),
         ),
       );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
-
-    // After API call completes
-    setState(() => _isLoading = false);
-
-    if (mounted) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/home',
-        (Route<dynamic> route) => false,
-      );
+    } else {
+      final errorMessage =
+          authProvider.error ?? 'Failed to send reset email. Please try again.';
+      _showErrorSnackBar(errorMessage);
     }
   }
 
@@ -272,9 +368,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                                 ),
                               ),
                               TextButton(
-                                onPressed: () {
-                                  // Forgot password logic
-                                },
+                                onPressed: _handleForgotPassword,
                                 style: TextButton.styleFrom(
                                   minimumSize: Size.zero,
                                   padding: EdgeInsets.symmetric(
@@ -378,7 +472,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                           ),
                           GestureDetector(
                             onTap: () {
-                              Navigator.pushNamed(context, '/app_onboarding');
+                              Navigator.pushNamed(context, '/signup');
                             },
                             child: Text(
                               "Sign Up",
