@@ -10,6 +10,7 @@ import 'package:insurevis/login-signup/signup.dart';
 import 'package:insurevis/login-signup/app_initializer.dart';
 import 'package:insurevis/main-screens/main_container.dart';
 import 'package:insurevis/onboarding/app_onboarding_page.dart';
+import 'package:insurevis/other-screens/camera.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 import 'package:insurevis/providers/notification_provider.dart';
 import 'package:insurevis/providers/user_provider.dart';
@@ -109,6 +110,7 @@ class MainApp extends StatelessWidget {
                   '/signup': (context) => const SignUp(),
                   '/app_onboarding': (context) => const AppOnboardingScreen(),
                   '/home': (context) => const MainContainer(),
+                  '/camera': (context) => const CameraScreen(),
                 },
               );
             },

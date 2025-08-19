@@ -6,9 +6,10 @@ import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/main-screens/home.dart';
 import 'package:insurevis/main-screens/status_screen.dart';
 import 'package:insurevis/main-screens/history_screen.dart';
-import 'package:insurevis/main-screens/documents_screen.dart';
 import 'package:insurevis/main-screens/profile_screen.dart';
+import 'package:insurevis/main-screens/documents_screen.dart';
 import 'package:insurevis/providers/notification_provider.dart';
+import 'package:insurevis/providers/auth_provider.dart';
 
 class MainContainer extends StatefulWidget {
   const MainContainer({super.key});
@@ -20,20 +21,18 @@ class MainContainer extends StatefulWidget {
 class _MainContainerState extends State<MainContainer>
     with TickerProviderStateMixin {
   int _selectedIndex = 0;
+  int _selectedDrawerIndex = -1;
   late PageController _pageController;
   late AnimationController _animationController;
-  late AnimationController _drawerAnimationController;
-  late AnimationController _fabAnimationController;
 
-  // Track selected drawer item for visual feedback
-  int _selectedDrawerIndex = -1;
   bool _isLoading = false;
 
-  // Core screens (Documents and Profile moved to drawer)
+  // Core screens including profile in navigation
   final List<Widget> _screens = [
     const Home(),
     const StatusScreen(),
     const HistoryScreen(),
+    const ProfileScreen(),
   ];
 
   @override
@@ -43,14 +42,6 @@ class _MainContainerState extends State<MainContainer>
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
-    );
-    _drawerAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _fabAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
     );
 
     // Initialize sample notifications
@@ -67,8 +58,6 @@ class _MainContainerState extends State<MainContainer>
   void dispose() {
     _pageController.dispose();
     _animationController.dispose();
-    _drawerAnimationController.dispose();
-    _fabAnimationController.dispose();
     super.dispose();
   }
 
@@ -79,7 +68,6 @@ class _MainContainerState extends State<MainContainer>
     HapticFeedback.lightImpact();
     setState(() {
       _selectedIndex = index;
-      _selectedDrawerIndex = -1;
     });
 
     _pageController.animateToPage(
@@ -347,22 +335,35 @@ class _MainContainerState extends State<MainContainer>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Regine Torremoro',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      SizedBox(height: 6.h),
-                      Text(
-                        'regine@email.com',
-                        style: TextStyle(
-                          color: Colors.white.withAlpha(230), // 0.9 * 255
-                          fontSize: 13.sp,
-                        ),
+                      // Use user data from AuthProvider
+                      Consumer<AuthProvider>(
+                        builder: (context, authProvider, child) {
+                          final user = authProvider.currentUser;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user?.name ?? 'User',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18.sp,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              SizedBox(height: 6.h),
+                              Text(
+                                user?.email ?? 'user@email.com',
+                                style: TextStyle(
+                                  color: Colors.white.withAlpha(
+                                    230,
+                                  ), // 0.9 * 255
+                                  fontSize: 13.sp,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       SizedBox(height: 8.h),
                       Container(
@@ -404,14 +405,31 @@ class _MainContainerState extends State<MainContainer>
               ],
             ),
             SizedBox(height: 20.h),
-            // Enhanced stats row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem('12', 'Reports', Icons.description),
-                _buildStatItem('3', 'Claims', Icons.assignment),
-                _buildStatItem('₱45K', 'Saved', Icons.savings),
-              ],
+            // Enhanced stats row - use real user data
+            Consumer<AuthProvider>(
+              builder: (context, authProvider, child) {
+                final stats = authProvider.currentUser?.stats;
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatItem(
+                      '${stats?.totalAssessments ?? 0}',
+                      'Reports',
+                      Icons.description,
+                    ),
+                    _buildStatItem(
+                      '${stats?.completedAssessments ?? 0}',
+                      'Claims',
+                      Icons.assignment,
+                    ),
+                    _buildStatItem(
+                      '₱${(stats?.totalSaved ?? 0).toStringAsFixed(0)}',
+                      'Saved',
+                      Icons.savings,
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -488,7 +506,8 @@ class _MainContainerState extends State<MainContainer>
         duration: const Duration(milliseconds: 200),
         margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 2.h),
         decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
+          color:
+              isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(12.r),
           border:
               isSelected
@@ -872,7 +891,9 @@ class _MainContainerState extends State<MainContainer>
                             width: 64.w,
                             height: 64.h,
                             decoration: BoxDecoration(
-                              color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
+                              color: GlobalStyles.primaryColor.withValues(
+                                alpha: 0.1,
+                              ),
                               borderRadius: BorderRadius.circular(16.r),
                             ),
                             child: Icon(
@@ -1036,7 +1057,9 @@ class _MainContainerState extends State<MainContainer>
                   decoration: BoxDecoration(
                     color: Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -1136,195 +1159,133 @@ class _MainContainerState extends State<MainContainer>
         ],
       ),
       bottomNavigationBar: _buildEnhancedBottomNav(),
+      floatingActionButton:
+          _selectedIndex == 0 ? _buildFloatingActionButton() : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
-  // Enhanced bottom navigation with improved feedback
+  // Floating action button for camera
+  Widget _buildFloatingActionButton() {
+    return FloatingActionButton(
+      onPressed: () {
+        HapticFeedback.mediumImpact();
+        Navigator.pushNamed(context, '/camera');
+      },
+      backgroundColor: GlobalStyles.primaryColor,
+      elevation: 6,
+      child: Icon(Icons.camera_alt, color: Colors.white, size: 28.sp),
+    );
+  }
+
+  // Simple material-like bottom navigation
   Widget _buildEnhancedBottomNav() {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 8.w),
-      height: 75.h,
-      decoration: BoxDecoration(
-        color: GlobalStyles.backgroundColorStart,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildEnhancedNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
-          _buildEnhancedNavItem(
-            1,
-            Icons.access_time_outlined,
-            Icons.access_time,
-            'Status',
-          ),
-          _buildEnhancedNavItem(
-            2,
-            Icons.history_outlined,
-            Icons.history,
-            'History',
-          ),
-        ],
-      ),
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: _onItemTapped,
+      backgroundColor: GlobalStyles.backgroundColorStart,
+      selectedItemColor: GlobalStyles.primaryColor,
+      unselectedItemColor: Colors.white54,
+      type: BottomNavigationBarType.fixed,
+      elevation: 8,
+      items: [
+        _buildBottomNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
+        _buildBottomNavItem(
+          1,
+          Icons.access_time_outlined,
+          Icons.access_time,
+          'Status',
+        ),
+        _buildBottomNavItem(
+          2,
+          Icons.history_outlined,
+          Icons.history,
+          'History',
+        ),
+        _buildBottomNavItem(3, Icons.person_outline, Icons.person, 'Profile'),
+      ],
     );
   }
 
-  Widget _buildEnhancedNavItem(
+  BottomNavigationBarItem _buildBottomNavItem(
     int index,
     IconData icon,
     IconData activeIcon,
     String label,
   ) {
-    return Consumer<NotificationProvider>(
-      builder: (context, notificationProvider, child) {
-        bool isSelected = _selectedIndex == index;
-        int? badgeCount;
+    // Get badge count for notifications
+    int? badgeCount;
+    switch (index) {
+      case 1: // Status screen
+        badgeCount = context.watch<NotificationProvider>().statusBadgeCount;
+        break;
+      case 2: // History screen
+        badgeCount = context.watch<NotificationProvider>().historyBadgeCount;
+        break;
+      default:
+        badgeCount = null;
+    }
 
-        // Map bottom nav indices to notification types
-        switch (index) {
-          case 1: // Status screen
-            badgeCount = notificationProvider.statusBadgeCount;
-            break;
-          case 2: // History screen
-            badgeCount = notificationProvider.historyBadgeCount;
-            break;
-          default:
-            badgeCount = null;
-        }
-
-        return Expanded(
-          child: Semantics(
-            label: label,
-            selected: isSelected,
-            button: true,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(24.r),
-                onTap: () => _onItemTapped(index),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
-                    vertical: 8.h,
+    return BottomNavigationBarItem(
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Icon(icon),
+          if (badgeCount != null && badgeCount > 0)
+            Positioned(
+              right: -6,
+              top: -6,
+              child: Container(
+                padding: EdgeInsets.all(4.w),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1),
+                ),
+                constraints: BoxConstraints(minWidth: 16.w, minHeight: 16.h),
+                child: Text(
+                  badgeCount > 99 ? '99+' : badgeCount.toString(),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8.sp,
+                    fontWeight: FontWeight.bold,
                   ),
-                  decoration: BoxDecoration(
-                    color:
-                        isSelected
-                            ? GlobalStyles.primaryColor.withValues(alpha: 0.15)
-                            : Colors.transparent,
-                    borderRadius: BorderRadius.circular(24.r),
-                    border:
-                        isSelected
-                            ? Border.all(
-                              color: GlobalStyles.primaryColor.withValues(alpha: 0.3),
-                              width: 1,
-                            )
-                            : null,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Icon with badge
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            transitionBuilder: (
-                              Widget child,
-                              Animation<double> animation,
-                            ) {
-                              return ScaleTransition(
-                                scale: animation,
-                                child: child,
-                              );
-                            },
-                            child: Icon(
-                              isSelected ? activeIcon : icon,
-                              key: ValueKey<bool>(isSelected),
-                              color:
-                                  isSelected
-                                      ? GlobalStyles.primaryColor
-                                      : Colors.white54,
-                              size: 24.sp,
-                            ),
-                          ),
-                          // Notification badge
-                          if (badgeCount != null && badgeCount > 0)
-                            Positioned(
-                              right: -6,
-                              top: -6,
-                              child: Container(
-                                padding: EdgeInsets.all(4.w),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1,
-                                  ),
-                                ),
-                                constraints: BoxConstraints(
-                                  minWidth: 16.w,
-                                  minHeight: 16.h,
-                                ),
-                                child: Text(
-                                  badgeCount > 99
-                                      ? '99+'
-                                      : badgeCount.toString(),
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8.sp,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-
-                      // Label with smooth transition
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOutCubic,
-                        child:
-                            isSelected
-                                ? Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(width: 8.w),
-                                    Text(
-                                      label,
-                                      style: TextStyle(
-                                        color: GlobalStyles.primaryColor,
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.clip,
-                                    ),
-                                  ],
-                                )
-                                : const SizedBox.shrink(),
-                      ),
-                    ],
-                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
-          ),
-        );
-      },
+        ],
+      ),
+      activeIcon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Icon(activeIcon),
+          if (badgeCount != null && badgeCount > 0)
+            Positioned(
+              right: -6,
+              top: -6,
+              child: Container(
+                padding: EdgeInsets.all(4.w),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1),
+                ),
+                constraints: BoxConstraints(minWidth: 16.w, minHeight: 16.h),
+                child: Text(
+                  badgeCount > 99 ? '99+' : badgeCount.toString(),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
+      label: label,
     );
   }
 }

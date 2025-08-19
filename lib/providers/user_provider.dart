@@ -360,8 +360,8 @@ class UserProvider with ChangeNotifier {
   Map<String, dynamic> _getDemoUserData() {
     return {
       'id': 'user_001',
-      'name': 'Regine Torremoro',
-      'email': 'regine@email.com',
+      'name': 'John Doe',
+      'email': 'john.doe@email.com',
       'phone': '+63 912 345 6789',
       'profileImageUrl': null,
       'joinDate':

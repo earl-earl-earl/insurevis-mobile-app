@@ -1,4 +1,3 @@
-// filepath: c:\Users\Regine Torremoro\Desktop\Earl John\insurevis\lib\other-screens\result_screen.dart
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -8,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 import 'package:insurevis/utils/pdf_service.dart';
 import 'package:insurevis/utils/network_helper.dart';
+import 'package:insurevis/services/pricing_service.dart';
 
 class ResultsScreen extends StatefulWidget {
   final String imagePath;
@@ -46,119 +46,95 @@ class ResultsScreenState extends State<ResultsScreen> {
   final Map<int, String> _selectedRepairOptions =
       {}; // Track repair/replace selection for each damage
 
-  // Add these sample data structures for repair/replace costs
-  Map<String, Map<String, dynamic>> _getRepairCosts(
-    String damageType,
-    String severity,
+  // Add state for separate API pricing data
+  final Map<int, Map<String, dynamic>?> _repairPricingData =
+      {}; // Store repair pricing
+  final Map<int, Map<String, dynamic>?> _replacePricingData =
+      {}; // Store replace pricing
+  final Map<int, bool> _isLoadingPricing =
+      {}; // Track loading state for pricing
+
+  // Track whether to show pricing for each damage
+  final Map<int, bool> _showPricing = {};
+
+  // Helper method to format damaged part name to match API
+  String _formatDamagedPartForApi(String partName) {
+    if (partName.isEmpty) return partName;
+
+    // Replace hyphens with spaces and handle common variations
+    String formatted =
+        partName.replaceAll('-', ' ').replaceAll('_', ' ').trim();
+
+    // Convert to title case (first letter of each word capitalized)
+    List<String> words = formatted.split(' ');
+    List<String> capitalizedWords =
+        words.map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        }).toList();
+
+    return capitalizedWords.join(' ');
+  }
+
+  // Helper method to validate pricing data based on option type
+  bool _hasValidPricingData(
+    Map<String, dynamic> apiPricing,
+    String selectedOption,
   ) {
-    // Sample cost data - in a real app, this would come from your API or database
-    final baseCosts = {
-      'bumper': {
-        'labor': 150.0,
-        'materials': 200.0,
-        'paint': 100.0,
-        'tools': 50.0,
-      },
-      'door': {
-        'labor': 200.0,
-        'materials': 300.0,
-        'paint': 150.0,
-        'tools': 75.0,
-      },
-      'fender': {
-        'labor': 180.0,
-        'materials': 250.0,
-        'paint': 120.0,
-        'tools': 60.0,
-      },
-      'hood': {
-        'labor': 220.0,
-        'materials': 350.0,
-        'paint': 180.0,
-        'tools': 80.0,
-      },
-      'mirror': {
-        'labor': 100.0,
-        'materials': 120.0,
-        'paint': 50.0,
-        'tools': 30.0,
-      },
-      'headlight': {
-        'labor': 120.0,
-        'materials': 180.0,
-        'paint': 0.0,
-        'tools': 40.0,
-      },
-      'taillight': {
-        'labor': 100.0,
-        'materials': 150.0,
-        'paint': 0.0,
-        'tools': 35.0,
-      },
-      'windshield': {
-        'labor': 250.0,
-        'materials': 400.0,
-        'paint': 0.0,
-        'tools': 100.0,
-      },
-    };
+    if (selectedOption == 'replace') {
+      // For replace (body-paint data), check for srp_insurance
+      return apiPricing['srp_insurance'] != null &&
+          (apiPricing['srp_insurance'] as num) > 0;
+    } else {
+      // For repair (thinsmith data), check for insurance and success
+      return apiPricing['success'] == true &&
+          apiPricing['insurance'] != null &&
+          (apiPricing['insurance'] as num) > 0;
+    }
+  }
 
-    // Get base costs for the damage type
-    String normalizedType = damageType.toLowerCase();
-    Map<String, dynamic>? costs;
+  // Add method to fetch pricing data for a damaged part
+  Future<void> _fetchPricingForDamage(
+    int damageIndex,
+    String damagedPart,
+    String
+    selectedOption, // Add this parameter to know if it's repair or replace
+  ) async {
+    setState(() {
+      _isLoadingPricing[damageIndex] = true;
+    });
 
-    for (String key in baseCosts.keys) {
-      if (normalizedType.contains(key)) {
-        costs = baseCosts[key];
-        break;
+    try {
+      // Format the part name to match API format
+      final formattedPartName = _formatDamagedPartForApi(damagedPart);
+
+      // Get both repair and replace data at once
+      final bothPricingData =
+          await PricingService.getBothRepairAndReplacePricing(
+            formattedPartName,
+          );
+
+      if (mounted) {
+        setState(() {
+          // Store repair data separately
+          _repairPricingData[damageIndex] = bothPricingData['repair_data'];
+
+          // Store replace data separately
+          _replacePricingData[damageIndex] = bothPricingData['replace_data'];
+
+          _isLoadingPricing[damageIndex] = false;
+        });
+      }
+    } catch (e) {
+      // Error handling: silently fail and show estimated costs instead
+      if (mounted) {
+        setState(() {
+          _repairPricingData[damageIndex] = null;
+          _replacePricingData[damageIndex] = null;
+          _isLoadingPricing[damageIndex] = false;
+        });
       }
     }
-
-    costs ??= {
-      'labor': 150.0,
-      'materials': 200.0,
-      'paint': 100.0,
-      'tools': 50.0,
-    }; // Default costs
-
-    // Apply severity multiplier
-    double multiplier = 1.0;
-    String lowerSeverity = severity.toLowerCase();
-    if (lowerSeverity.contains('high') || lowerSeverity.contains('severe')) {
-      multiplier = 1.5;
-    } else if (lowerSeverity.contains('medium') ||
-        lowerSeverity.contains('moderate')) {
-      multiplier = 1.2;
-    }
-
-    return {
-      'repair': {
-        'labor': costs['labor']! * multiplier,
-        'materials':
-            costs['materials']! *
-            multiplier *
-            0.6, // Repair uses less materials
-        'paint': costs['paint']! * multiplier, // Paint cost for repair
-        'tools': costs['tools']! * multiplier,
-        'total':
-            (costs['labor']! + costs['materials']! * 0.6 + costs['tools']!) *
-            multiplier,
-      },
-      'replace': {
-        'part_price':
-            costs['materials']! * multiplier * 1.3, // New part costs more
-        'labor': costs['labor']! * multiplier * 0.8, // Replace takes less labor
-        'paint':
-            costs['paint']! * multiplier * 0.8, // Paint cost for replacement
-        'tools': costs['tools']! * multiplier * 0.7, // Fewer tools needed
-        'total':
-            (costs['materials']! * 1.3 +
-                costs['labor']! * 0.8 +
-                costs['paint']! * 0.8 +
-                costs['tools']! * 0.7) *
-            multiplier,
-      },
-    };
   }
 
   @override
@@ -1273,28 +1249,22 @@ class ResultsScreenState extends State<ResultsScreen> {
     int damageIndex,
     Map<String, dynamic> damage,
   ) {
-    String damageType = 'Unknown';
+    String damagedPart = 'Unknown';
 
-    // Safe access to damage_type with type checking
-    if (damage.containsKey('damage_type') && damage['damage_type'] is Map) {
-      final damageTypeMap = damage['damage_type'] as Map<String, dynamic>;
-      if (damageTypeMap.containsKey('class_name')) {
-        damageType = damageTypeMap['class_name']?.toString() ?? 'Unknown';
-      }
-    } else if (damage.containsKey('part')) {
-      damageType = damage['part']?.toString() ?? 'Unknown';
+    // Get damaged part name for API lookup
+    if (damage.containsKey('damaged_part')) {
+      damagedPart = damage['damaged_part']?.toString() ?? 'Unknown';
+    } else if (damage.containsKey('part_name')) {
+      damagedPart = damage['part_name']?.toString() ?? 'Unknown';
     }
 
-    String severity =
-        damage.containsKey('severity')
-            ? damage['severity']?.toString() ?? 'medium'
-            : 'medium';
-
     String selectedOption = _selectedRepairOptions[damageIndex] ?? 'none';
-    Map<String, Map<String, dynamic>> costs = _getRepairCosts(
-      damageType,
-      severity,
-    );
+    bool showPricing = _showPricing[damageIndex] ?? false;
+
+    // Get separate repair and replace pricing data
+    final repairPricing = _repairPricingData[damageIndex];
+    final replacePricing = _replacePricingData[damageIndex];
+    final isLoadingPricing = _isLoadingPricing[damageIndex] ?? false;
 
     return Container(
       margin: const EdgeInsets.only(top: 16),
@@ -1308,14 +1278,14 @@ class ResultsScreenState extends State<ResultsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Choose Repair Option:',
+            'Repair Options:',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
           // Repair/Replace Buttons
           Row(
@@ -1328,7 +1298,18 @@ class ResultsScreenState extends State<ResultsScreen> {
                   () {
                     setState(() {
                       _selectedRepairOptions[damageIndex] = 'repair';
+                      _showPricing[damageIndex] = true;
                     });
+                    // Fetch pricing data if not already loaded
+                    if (!_repairPricingData.containsKey(damageIndex) &&
+                        !(_isLoadingPricing[damageIndex] ?? false) &&
+                        damagedPart != 'Unknown') {
+                      _fetchPricingForDamage(
+                        damageIndex,
+                        damagedPart,
+                        'repair',
+                      );
+                    }
                   },
                 ),
               ),
@@ -1341,17 +1322,175 @@ class ResultsScreenState extends State<ResultsScreen> {
                   () {
                     setState(() {
                       _selectedRepairOptions[damageIndex] = 'replace';
+                      _showPricing[damageIndex] = true;
                     });
+                    // Fetch pricing data if not already loaded
+                    if (!_replacePricingData.containsKey(damageIndex) &&
+                        !(_isLoadingPricing[damageIndex] ?? false) &&
+                        damagedPart != 'Unknown') {
+                      _fetchPricingForDamage(
+                        damageIndex,
+                        damagedPart,
+                        'replace',
+                      );
+                    }
                   },
                 ),
               ),
             ],
           ),
 
-          // Cost Breakdown
-          if (selectedOption != 'none') ...[
-            const SizedBox(height: 16),
-            _buildCostBreakdown(selectedOption, costs[selectedOption]!),
+          // Show pricing information only when a button is pressed
+          if (showPricing && selectedOption != 'none') ...[
+            const SizedBox(height: 12),
+
+            // Show API pricing data if available
+            if (isLoadingPricing)
+              const Center(
+                child: CircularProgressIndicator(
+                  color: GlobalStyles.primaryColor,
+                ),
+              )
+            else if ((selectedOption == 'repair' &&
+                    repairPricing != null &&
+                    _hasValidPricingData(repairPricing, selectedOption)) ||
+                (selectedOption == 'replace' &&
+                    replacePricing != null &&
+                    _hasValidPricingData(replacePricing, selectedOption))) ...[
+              _buildApiCostBreakdown(
+                selectedOption,
+                selectedOption == 'repair' ? repairPricing! : replacePricing!,
+              ),
+            ] else
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.orange.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning, color: Colors.orange, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'No price for this part yet.',
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApiCostBreakdown(
+    String option,
+    Map<String, dynamic> apiPricing,
+  ) {
+    double laborFee = 0.0;
+    double finalPrice = 0.0;
+    String source = '';
+
+    if (option == 'replace') {
+      // For replace (body-paint data)
+      laborFee =
+          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
+      finalPrice = (apiPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+      source = 'body_paint';
+    } else {
+      // For repair (thinsmith data)
+      laborFee =
+          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
+      finalPrice = (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0;
+      source = apiPricing['source']?.toString() ?? 'thinsmith';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: GlobalStyles.primaryColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                option == 'repair' ? Icons.build : Icons.autorenew,
+                color: GlobalStyles.primaryColor,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${option.toUpperCase()} PRICING',
+                style: TextStyle(
+                  color: GlobalStyles.primaryColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Labor fee
+          _buildCostItem('Labor Fee (Installation)', laborFee),
+
+          const Divider(color: Colors.white30, height: 20),
+
+          // Total (includes part price and paint for replace)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Text(
+                  source == 'body_paint'
+                      ? 'TOTAL PRICE (INSURANCE)'
+                      : 'FINAL PRICE (INSURANCE)',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Text(
+                '₱${finalPrice.toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: GlobalStyles.primaryColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+
+          // Note for replace option
+          if (option == 'replace') ...[
+            const SizedBox(height: 8),
+            Text(
+              'Total includes part price and paint/materials',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
           ],
         ],
       ),
@@ -1402,80 +1541,6 @@ class ResultsScreenState extends State<ResultsScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildCostBreakdown(String option, Map<String, dynamic> costs) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                option == 'repair' ? Icons.build : Icons.autorenew,
-                color: GlobalStyles.primaryColor,
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${option.toUpperCase()} COST BREAKDOWN',
-                style: TextStyle(
-                  color: GlobalStyles.primaryColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Cost items
-          if (option == 'repair') ...[
-            _buildCostItem('Labor Cost', costs['labor']),
-            _buildCostItem('Materials & Supplies', costs['materials']),
-            _buildCostItem('Tools & Equipment', costs['tools']),
-          ] else ...[
-            _buildCostItem('New Part Price', costs['part_price']),
-            _buildCostItem('Installation Labor', costs['labor']),
-            _buildCostItem('Paint & Finishing', costs['paint']),
-            _buildCostItem('Tools & Equipment', costs['tools']),
-          ],
-
-          const Divider(color: Colors.white30, height: 20),
-
-          // Total
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'TOTAL COST',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                '₱${costs['total'].toStringAsFixed(2)}',
-                style: TextStyle(
-                  color: GlobalStyles.primaryColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

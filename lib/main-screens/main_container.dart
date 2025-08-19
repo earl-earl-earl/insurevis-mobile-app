@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/main-screens/home.dart';
@@ -22,7 +21,7 @@ class _MainContainerState extends State<MainContainer>
   late PageController _pageController;
   late AnimationController _animationController;
 
-  // Core screens with Profile back in navigation
+  // Core screens including profile
   final List<Widget> _screens = [
     const Home(),
     const StatusScreen(),
@@ -115,107 +114,58 @@ class _MainContainerState extends State<MainContainer>
             ),
         ],
       ),
-      bottomNavigationBar: _buildModernBottomNav(),
+      bottomNavigationBar: _buildSimpleBottomNav(),
+      floatingActionButton:
+          _selectedIndex == 0 ? _buildFloatingActionButton() : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
-  // Modern glassmorphic bottom navigation
-  Widget _buildModernBottomNav() {
-    return Container(
-      margin: EdgeInsets.all(16.w),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(25.r),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(25.r),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.2),
-              width: 1,
-            ),
-          ),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              height: 80.h,
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(25.r),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildNavItem(Icons.home_rounded, 0),
-                  _buildNavItem(Icons.analytics_rounded, 1),
-                  _buildCenterButton(),
-                  _buildNavItem(Icons.history_rounded, 2),
-                  _buildNavItem(Icons.person_rounded, 3),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, int index) {
-    bool isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () => _onItemTapped(index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: EdgeInsets.all(12.w),
-        decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? GlobalStyles.primaryColor.withValues(alpha: 0.2)
-                  : Colors.transparent,
-          borderRadius: BorderRadius.circular(16.r),
-        ),
-        child: Icon(
-          icon,
-          color: isSelected ? GlobalStyles.primaryColor : Colors.white70,
-          size: 24.sp,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCenterButton() {
-    return GestureDetector(
-      onTap: () {
-        // Navigate to insurance processing/camera screen
+  // Floating action button for camera
+  Widget _buildFloatingActionButton() {
+    return FloatingActionButton(
+      onPressed: () {
+        HapticFeedback.mediumImpact();
         Navigator.pushNamed(context, '/camera');
       },
-      child: Container(
-        width: 56.w,
-        height: 56.w,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.primaryColor,
-              GlobalStyles.primaryColor.withValues(alpha: 0.8),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(28.r),
-          boxShadow: [
-            BoxShadow(
-              color: GlobalStyles.primaryColor.withValues(alpha: 0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+      backgroundColor: GlobalStyles.primaryColor,
+      elevation: 6,
+      child: Icon(Icons.camera_alt, color: Colors.white, size: 28.sp),
+    );
+  }
+
+  // Simple material-like bottom navigation
+  Widget _buildSimpleBottomNav() {
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: _onItemTapped,
+      backgroundColor: GlobalStyles.backgroundColorStart,
+      selectedItemColor: GlobalStyles.primaryColor,
+      unselectedItemColor: Colors.white54,
+      type: BottomNavigationBarType.fixed,
+      elevation: 8,
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: 'Home',
         ),
-        child: Icon(
-          Icons.add_a_photo_rounded,
-          color: Colors.white,
-          size: 28.sp,
+        BottomNavigationBarItem(
+          icon: Icon(Icons.access_time_outlined),
+          activeIcon: Icon(Icons.access_time),
+          label: 'Status',
         ),
-      ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.history_outlined),
+          activeIcon: Icon(Icons.history),
+          label: 'History',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline),
+          activeIcon: Icon(Icons.person),
+          label: 'Profile',
+        ),
+      ],
     );
   }
 }

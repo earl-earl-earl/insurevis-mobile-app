@@ -23,6 +23,10 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
+  // Error messages for individual fields
+  String? _emailError;
+  String? _passwordError;
+
   @override
   void initState() {
     super.initState();
@@ -52,21 +56,41 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     // Clear any previous errors
+    setState(() {
+      _emailError = null;
+      _passwordError = null;
+    });
     authProvider.clearError();
 
     // Validate inputs first
-    if (_emailController.text.trim().isEmpty ||
-        _passwordController.text.isEmpty) {
-      _showErrorSnackBar("Please fill in all fields");
-      return;
+    bool hasErrors = false;
+
+    if (_emailController.text.trim().isEmpty) {
+      setState(() {
+        _emailError = "Please enter your email";
+      });
+      hasErrors = true;
+    } else {
+      // Validate email format
+      final emailError = SupabaseService.validateEmail(
+        _emailController.text.trim(),
+      );
+      if (emailError != null) {
+        setState(() {
+          _emailError = emailError;
+        });
+        hasErrors = true;
+      }
     }
 
-    // Validate email format
-    final emailError = SupabaseService.validateEmail(
-      _emailController.text.trim(),
-    );
-    if (emailError != null) {
-      _showErrorSnackBar(emailError);
+    if (_passwordController.text.isEmpty) {
+      setState(() {
+        _passwordError = "Please enter your password";
+      });
+      hasErrors = true;
+    }
+
+    if (hasErrors) {
       return;
     }
 
@@ -101,7 +125,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
           (Route<dynamic> route) => false,
         );
       } else if (mounted) {
-        // Show error message
+        // Show general error message for authentication failures
         final errorMessage =
             authProvider.error ?? 'Sign-in failed. Please try again.';
         _showErrorSnackBar(errorMessage);
@@ -131,7 +155,9 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
 
   void _handleForgotPassword() async {
     if (_emailController.text.trim().isEmpty) {
-      _showErrorSnackBar("Please enter your email address first");
+      setState(() {
+        _emailError = "Please enter your email address first";
+      });
       return;
     }
 
@@ -272,7 +298,12 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                             hintText: "Enter your email",
                             prefixIcon: Icons.email_outlined,
                             keyboardType: TextInputType.emailAddress,
+                            hasError: _emailError != null,
                           ),
+                          if (_emailError != null) ...[
+                            SizedBox(height: 8.h),
+                            _buildErrorText(_emailError!),
+                          ],
 
                           SizedBox(height: 24.h),
 
@@ -285,6 +316,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                             hintText: "Enter your password",
                             prefixIcon: Icons.lock_outline,
                             obscureText: !_isPasswordVisible,
+                            hasError: _passwordError != null,
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _isPasswordVisible
@@ -300,6 +332,10 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                               },
                             ),
                           ),
+                          if (_passwordError != null) ...[
+                            SizedBox(height: 8.h),
+                            _buildErrorText(_passwordError!),
+                          ],
 
                           SizedBox(height: 20.h),
 
@@ -517,6 +553,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
     Widget? suffixIcon,
+    bool hasError = false,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -552,17 +589,42 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide.none,
+            borderSide:
+                hasError
+                    ? BorderSide(color: Colors.red.withAlpha(153), width: 1.5.w)
+                    : BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide(
-              color: GlobalStyles.primaryColor.withAlpha(153), // 0.6 * 255
+              color:
+                  hasError
+                      ? Colors.red.withAlpha(153)
+                      : GlobalStyles.primaryColor.withAlpha(153), // 0.6 * 255
               width: 1.5.w,
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildErrorText(String errorMessage) {
+    return Row(
+      children: [
+        Icon(Icons.error_outline, color: Colors.red[300], size: 16.sp),
+        SizedBox(width: 6.w),
+        Expanded(
+          child: Text(
+            errorMessage,
+            style: TextStyle(
+              color: Colors.red[300],
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

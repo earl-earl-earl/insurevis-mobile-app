@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
+import '../config/supabase_config.dart';
 
 class SupabaseService {
   // Initialize Supabase client
@@ -202,62 +203,18 @@ class SupabaseService {
       );
 
       if (response.user != null) {
-        // Create a complete transaction - if any step fails, we should handle cleanup
-        try {
-          // Insert additional user data into users table
-          await _supabase.from('users').insert({
-            'id': response.user!.id,
-            'name': name,
-            'email': email,
-            'phone': phone,
-            'join_date': DateTime.now().toIso8601String(),
-            'is_email_verified': response.user!.emailConfirmedAt != null,
-            'preferences': {
-              'notifications': true,
-              'darkMode': false,
-              'language': 'en',
-              'autoSync': true,
-              'biometricLogin': false,
-            },
-          });
+        // Database triggers automatically handle user profile creation
+        // No need to manually insert into users and user_stats tables
 
-          // Create initial user stats
-          await _supabase.from('user_stats').insert({
-            'user_id': response.user!.id,
-            'total_assessments': 0,
-            'completed_assessments': 0,
-            'documents_submitted': 0,
-            'total_saved': 0.0,
-            'last_active_date': DateTime.now().toIso8601String(),
-          });
+        // Clear any cached profile data
+        _cachedUserProfile = null;
 
-          // Clear any cached profile data
-          _cachedUserProfile = null;
-
-          return {
-            'success': true,
-            'user': response.user,
-            'message':
-                response.user!.emailConfirmedAt != null
-                    ? 'Account created successfully!'
-                    : 'Account created successfully. Please check your email for verification.',
-            'requiresEmailVerification':
-                response.user!.emailConfirmedAt == null,
-          };
-        } catch (dbError) {
-          // If database operations fail, we should sign out the user
-          try {
-            await _supabase.auth.signOut();
-          } catch (signOutError) {
-            if (kDebugMode) {
-              print('Failed to sign out after database error: $signOutError');
-            }
-          }
-
-          throw Exception(
-            'Failed to create user profile: ${dbError.toString()}',
-          );
-        }
+        return {
+          'success': true,
+          'user': response.user,
+          'message': 'Account created successfully!',
+          'requiresEmailVerification': false, // Email confirmation is disabled
+        };
       } else {
         throw Exception('Failed to create user account - no user returned');
       }
@@ -352,11 +309,24 @@ class SupabaseService {
         }
       }
 
+      if (kDebugMode) {
+        print('Attempting Supabase sign-in for email: $email');
+      }
+
       // Implement actual Supabase signin
       final AuthResponse response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
+
+      if (kDebugMode) {
+        print(
+          'Auth response received: ${response.user?.id != null ? 'User found' : 'No user'}',
+        );
+        print(
+          'Session: ${response.session?.accessToken != null ? 'Valid session' : 'No session'}',
+        );
+      }
 
       if (response.user != null) {
         // Check if email is verified
@@ -396,6 +366,10 @@ class SupabaseService {
         throw Exception('Sign-in failed - no user returned');
       }
     } catch (e) {
+      if (kDebugMode) {
+        print('Detailed sign-in error: $e');
+        print('Error type: ${e.runtimeType}');
+      }
       throw e; // Re-throw to be handled by the parent method
     }
   }
@@ -403,6 +377,11 @@ class SupabaseService {
   /// Map Supabase errors to user-friendly messages
   static String _mapErrorMessage(String error, String operation) {
     final errorLower = error.toLowerCase();
+
+    // Log the actual error for debugging
+    if (kDebugMode) {
+      print('Raw error: $error');
+    }
 
     // Common authentication errors
     if (errorLower.contains('invalid_credentials') ||
@@ -427,8 +406,9 @@ class SupabaseService {
     }
 
     if (errorLower.contains('invalid email') ||
-        errorLower.contains('email') && errorLower.contains('invalid')) {
-      return 'Please enter a valid email address.';
+        errorLower.contains('email') && errorLower.contains('invalid') ||
+        errorLower.contains('email_address_invalid')) {
+      return 'Please enter a valid email address. Some email providers may not be supported.';
     }
 
     // Password-related errors
@@ -455,13 +435,36 @@ class SupabaseService {
       return 'Network error. Please check your internet connection and try again.';
     }
 
+    // Email sending errors (check before server errors)
+    if (errorLower.contains('error sending confirmation email') ||
+        errorLower.contains('confirmation email') ||
+        errorLower.contains('email delivery failed') ||
+        errorLower.contains('smtp') && errorLower.contains('error')) {
+      return 'Account created, but email verification failed. Please contact support or try signing in directly.';
+    }
+
     // Server errors
     if (errorLower.contains('server error') ||
         errorLower.contains('internal server error') ||
         errorLower.contains('502') ||
         errorLower.contains('503') ||
-        errorLower.contains('500')) {
+        errorLower.contains('500') ||
+        errorLower.contains('bad gateway') ||
+        errorLower.contains('service unavailable') ||
+        errorLower.contains('gateway timeout')) {
       return 'Server temporarily unavailable. Please try again in a few moments.';
+    }
+
+    // JWT/Auth token errors
+    if (errorLower.contains('jwt') ||
+        errorLower.contains('token') ||
+        (errorLower.contains('session') && errorLower.contains('expired'))) {
+      return 'Your session has expired. Please sign in again.';
+    }
+
+    // API errors
+    if (errorLower.contains('api') && errorLower.contains('key')) {
+      return 'Configuration error. Please contact support.';
     }
 
     // Database errors
@@ -720,17 +723,49 @@ class SupabaseService {
   /// Check connection status
   static Future<bool> checkConnection() async {
     try {
-      // Simple query to test connection
-      await _supabase
+      // Test basic connectivity first
+      final response = await _supabase
           .from('users')
           .select('count')
           .limit(1)
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 10));
+
+      if (kDebugMode) {
+        print('Connection check successful: $response');
+      }
       return true;
     } catch (e) {
       if (kDebugMode) {
-        print('Connection check failed: $e');
+        print('Connection check failed with error: $e');
+        print('Error type: ${e.runtimeType}');
       }
+
+      // Check for specific error types
+      final errorString = e.toString().toLowerCase();
+
+      if (errorString.contains('socket') ||
+          errorString.contains('network') ||
+          errorString.contains('timeout') ||
+          errorString.contains('connection')) {
+        if (kDebugMode) {
+          print('Network connectivity issue detected');
+        }
+      } else if (errorString.contains('404') ||
+          errorString.contains('not found')) {
+        if (kDebugMode) {
+          print('Supabase project may be inactive or URL incorrect');
+        }
+      } else if (errorString.contains('unauthorized') ||
+          errorString.contains('401')) {
+        if (kDebugMode) {
+          print(
+            'Authentication issue - this might be normal for connection check',
+          );
+        }
+        // 401 on connection check might actually mean server is up but we need auth
+        return true;
+      }
+
       return false;
     }
   }
@@ -738,6 +773,54 @@ class SupabaseService {
   /// Clear cached data
   static void clearCache() {
     _cachedUserProfile = null;
+  }
+
+  /// Test Supabase configuration and connectivity
+  static Future<Map<String, dynamic>> testConfiguration() async {
+    final results = <String, dynamic>{
+      'supabaseUrl': SupabaseConfig.supabaseUrl,
+      'hasValidAnonKey': SupabaseConfig.supabaseAnonKey.isNotEmpty,
+      'clientInitialized':
+          true, // Client is always initialized when this is called
+    };
+
+    try {
+      // Test basic API connectivity
+      final stopwatch = Stopwatch()..start();
+
+      // Try a simple health check
+      await _supabase
+          .from('users')
+          .select('count')
+          .limit(1)
+          .timeout(const Duration(seconds: 10));
+
+      stopwatch.stop();
+
+      results['connectionTest'] = 'success';
+      results['responseTime'] = '${stopwatch.elapsedMilliseconds}ms';
+    } catch (e) {
+      results['connectionTest'] = 'failed';
+      results['connectionError'] = e.toString();
+
+      // Analyze the error
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('404')) {
+        results['diagnosis'] =
+            'Supabase project may be paused or URL incorrect';
+      } else if (errorString.contains('401') ||
+          errorString.contains('unauthorized')) {
+        results['diagnosis'] =
+            'API key may be invalid or project settings issue';
+      } else if (errorString.contains('timeout') ||
+          errorString.contains('socket')) {
+        results['diagnosis'] = 'Network connectivity issue';
+      } else {
+        results['diagnosis'] = 'Unknown error - check Supabase project status';
+      }
+    }
+
+    return results;
   }
 
   /// Get authentication state

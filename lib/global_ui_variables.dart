@@ -66,61 +66,130 @@ class GlobalStyles {
     horizontal: 30.w,
   );
 
-  // Dynamic text styles based on theme
-  static TextStyle getHeadingStyle(bool isDarkMode) => GoogleFonts.poppins(
-    color: primaryColor,
-    fontSize: 60.sp,
-    fontWeight: FontWeight.w900,
-    height: 1,
-  );
-
-  static TextStyle getSubheadingStyle(bool isDarkMode) => GoogleFonts.poppins(
-    color: getTextColor(isDarkMode),
-    fontSize: 20.sp,
-    fontWeight: FontWeight.w900,
-    height: 1,
-  );
-
-  static TextStyle getButtonTextStyle(bool isDarkMode) => GoogleFonts.poppins(
-    color: getTextSecondaryColor(isDarkMode),
-    fontWeight: FontWeight.w900,
-    fontSize: 14.sp,
-  );
-
-  static TextStyle getOnboardingTitleStyle(bool isDarkMode) =>
-      GoogleFonts.poppins(
-        color: getTextColor(isDarkMode),
-        fontSize: 35.sp,
+  // Google Sans-like text styles using Inter (default for most UI elements)
+  static TextStyle getGoogleSansHeadingStyle(bool isDarkMode) =>
+      GoogleFonts.inter(
+        color: primaryColor,
+        fontSize: 60.sp,
         fontWeight: FontWeight.w900,
         height: 1,
       );
 
+  static TextStyle getGoogleSansSubheadingStyle(bool isDarkMode) =>
+      GoogleFonts.inter(
+        color: getTextColor(isDarkMode),
+        fontSize: 20.sp,
+        fontWeight: FontWeight.w700,
+        height: 1.2,
+      );
+
+  static TextStyle getGoogleSansButtonTextStyle(bool isDarkMode) =>
+      GoogleFonts.inter(
+        color: getTextSecondaryColor(isDarkMode),
+        fontWeight: FontWeight.w600,
+        fontSize: 14.sp,
+      );
+
+  static TextStyle getGoogleSansBodyStyle(bool isDarkMode) => GoogleFonts.inter(
+    color: getTextColor(isDarkMode),
+    fontSize: 16.sp,
+    fontWeight: FontWeight.w400,
+    height: 1.5,
+  );
+
+  static TextStyle getGoogleSansCaptionStyle(bool isDarkMode) =>
+      GoogleFonts.inter(
+        color: getTextSecondaryColor(isDarkMode),
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w400,
+      );
+
+  // Poppins text styles (kept for specific branding elements)
+  static TextStyle getPoppinsHeadingStyle(bool isDarkMode) =>
+      GoogleFonts.poppins(
+        color: primaryColor,
+        fontSize: 60.sp,
+        fontWeight: FontWeight.w900,
+        height: 1,
+      );
+
+  static TextStyle getPoppinsBrandStyle(bool isDarkMode) => GoogleFonts.poppins(
+    color: primaryColor,
+    fontSize: 24.sp,
+    fontWeight: FontWeight.w700,
+  );
+
+  // Dynamic text styles based on theme (now defaulting to Google Sans)
+  static TextStyle getHeadingStyle(bool isDarkMode) =>
+      getGoogleSansHeadingStyle(isDarkMode);
+
+  static TextStyle getSubheadingStyle(bool isDarkMode) =>
+      getGoogleSansSubheadingStyle(isDarkMode);
+
+  static TextStyle getButtonTextStyle(bool isDarkMode) =>
+      getGoogleSansButtonTextStyle(isDarkMode);
+
+  static TextStyle getOnboardingTitleStyle(bool isDarkMode) =>
+      getGoogleSansSubheadingStyle(
+        isDarkMode,
+      ).copyWith(fontSize: 35.sp, fontWeight: FontWeight.w700);
+
   static TextStyle getOnboardingDescriptionStyle(bool isDarkMode) =>
-      GoogleFonts.poppins(color: getTextColor(isDarkMode), fontSize: 13.sp);
+      getGoogleSansBodyStyle(isDarkMode).copyWith(fontSize: 13.sp);
 
   static TextStyle getLoadingTextStyle(bool isDarkMode) =>
-      GoogleFonts.poppins(color: getTextColor(isDarkMode), fontSize: 16.sp);
+      getGoogleSansBodyStyle(isDarkMode);
 
-  // Legacy static text styles for backward compatibility
-  static final TextStyle headingStyle = GoogleFonts.poppins(
+  // Legacy static text styles for backward compatibility (updated to use Inter)
+  static final TextStyle headingStyle = GoogleFonts.inter(
     color: primaryColor,
     fontSize: 60.sp,
     fontWeight: FontWeight.w900,
     height: 1,
   );
 
-  static final TextStyle subheadingStyle = GoogleFonts.poppins(
+  static final TextStyle subheadingStyle = GoogleFonts.inter(
     color: textColor,
     fontSize: 20.sp,
-    fontWeight: FontWeight.w900,
-    height: 1,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
   );
 
-  static final TextStyle buttonTextStyle = GoogleFonts.poppins(
+  static final TextStyle buttonTextStyle = GoogleFonts.inter(
     color: textSecondaryColor,
-    fontWeight: FontWeight.w900,
+    fontWeight: FontWeight.w600,
     fontSize: 14.sp,
   );
+
+  // Poppins branding styles (for logo, app name, and brand-specific elements)
+  static TextStyle getPoppinsBranding({
+    Color? color,
+    double? fontSize,
+    FontWeight? fontWeight,
+    double? height,
+  }) {
+    return GoogleFonts.poppins(
+      color: color ?? primaryColor,
+      fontSize: fontSize ?? 16.sp,
+      fontWeight: fontWeight ?? FontWeight.w700,
+      height: height,
+    );
+  }
+
+  static TextStyle getPoppinsTitle({
+    Color? color,
+    double? fontSize,
+    FontWeight? fontWeight,
+    double? height,
+  }) {
+    return GoogleFonts.poppins(
+      color: color ?? textColor,
+      fontSize: fontSize ?? 24.sp,
+      fontWeight: fontWeight ?? FontWeight.w800,
+      height: height,
+    );
+  }
+
   // Onboarding styles
   static final TextStyle onboardingTitleStyle = GoogleFonts.poppins(
     color: textColor,

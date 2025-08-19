@@ -68,14 +68,14 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   color: "#ffffff"
-  image: assets/images/logo/logo_dark_png.png
-  branding: assets/images/logo/logo_dark_png.png
+  image: assets/images/logo/logo_box_png.png
+  branding: assets/images/logo/logo_box_png.png
   color_dark: "#000000"
-  image_dark: assets/images/logo/logo_light_png.png
-  branding_dark: assets/images/logo/logo_light_png.png
+  image_dark: assets/images/logo/logo_box_png.png
+  branding_dark: assets/images/logo/logo_box_png.png
   android_12:
-    image: assets/images/logo/logo_dark_png.png
+    image: assets/images/logo/logo_box_png.png
     color: "#ffffff"
-    image_dark: assets/images/logo/logo_light_png.png
+    image_dark: assets/images/logo/logo_box_png.png
     color_dark: "#000000"
   web: false
