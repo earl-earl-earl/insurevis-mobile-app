@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:path_provider/path_provider.dart';
+import '../services/local_storage_service.dart';
 
 class PDFService {
   static Future<String?> generateSingleResultPDF({
@@ -12,10 +13,21 @@ class PDFService {
     try {
       final pdf = pw.Document();
 
-      // Load image for PDF
-      final imageFile = File(imagePath);
-      final imageBytes = await imageFile.readAsBytes();
-      final image = pw.MemoryImage(imageBytes);
+      // Load image for PDF with better error handling
+      pw.ImageProvider? image;
+      try {
+        final imageFile = File(imagePath);
+        if (await imageFile.exists()) {
+          final imageBytes = await imageFile.readAsBytes();
+          image = pw.MemoryImage(imageBytes);
+        } else {
+          print('Warning: Image file does not exist at path: $imagePath');
+          // Continue without image - PDF will still be generated
+        }
+      } catch (e) {
+        print('Warning: Failed to load image for PDF: $e');
+        // Continue without image - PDF will still be generated
+      }
 
       // Extract data from API response
       final overallSeverity =
@@ -29,9 +41,10 @@ class PDFService {
       if (totalCost != 'Not available') {
         try {
           final cost = double.parse(totalCost);
-          formattedCost = '₱${cost.toStringAsFixed(2)}';
+          formattedCost =
+              'PHP ${cost.toStringAsFixed(2)}'; // Use PHP instead of ₱ symbol
         } catch (e) {
-          formattedCost = '₱$totalCost';
+          formattedCost = 'PHP $totalCost';
         }
       }
 
@@ -73,27 +86,57 @@ class PDFService {
               pw.SizedBox(height: 30),
 
               // Image section
-              pw.Container(
-                alignment: pw.Alignment.center,
-                child: pw.Column(
-                  children: [
-                    pw.Text(
-                      'Analyzed Image',
-                      style: pw.TextStyle(
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
+              if (image != null) ...[
+                pw.Container(
+                  alignment: pw.Alignment.center,
+                  child: pw.Column(
+                    children: [
+                      pw.Text(
+                        'Analyzed Image',
+                        style: pw.TextStyle(
+                          fontSize: 16,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    pw.SizedBox(height: 10),
-                    pw.Container(
-                      height: 300,
-                      child: pw.Image(image, fit: pw.BoxFit.contain),
-                    ),
-                  ],
+                      pw.SizedBox(height: 10),
+                      pw.Container(
+                        height: 300,
+                        child: pw.Image(image, fit: pw.BoxFit.contain),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-
-              pw.SizedBox(height: 30),
+                pw.SizedBox(height: 30),
+              ] else ...[
+                pw.Container(
+                  alignment: pw.Alignment.center,
+                  padding: const pw.EdgeInsets.all(20),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey400),
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Column(
+                    children: [
+                      pw.Text(
+                        '[Camera Icon]', // Use text instead of icon
+                        style: pw.TextStyle(
+                          fontSize: 14,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                      pw.SizedBox(height: 10),
+                      pw.Text(
+                        'Image not available for display',
+                        style: pw.TextStyle(
+                          fontSize: 14,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 30),
+              ],
 
               // Assessment summary
               pw.Container(
@@ -200,7 +243,10 @@ class PDFService {
                     ),
                     child: pw.Row(
                       children: [
-                        pw.Text('• ', style: const pw.TextStyle(fontSize: 16)),
+                        pw.Text(
+                          '* ',
+                          style: const pw.TextStyle(fontSize: 16),
+                        ), // Use asterisk instead of bullet
                         pw.Expanded(
                           child: pw.Text(
                             _capitalizeFirst(damageType),
@@ -250,10 +296,11 @@ class PDFService {
 
       return await _savePDF(
         pdf,
-        'damage_assessment_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        'damage_assessment_${DateTime.now().toString().split(' ')[0]}.pdf',
       );
     } catch (e) {
-      // DEBUG: print('Error generating PDF: $e');
+      print('Error generating PDF: $e');
+      print('Stack trace: ${StackTrace.current}');
       return null;
     }
   }
@@ -400,10 +447,11 @@ class PDFService {
 
       return await _savePDF(
         pdf,
-        'multi_damage_assessment_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        'multi_damage_assessment_${DateTime.now().toString().split(' ')[0]}.pdf',
       );
     } catch (e) {
-      // DEBUG: print('Error generating multi-results PDF: $e');
+      print('Error generating multi-results PDF: $e');
+      print('Stack trace: ${StackTrace.current}');
       return null;
     }
   }
@@ -490,13 +538,13 @@ class PDFService {
               }
 
               return pw.Text(
-                '• ${_capitalizeFirst(damageType)}',
+                '* ${_capitalizeFirst(damageType)}', // Use asterisk instead of bullet
                 style: const pw.TextStyle(fontSize: 10),
               );
             }).toList(),
             if (damages.length > 3)
               pw.Text(
-                '• + ${damages.length - 3} more damages',
+                '* + ${damages.length - 3} more damages', // Use asterisk instead of bullet
                 style: pw.TextStyle(
                   fontSize: 10,
                   fontStyle: pw.FontStyle.italic,
@@ -510,36 +558,157 @@ class PDFService {
 
   static Future<String?> _savePDF(pw.Document pdf, String fileName) async {
     try {
-      // Request storage permission
-      final status = await Permission.storage.request();
-      if (!status.isGranted) {
-        // DEBUG: print('Storage permission denied');
-        return null;
+      // Generate PDF bytes
+      final pdfBytes = await pdf.save();
+
+      // Try to save using local storage service first
+      final savedPath = await LocalStorageService.saveFileToDocuments(
+        pdfBytes,
+        fileName,
+      );
+
+      if (savedPath != null) {
+        return savedPath;
       }
 
-      // Get the downloads directory
-      Directory? directory;
-      if (Platform.isAndroid) {
-        directory = Directory('/storage/emulated/0/Download');
-        if (!await directory.exists()) {
-          directory = await getExternalStorageDirectory();
+      // Fallback to manual directory creation if local storage service fails
+      Directory directory;
+
+      // For mobile devices, handle permissions
+      if (Platform.isAndroid || Platform.isIOS) {
+        bool hasPermission = false;
+
+        try {
+          if (Platform.isAndroid) {
+            // For Android 13+, we need storage permissions
+            var status = await Permission.storage.request();
+            hasPermission = status.isGranted;
+
+            // For Android 11+ (API 30+), try manage external storage
+            if (!hasPermission) {
+              status = await Permission.manageExternalStorage.request();
+              hasPermission = status.isGranted;
+            }
+
+            // Also request media permissions for modern Android
+            if (!hasPermission) {
+              final mediaStatus = await Permission.photos.request();
+              hasPermission = mediaStatus.isGranted;
+            }
+          } else if (Platform.isIOS) {
+            // For iOS, request photo library permissions
+            var status = await Permission.photos.request();
+            hasPermission = status.isGranted;
+          }
+        } catch (e) {
+          print('Permission handling error: $e');
+          hasPermission = false;
         }
+
+        if (!hasPermission) {
+          print('Storage permissions not granted');
+          // Continue with fallback to app directory
+        }
+      }
+
+      // Create InsureVis/documents directory in phone storage
+      try {
+        if (Platform.isAndroid) {
+          // Try to get external storage directory first
+          Directory? externalDir;
+          try {
+            externalDir = await getExternalStorageDirectory();
+          } catch (e) {
+            print('Could not get external storage: $e');
+          }
+
+          if (externalDir != null) {
+            // Create InsureVis/documents in external storage
+            directory = Directory(
+              '${externalDir.path}/../../InsureVis/documents',
+            );
+          } else {
+            // Fallback to app documents directory
+            final appDir = await getApplicationDocumentsDirectory();
+            directory = Directory('${appDir.path}/InsureVis/documents');
+          }
+        } else if (Platform.isIOS) {
+          // For iOS, use app documents directory
+          final appDir = await getApplicationDocumentsDirectory();
+          directory = Directory('${appDir.path}/InsureVis/documents');
+        } else {
+          // For desktop platforms, use current directory
+          final currentDir = Directory.current;
+          directory = Directory('${currentDir.path}/generated_pdfs');
+        }
+
+        // Ensure directory exists
+        if (!await directory.exists()) {
+          await directory.create(recursive: true);
+          print('Created InsureVis/documents directory: ${directory.path}');
+        }
+
+        print('Using InsureVis/documents directory: ${directory.path}');
+      } catch (e) {
+        print('Could not create InsureVis/documents directory: $e');
+
+        // Fallback to app documents directory
+        try {
+          final appDir = await getApplicationDocumentsDirectory();
+          directory = Directory('${appDir.path}/PDFs');
+          if (!await directory.exists()) {
+            await directory.create(recursive: true);
+          }
+          print('Using fallback app directory: ${directory.path}');
+        } catch (fallbackError) {
+          print('Fallback directory creation failed: $fallbackError');
+          // Last resort: temp directory
+          directory = Directory.systemTemp.createTempSync('pdf_fallback_');
+          print('Using temporary directory as last resort: ${directory.path}');
+        }
+      }
+
+      // Generate unique filename if file already exists
+      String finalFileName = fileName;
+      int counter = 1;
+      while (await File('${directory.path}/$finalFileName').exists()) {
+        final nameWithoutExtension = fileName.replaceAll('.pdf', '');
+        finalFileName = '${nameWithoutExtension}_$counter.pdf';
+        counter++;
+      }
+
+      final file = File('${directory.path}/$finalFileName');
+
+      // Write file with error handling
+      await file.writeAsBytes(pdfBytes);
+
+      // Verify file was written successfully
+      if (await file.exists() && await file.length() > 0) {
+        print('PDF saved successfully to: ${file.path}');
+        print('PDF size: ${pdfBytes.length} bytes');
+        return file.path;
       } else {
-        directory = await getApplicationDocumentsDirectory();
+        throw Exception('File was not written successfully');
       }
-
-      if (directory == null) {
-        // DEBUG: print('Could not get directory');
-        return null;
-      }
-
-      final file = File('${directory.path}/$fileName');
-      await file.writeAsBytes(await pdf.save());
-
-      // DEBUG: print('PDF saved to: ${file.path}');
-      return file.path;
     } catch (e) {
-      // DEBUG: print('Error saving PDF: $e');
+      print('Error saving PDF: $e');
+      print('Stack trace: ${StackTrace.current}');
+
+      // Last resort: try system temp directory
+      try {
+        print('Attempting fallback save to system temp...');
+        final tempDir = Directory.systemTemp.createTempSync('pdf_fallback_');
+        final fallbackFile = File('${tempDir.path}/$fileName');
+        await fallbackFile.writeAsBytes(await pdf.save());
+
+        if (await fallbackFile.exists()) {
+          print('Fallback save successful: ${fallbackFile.path}');
+          return fallbackFile.path;
+        }
+      } catch (fallbackError) {
+        print('Fallback save also failed: $fallbackError');
+      }
+
       return null;
     }
   }

@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/providers/notification_provider.dart';
+import 'package:insurevis/other-screens/vehicle_verification_screen.dart';
 import 'package:file_picker/file_picker.dart';
 
 class DocumentsScreen extends StatefulWidget {
@@ -81,6 +82,11 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
                   // Insurance Company Selection
                   _buildInsuranceCompanyDropdown(),
+
+                  SizedBox(height: 30.h),
+
+                  // Vehicle Verification Button
+                  _buildVehicleVerificationButton(),
 
                   SizedBox(height: 30.h),
 
@@ -579,5 +585,74 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       default:
         return Icons.insert_drive_file;
     }
+  }
+
+  Widget _buildVehicleVerificationButton() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.blue.withAlpha(26),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.withAlpha(77)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.verified_user, color: Colors.blue, size: 24.sp),
+              SizedBox(width: 12.w),
+              Text(
+                'Vehicle Verification',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            'Verify your vehicle information with the manufacturer before submitting documents',
+            style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+          ),
+          SizedBox(height: 16.h),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const VehicleVerificationScreen(),
+                  ),
+                );
+              },
+              style: ButtonStyle(
+                backgroundColor: WidgetStatePropertyAll(Colors.blue),
+                padding: WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(vertical: 12.h),
+                ),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              child: Text(
+                'Verify Vehicle',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -2,11 +2,12 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class EnhancedPDFService {
   static const String _reportVersion = '2.0';
@@ -25,9 +26,19 @@ class EnhancedPDFService {
     try {
       final pdf = pw.Document();
 
-      // Load custom fonts and assets
-      final logoBytes = await _loadAsset('assets/images/app_logo.png');
-      final logoImage = logoBytes != null ? pw.MemoryImage(logoBytes) : null;
+      // Load custom fonts and assets with better error handling
+      pw.ImageProvider? logoImage;
+      try {
+        final logoBytes = await _loadAsset('assets/images/app_logo.png');
+        if (logoBytes != null) {
+          logoImage = pw.MemoryImage(logoBytes);
+        } else {
+          print('Logo asset not found, continuing without logo');
+        }
+      } catch (e) {
+        print('Failed to load logo asset: $e');
+        // Continue without logo
+      }
 
       // Generate pages based on template
       switch (template) {
@@ -61,7 +72,7 @@ class EnhancedPDFService {
 
       return await _savePDF(
         pdf,
-        'assessment_report_${DateTime.now().millisecondsSinceEpoch}',
+        'assessment_report_${DateTime.now().toString().split(' ')[0]}',
       );
     } catch (e) {
       print('Error generating PDF: $e');
@@ -329,18 +340,21 @@ class EnhancedPDFService {
     pw.TextStyle captionStyle,
     bool includePhotos,
   ) async {
-    final imagePath = assessment['imagePath'] ?? '';
+    final imagePath = assessment['imagePath'] ?? assessment['image_path'] ?? '';
     pw.ImageProvider? image;
 
     if (includePhotos && imagePath.isNotEmpty) {
       try {
-        final imageFile = File(imagePath);
+        final imageFile = File(imagePath.toString());
         if (await imageFile.exists()) {
           final imageBytes = await imageFile.readAsBytes();
           image = pw.MemoryImage(imageBytes);
+        } else {
+          print('Warning: Image file not found at path: $imagePath');
         }
       } catch (e) {
         print('Error loading image for PDF: $e');
+        // Continue without image
       }
     }
 
@@ -850,6 +864,26 @@ class EnhancedPDFService {
           if (logo != null) ...[
             pw.Container(width: 30, height: 30, child: pw.Image(logo)),
             pw.SizedBox(width: 10),
+          ] else ...[
+            pw.Container(
+              width: 30,
+              height: 30,
+              decoration: pw.BoxDecoration(
+                color: PdfColors.blue300,
+                borderRadius: pw.BorderRadius.circular(4),
+              ),
+              child: pw.Center(
+                child: pw.Text(
+                  'IV',
+                  style: pw.TextStyle(
+                    color: PdfColors.white,
+                    fontSize: 12,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            pw.SizedBox(width: 10),
           ],
           pw.Expanded(
             child: pw.Text(
@@ -1065,10 +1099,111 @@ InsureVis Team
 
   static Future<String?> _savePDF(pw.Document pdf, String filename) async {
     try {
-      final output = await getApplicationDocumentsDirectory();
-      final file = File('${output.path}/$filename.pdf');
+      Directory outputDir;
+
+      // For mobile devices, handle permissions
+      if (Platform.isAndroid || Platform.isIOS) {
+        bool hasPermission = false;
+
+        try {
+          if (Platform.isAndroid) {
+            // For Android 13+, we need storage permissions
+            var status = await Permission.storage.request();
+            hasPermission = status.isGranted;
+
+            // For Android 11+ (API 30+), try manage external storage
+            if (!hasPermission) {
+              status = await Permission.manageExternalStorage.request();
+              hasPermission = status.isGranted;
+            }
+
+            // Also request media permissions for modern Android
+            if (!hasPermission) {
+              final mediaStatus = await Permission.photos.request();
+              hasPermission = mediaStatus.isGranted;
+            }
+          } else if (Platform.isIOS) {
+            // For iOS, request photo library permissions
+            var status = await Permission.photos.request();
+            hasPermission = status.isGranted;
+          }
+        } catch (e) {
+          print('Permission handling error: $e');
+          hasPermission = false;
+        }
+
+        if (!hasPermission) {
+          print('Storage permissions not granted');
+          // Continue with fallback to app directory
+        }
+      }
+
+      // Create InsureVis/documents directory in phone storage
+      try {
+        if (Platform.isAndroid) {
+          // Try to get external storage directory first
+          Directory? externalDir;
+          try {
+            externalDir = await getExternalStorageDirectory();
+          } catch (e) {
+            print('Could not get external storage: $e');
+          }
+
+          if (externalDir != null) {
+            // Create InsureVis/documents in external storage
+            outputDir = Directory(
+              '${externalDir.path}/../../InsureVis/documents',
+            );
+          } else {
+            // Fallback to app documents directory
+            final appDir = await getApplicationDocumentsDirectory();
+            outputDir = Directory('${appDir.path}/InsureVis/documents');
+          }
+        } else if (Platform.isIOS) {
+          // For iOS, use app documents directory
+          final appDir = await getApplicationDocumentsDirectory();
+          outputDir = Directory('${appDir.path}/InsureVis/documents');
+        } else {
+          // For desktop platforms, use current directory
+          final currentDir = Directory.current;
+          outputDir = Directory('${currentDir.path}/generated_pdfs');
+        }
+
+        // Ensure directory exists
+        if (!await outputDir.exists()) {
+          await outputDir.create(recursive: true);
+          print('Created InsureVis/documents directory: ${outputDir.path}');
+        }
+
+        print('Using InsureVis/documents directory: ${outputDir.path}');
+      } catch (e) {
+        print('Could not create InsureVis/documents directory: $e');
+
+        // Fallback to app documents directory
+        try {
+          final appDir = await getApplicationDocumentsDirectory();
+          outputDir = Directory('${appDir.path}/PDFs');
+          if (!await outputDir.exists()) {
+            await outputDir.create(recursive: true);
+          }
+          print('Using fallback app directory: ${outputDir.path}');
+        } catch (fallbackError) {
+          print('Fallback directory creation failed: $fallbackError');
+          // Last resort: temp directory
+          outputDir = Directory.systemTemp.createTempSync('pdf_fallback_');
+          print('Using temporary directory as last resort: ${outputDir.path}');
+        }
+      }
+
+      final file = File('${outputDir.path}/$filename.pdf');
       await file.writeAsBytes(await pdf.save());
-      return file.path;
+
+      if (await file.exists()) {
+        print('PDF saved successfully: ${file.path}');
+        return file.path;
+      } else {
+        throw Exception('File was not created');
+      }
     } catch (e) {
       print('Error saving PDF: $e');
       return null;

@@ -3,8 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../models/assessment_model.dart';
 
 class EnhancedPDFService {
@@ -62,7 +63,7 @@ class EnhancedPDFService {
       ),
     );
 
-    return _savePDF(pdf, 'summary_report_${now.millisecondsSinceEpoch}');
+    return _savePDF(pdf, 'summary_report_${now.toString().split(' ')[0]}');
   }
 
   Future<String> _generateInsuranceReport(
@@ -92,7 +93,7 @@ class EnhancedPDFService {
       ),
     );
 
-    return _savePDF(pdf, 'insurance_report_${now.millisecondsSinceEpoch}');
+    return _savePDF(pdf, 'insurance_report_${now.toString().split(' ')[0]}');
   }
 
   Future<String> _generateTechnicalReport(
@@ -122,7 +123,7 @@ class EnhancedPDFService {
       ),
     );
 
-    return _savePDF(pdf, 'technical_report_${now.millisecondsSinceEpoch}');
+    return _savePDF(pdf, 'technical_report_${now.toString().split(' ')[0]}');
   }
 
   pw.Widget _buildHeader() {
@@ -279,6 +280,20 @@ class EnhancedPDFService {
   }
 
   pw.Widget _buildAssessmentOverview(List<Assessment> assessments) {
+    if (assessments.isEmpty) {
+      return pw.Container(
+        padding: const pw.EdgeInsets.all(16),
+        decoration: pw.BoxDecoration(
+          color: PdfColors.grey100,
+          borderRadius: pw.BorderRadius.circular(8),
+        ),
+        child: pw.Text(
+          'No assessments available',
+          style: pw.TextStyle(fontSize: 12, fontStyle: pw.FontStyle.italic),
+        ),
+      );
+    }
+
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -290,19 +305,23 @@ class EnhancedPDFService {
         pw.Table.fromTextArray(
           headers: ['ID', 'Date', 'Status', 'Results'],
           data:
-              assessments
-                  .map(
-                    (assessment) => [
-                      assessment.id,
-                      assessment.timestamp.toString().split(' ')[0],
-                      assessment.status.name.toUpperCase(),
-                      assessment.results != null ? 'Available' : 'N/A',
-                    ],
-                  )
-                  .toList(),
+              assessments.map((assessment) {
+                // Safely handle potentially null values
+                final id = assessment.id.isNotEmpty ? assessment.id : 'Unknown';
+                final date = assessment.timestamp.toString().split(' ').first;
+                final status = assessment.status.name.toUpperCase();
+                final results =
+                    assessment.results != null ? 'Available' : 'N/A';
+
+                return [id, date, status, results];
+              }).toList(),
           border: pw.TableBorder.all(),
           headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
           cellAlignment: pw.Alignment.centerLeft,
+          cellPadding: const pw.EdgeInsets.all(8),
+          rowDecoration: pw.BoxDecoration(
+            border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300)),
+          ),
         ),
       ],
     );
@@ -343,10 +362,118 @@ class EnhancedPDFService {
   Future<String> _savePDF(pw.Document pdf, String filename) async {
     try {
       final bytes = await pdf.save();
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$filename.pdf');
+      Directory dir;
+
+      // For mobile devices, handle permissions
+      if (Platform.isAndroid || Platform.isIOS) {
+        bool hasPermission = false;
+
+        try {
+          if (Platform.isAndroid) {
+            // For Android 13+, we need storage permissions
+            var status = await Permission.storage.request();
+            hasPermission = status.isGranted;
+
+            // For Android 11+ (API 30+), try manage external storage
+            if (!hasPermission) {
+              status = await Permission.manageExternalStorage.request();
+              hasPermission = status.isGranted;
+            }
+
+            // Also request media permissions for modern Android
+            if (!hasPermission) {
+              final mediaStatus = await Permission.photos.request();
+              hasPermission = mediaStatus.isGranted;
+            }
+          } else if (Platform.isIOS) {
+            // For iOS, request photo library permissions
+            var status = await Permission.photos.request();
+            hasPermission = status.isGranted;
+          }
+        } catch (e) {
+          print('Permission handling error: $e');
+          hasPermission = false;
+        }
+
+        if (!hasPermission) {
+          print('Storage permissions not granted');
+          // Continue with fallback to app directory
+        }
+      }
+
+      // Create InsureVis/documents directory in phone storage
+      try {
+        if (Platform.isAndroid) {
+          // Try to get external storage directory first
+          Directory? externalDir;
+          try {
+            externalDir = await getExternalStorageDirectory();
+          } catch (e) {
+            print('Could not get external storage: $e');
+          }
+
+          if (externalDir != null) {
+            // Create InsureVis/documents in external storage
+            dir = Directory('${externalDir.path}/../../InsureVis/documents');
+          } else {
+            // Fallback to app documents directory
+            final appDir = await getApplicationDocumentsDirectory();
+            dir = Directory('${appDir.path}/InsureVis/documents');
+          }
+        } else if (Platform.isIOS) {
+          // For iOS, use app documents directory
+          final appDir = await getApplicationDocumentsDirectory();
+          dir = Directory('${appDir.path}/InsureVis/documents');
+        } else {
+          // For desktop platforms, use current directory
+          final currentDir = Directory.current;
+          dir = Directory('${currentDir.path}/generated_pdfs');
+        }
+
+        // Ensure directory exists
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+          print('Created InsureVis/documents directory: ${dir.path}');
+        }
+
+        print('Using InsureVis/documents directory: ${dir.path}');
+      } catch (e) {
+        print('Could not create InsureVis/documents directory: $e');
+
+        // Fallback to app documents directory
+        try {
+          final appDir = await getApplicationDocumentsDirectory();
+          dir = Directory('${appDir.path}/PDFs');
+          if (!await dir.exists()) {
+            await dir.create(recursive: true);
+          }
+          print('Using fallback app directory: ${dir.path}');
+        } catch (fallbackError) {
+          print('Fallback directory creation failed: $fallbackError');
+          // Last resort: temp directory
+          dir = Directory.systemTemp.createTempSync('pdf_fallback_');
+          print('Using temporary directory as last resort: ${dir.path}');
+        }
+      }
+
+      // Generate unique filename if file exists
+      String finalFilename = filename;
+      int counter = 1;
+      while (await File('${dir.path}/$finalFilename.pdf').exists()) {
+        finalFilename = '${filename}_$counter';
+        counter++;
+      }
+
+      final file = File('${dir.path}/$finalFilename.pdf');
       await file.writeAsBytes(bytes);
-      return file.path;
+
+      // Verify file was written
+      if (await file.exists() && await file.length() > 0) {
+        print('PDF saved successfully: ${file.path}');
+        return file.path;
+      } else {
+        throw Exception('File verification failed');
+      }
     } catch (e) {
       debugPrint('Error saving PDF: $e');
       rethrow;

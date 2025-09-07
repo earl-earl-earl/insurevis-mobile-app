@@ -6,7 +6,7 @@ import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/providers/auth_provider.dart';
 import 'package:insurevis/onboarding/app_onboarding_page.dart';
 import 'package:insurevis/main-screens/main_container.dart';
-import 'package:insurevis/login-signup/email_verification_screen.dart';
+import 'package:insurevis/services/local_storage_service.dart';
 
 /// App initialization screen that handles authentication state,
 /// preloads assets, and determines which screen to show on app startup
@@ -70,11 +70,31 @@ class AppInitializerState extends State<AppInitializer>
   /// Start the complete loading process
   Future<void> _startLoadingProcess() async {
     try {
-      // Step 1: Preload assets
+      // Step 1: Initialize app folders
+      setState(() {
+        _loadingStatus = "Setting up app folders...";
+        _loadingProgress = 0.1;
+      });
+      await _initializeAppFolders();
+
+      // Step 2: Preload assets
+      setState(() {
+        _loadingStatus = "Loading assets...";
+        _loadingProgress = 0.4;
+      });
       await _preloadAssets();
 
-      // Step 2: Initialize authentication
+      // Step 3: Initialize authentication
+      setState(() {
+        _loadingStatus = "Initializing authentication...";
+        _loadingProgress = 0.8;
+      });
       await _initializeAuth();
+
+      setState(() {
+        _loadingStatus = "Ready!";
+        _loadingProgress = 1.0;
+      });
 
       // Wait a minimum amount of time for smooth UX
       await Future.delayed(const Duration(milliseconds: 500));
@@ -134,6 +154,21 @@ class AppInitializerState extends State<AppInitializer>
     }
   }
 
+  /// Initialize app folder structure
+  Future<void> _initializeAppFolders() async {
+    try {
+      final success = await LocalStorageService.initializeAppFolders();
+      if (success) {
+        print('App folders initialized successfully');
+      } else {
+        print('Warning: App folders initialization failed, but continuing...');
+      }
+    } catch (e) {
+      print('Error during folder initialization: $e');
+      // Don't throw error - this shouldn't prevent app from starting
+    }
+  }
+
   /// Initialize authentication
   Future<void> _initializeAuth() async {
     if (mounted) {
@@ -146,10 +181,12 @@ class AppInitializerState extends State<AppInitializer>
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     try {
+      // Initialize auth provider
       await authProvider.initialize();
 
       if (mounted) {
         setState(() {
+          _loadingStatus = "Authentication initialized";
           _authInitialized = true;
           _loadingProgress = 1.0;
           _loadingStatus = "Ready!";
@@ -169,24 +206,11 @@ class AppInitializerState extends State<AppInitializer>
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     if (authProvider.isLoggedIn) {
-      if (authProvider.isEmailVerified) {
-        // User is logged in and verified - go to home
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainContainer()),
-        );
-      } else {
-        // User is logged in but not verified - go to verification screen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder:
-                (context) => EmailVerificationScreen(
-                  email: authProvider.currentUser?.email ?? '',
-                ),
-          ),
-        );
-      }
+      // User is logged in - go to home
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainContainer()),
+      );
     } else {
       // User is not logged in - go to onboarding screen
       Navigator.pushReplacement(

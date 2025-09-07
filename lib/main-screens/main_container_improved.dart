@@ -1178,32 +1178,39 @@ class _MainContainerState extends State<MainContainer>
     );
   }
 
-  // Simple material-like bottom navigation
+  // Simple material-like bottom navigation without ripple effect
   Widget _buildEnhancedBottomNav() {
-    return BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      onTap: _onItemTapped,
-      backgroundColor: GlobalStyles.backgroundColorStart,
-      selectedItemColor: GlobalStyles.primaryColor,
-      unselectedItemColor: Colors.white54,
-      type: BottomNavigationBarType.fixed,
-      elevation: 8,
-      items: [
-        _buildBottomNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
-        _buildBottomNavItem(
-          1,
-          Icons.access_time_outlined,
-          Icons.access_time,
-          'Status',
-        ),
-        _buildBottomNavItem(
-          2,
-          Icons.history_outlined,
-          Icons.history,
-          'History',
-        ),
-        _buildBottomNavItem(3, Icons.person_outline, Icons.person, 'Profile'),
-      ],
+    return Theme(
+      data: Theme.of(context).copyWith(
+        splashFactory: NoSplash.splashFactory,
+        highlightColor: Colors.transparent,
+        splashColor: Colors.transparent,
+      ),
+      child: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        backgroundColor: GlobalStyles.backgroundColorStart,
+        selectedItemColor: GlobalStyles.primaryColor,
+        unselectedItemColor: Colors.white54,
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+        items: [
+          _buildBottomNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
+          _buildBottomNavItem(
+            1,
+            Icons.access_time_outlined,
+            Icons.access_time,
+            'Status',
+          ),
+          _buildBottomNavItem(
+            2,
+            Icons.history_outlined,
+            Icons.history,
+            'History',
+          ),
+          _buildBottomNavItem(3, Icons.person_outline, Icons.person, 'Profile'),
+        ],
+      ),
     );
   }
 

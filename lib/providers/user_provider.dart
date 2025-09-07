@@ -6,10 +6,11 @@ class UserProfile {
   final String name;
   final String email;
   final String? phone;
-  final String? profileImageUrl;
-  final DateTime joinDate;
-  final bool isEmailVerified;
-  final Map<String, dynamic> preferences;
+  final String? address;
+  final String role;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
   final UserStats stats;
 
   UserProfile({
@@ -17,10 +18,11 @@ class UserProfile {
     required this.name,
     required this.email,
     this.phone,
-    this.profileImageUrl,
-    required this.joinDate,
-    this.isEmailVerified = false,
-    this.preferences = const {},
+    this.address,
+    this.role = 'user',
+    this.isActive = true,
+    required this.createdAt,
+    required this.updatedAt,
     required this.stats,
   });
 
@@ -29,10 +31,11 @@ class UserProfile {
     String? name,
     String? email,
     String? phone,
-    String? profileImageUrl,
-    DateTime? joinDate,
-    bool? isEmailVerified,
-    Map<String, dynamic>? preferences,
+    String? address,
+    String? role,
+    bool? isActive,
+    DateTime? createdAt,
+    DateTime? updatedAt,
     UserStats? stats,
   }) {
     return UserProfile(
@@ -40,10 +43,11 @@ class UserProfile {
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
-      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      joinDate: joinDate ?? this.joinDate,
-      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
-      preferences: preferences ?? this.preferences,
+      address: address ?? this.address,
+      role: role ?? this.role,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       stats: stats ?? this.stats,
     );
   }
@@ -54,10 +58,11 @@ class UserProfile {
       'name': name,
       'email': email,
       'phone': phone,
-      'profileImageUrl': profileImageUrl,
-      'joinDate': joinDate.toIso8601String(),
-      'isEmailVerified': isEmailVerified,
-      'preferences': preferences,
+      'address': address,
+      'role': role,
+      'is_active': isActive,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
       'stats': stats.toJson(),
     };
   }
@@ -83,15 +88,20 @@ class UserProfile {
       name: json['name'],
       email: json['email'],
       phone: json['phone'],
-      profileImageUrl: json['profile_image_url'] ?? json['profileImageUrl'],
-      joinDate: DateTime.parse(
-        json['join_date'] ??
+      address: json['address'],
+      role: json['role'] ?? 'user',
+      isActive: json['is_active'] ?? json['isActive'] ?? true,
+      createdAt: DateTime.parse(
+        json['created_at'] ??
+            json['createdAt'] ??
             json['joinDate'] ??
             DateTime.now().toIso8601String(),
       ),
-      isEmailVerified:
-          json['is_email_verified'] ?? json['isEmailVerified'] ?? false,
-      preferences: Map<String, dynamic>.from(json['preferences'] ?? {}),
+      updatedAt: DateTime.parse(
+        json['updated_at'] ??
+            json['updatedAt'] ??
+            DateTime.now().toIso8601String(),
+      ),
       stats:
           userStats.isNotEmpty
               ? UserStats.fromJson(userStats)
@@ -223,7 +233,7 @@ class UserProvider with ChangeNotifier {
     String? name,
     String? email,
     String? phone,
-    String? profileImageUrl,
+    String? address,
   }) async {
     if (_currentUser == null) return;
 
@@ -235,7 +245,8 @@ class UserProvider with ChangeNotifier {
         name: name,
         email: email,
         phone: phone,
-        profileImageUrl: profileImageUrl,
+        address: address,
+        updatedAt: DateTime.now(),
       );
 
       await _saveUserProfile();
@@ -244,25 +255,6 @@ class UserProvider with ChangeNotifier {
     } catch (e) {
       _error = 'Failed to update profile: $e';
       _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Update user preferences
-  Future<void> updatePreferences(Map<String, dynamic> newPreferences) async {
-    if (_currentUser == null) return;
-
-    try {
-      final updatedPreferences = Map<String, dynamic>.from(
-        _currentUser!.preferences,
-      );
-      updatedPreferences.addAll(newPreferences);
-
-      _currentUser = _currentUser!.copyWith(preferences: updatedPreferences);
-      await _saveUserProfile();
-      notifyListeners();
-    } catch (e) {
-      _error = 'Failed to update preferences: $e';
       notifyListeners();
     }
   }
@@ -358,28 +350,25 @@ class UserProvider with ChangeNotifier {
   }
 
   Map<String, dynamic> _getDemoUserData() {
+    final now = DateTime.now();
+    final joinDate = now.subtract(const Duration(days: 90));
+
     return {
       'id': 'user_001',
       'name': 'John Doe',
       'email': 'john.doe@email.com',
       'phone': '+63 912 345 6789',
-      'profileImageUrl': null,
-      'joinDate':
-          DateTime.now().subtract(const Duration(days: 90)).toIso8601String(),
-      'isEmailVerified': true,
-      'preferences': {
-        'notifications': true,
-        'darkMode': false,
-        'language': 'en',
-        'autoSync': true,
-        'biometricLogin': true,
-      },
+      'address': '123 Main St, Quezon City, Philippines',
+      'role': 'user',
+      'is_active': true,
+      'created_at': joinDate.toIso8601String(),
+      'updated_at': now.toIso8601String(),
       'stats': {
         'totalAssessments': 12,
         'completedAssessments': 10,
         'documentsSubmitted': 8,
         'totalSaved': 45000.0,
-        'lastActiveDate': DateTime.now().toIso8601String(),
+        'lastActiveDate': now.toIso8601String(),
       },
     };
   }

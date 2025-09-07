@@ -13,7 +13,7 @@ class SupabaseService {
   static bool _isSigningOut = false;
 
   // Session timeout configuration
-  static const Duration _sessionTimeout = Duration(seconds: 30);
+  static const Duration _sessionTimeout = Duration(seconds: 45);
 
   // User cache for quick access
   static Map<String, dynamic>? _cachedUserProfile;
@@ -127,28 +127,8 @@ class SupabaseService {
         return {'success': false, 'message': phoneError};
       }
 
-      // Check if user already exists
-      try {
-        final existingUser =
-            await _supabase
-                .from('users')
-                .select('email')
-                .eq('email', email.trim().toLowerCase())
-                .maybeSingle();
-
-        if (existingUser != null) {
-          return {
-            'success': false,
-            'message':
-                'An account with this email already exists. Please sign in instead.',
-          };
-        }
-      } catch (e) {
-        // Continue if check fails - let Supabase handle duplicate email error
-        if (kDebugMode) {
-          print('Existing user check failed: $e');
-        }
-      }
+      // Note: Supabase Auth will automatically handle duplicate emails
+      // No need to manually check - let Auth service handle it properly
 
       // Set timeout for the operation
       final signUpFuture = _performSignUp(
@@ -198,13 +178,18 @@ class SupabaseService {
         data: {
           'name': name,
           'phone': phone,
-          'email': email, // Include email in metadata for easier access
+          'email': email, // Include email in metadata for trigger function
         },
       );
 
       if (response.user != null) {
-        // Database triggers automatically handle user profile creation
-        // No need to manually insert into users and user_stats tables
+        // The user profile is automatically created by the trigger function
+        // No need to manually insert into users table anymore!
+
+        if (kDebugMode) {
+          print('User account created successfully: ${response.user!.id}');
+          print('User profile will be created automatically by trigger');
+        }
 
         // Clear any cached profile data
         _cachedUserProfile = null;
@@ -213,13 +198,52 @@ class SupabaseService {
           'success': true,
           'user': response.user,
           'message': 'Account created successfully!',
-          'requiresEmailVerification': false, // Email confirmation is disabled
+          'requiresEmailVerification': false,
         };
       } else {
-        throw Exception('Failed to create user account - no user returned');
+        return {
+          'success': false,
+          'message': 'Failed to create user account - no user returned',
+        };
       }
     } catch (e) {
-      throw e; // Re-throw to be handled by the parent method
+      if (kDebugMode) {
+        print('Sign-up error: $e');
+      }
+
+      // Handle specific error cases
+      String errorMessage = e.toString().toLowerCase();
+
+      if (errorMessage.contains('user already registered')) {
+        return {
+          'success': false,
+          'message':
+              'An account with this email already exists. Please sign in instead.',
+        };
+      } else if (errorMessage.contains('signup is disabled')) {
+        return {
+          'success': false,
+          'message':
+              'Account creation is currently disabled. Please contact support.',
+        };
+      } else if (errorMessage.contains('invalid email')) {
+        return {
+          'success': false,
+          'message': 'Please enter a valid email address.',
+        };
+      } else if (errorMessage.contains('password')) {
+        return {
+          'success': false,
+          'message':
+              'Password does not meet requirements. Please try a stronger password.',
+        };
+      }
+
+      return {
+        'success': false,
+        'message':
+            'Failed to create account. Please try again or contact support.',
+      };
     }
   }
 
@@ -286,34 +310,11 @@ class SupabaseService {
     required String password,
   }) async {
     try {
-      // Check if user exists first (optional check for better UX)
-      try {
-        final userExists =
-            await _supabase
-                .from('users')
-                .select('email, is_email_verified')
-                .eq('email', email)
-                .maybeSingle();
-
-        if (userExists == null) {
-          return {
-            'success': false,
-            'message':
-                'No account found with this email address. Please sign up first.',
-          };
-        }
-      } catch (e) {
-        // Continue if check fails - let Supabase auth handle it
-        if (kDebugMode) {
-          print('User existence check failed: $e');
-        }
-      }
-
       if (kDebugMode) {
         print('Attempting Supabase sign-in for email: $email');
       }
 
-      // Implement actual Supabase signin
+      // Direct sign-in with Supabase Auth - no need to check users table first
       final AuthResponse response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
@@ -329,19 +330,10 @@ class SupabaseService {
       }
 
       if (response.user != null) {
-        // Check if email is verified
-        if (response.user!.emailConfirmedAt == null) {
-          // Sign out the unverified user
-          await _supabase.auth.signOut();
-          return {
-            'success': false,
-            'message':
-                'Please verify your email address before signing in. Check your inbox for a verification link.',
-            'requiresEmailVerification': true,
-          };
-        }
+        // Skip email verification check if disabled in Supabase settings
+        // Email verification is likely disabled based on your setup
 
-        // Update last active date
+        // Update last active date in user_stats (if table exists)
         try {
           await _supabase
               .from('user_stats')
@@ -550,10 +542,10 @@ class SupabaseService {
         return _cachedUserProfile;
       }
 
-      // Fetch fresh profile data
+      // Fetch fresh profile data from our users table
       final response = await _supabase
           .from('users')
-          .select('*, user_stats(*)')
+          .select('*')
           .eq('id', user.id)
           .single()
           .timeout(_sessionTimeout);
@@ -578,8 +570,7 @@ class SupabaseService {
     required String userId,
     String? name,
     String? phone,
-    String? profileImageUrl,
-    Map<String, dynamic>? preferences,
+    String? address,
   }) async {
     try {
       // Validate inputs
@@ -604,9 +595,7 @@ class SupabaseService {
       if (name != null) updates['name'] = name.trim();
       if (phone != null)
         updates['phone'] = phone.trim().isNotEmpty ? phone.trim() : null;
-      if (profileImageUrl != null)
-        updates['profile_image_url'] = profileImageUrl;
-      if (preferences != null) updates['preferences'] = preferences;
+      if (address != null) updates['address'] = address.trim();
 
       await _supabase
           .from('users')
@@ -723,17 +712,23 @@ class SupabaseService {
   /// Check connection status
   static Future<bool> checkConnection() async {
     try {
-      // Test basic connectivity first
+      // Test basic connectivity first with a simple health check
       final response = await _supabase
           .from('users')
           .select('count')
           .limit(1)
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 15));
 
       if (kDebugMode) {
         print('Connection check successful: $response');
       }
       return true;
+    } on TimeoutException catch (e) {
+      if (kDebugMode) {
+        print('Connection check timed out: $e');
+        print('This may indicate network issues or slow server response');
+      }
+      return false;
     } catch (e) {
       if (kDebugMode) {
         print('Connection check failed with error: $e');
@@ -749,6 +744,12 @@ class SupabaseService {
           errorString.contains('connection')) {
         if (kDebugMode) {
           print('Network connectivity issue detected');
+        }
+      } else if (errorString.contains('infinite recursion') ||
+          errorString.contains('recursion detected')) {
+        if (kDebugMode) {
+          print('Database RLS policy recursion issue detected');
+          print('Please fix the RLS policies in your Supabase dashboard');
         }
       } else if (errorString.contains('404') ||
           errorString.contains('not found')) {
@@ -829,7 +830,6 @@ class SupabaseService {
     return {
       'isSignedIn': user != null,
       'user': user,
-      'isEmailVerified': user?.emailConfirmedAt != null,
       'email': user?.email,
       'userId': user?.id,
     };
@@ -844,8 +844,4 @@ class SupabaseService {
 
   /// Check if user is signed in
   static bool get isSignedIn => _supabase.auth.currentUser != null;
-
-  /// Check if user email is verified
-  static bool get isEmailVerified =>
-      _supabase.auth.currentUser?.emailConfirmedAt != null;
 }

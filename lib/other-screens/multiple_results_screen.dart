@@ -5,9 +5,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/other-screens/result_screen.dart';
+import 'package:insurevis/other-screens/pdf_assessment_view.dart';
+import 'package:insurevis/other-screens/insurance_document_upload.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
-import 'package:insurevis/utils/pdf_service.dart';
 import 'package:insurevis/utils/network_helper.dart';
 
 class MultipleResultsScreen extends StatefulWidget {
@@ -29,8 +30,6 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       {}; // Track expanded state for each card
   final Map<String, Widget> _cachedImages = {}; // Cache for image widgets
   bool _isUploading = false;
-  bool _allUploaded = false;
-  bool _isGeneratingPdf = false;
   @override
   void initState() {
     super.initState();
@@ -58,66 +57,8 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
           ),
         ),
       ),
-      bottomNavigationBar:
-          _allUploaded
-              ? Container(
-                color: GlobalStyles.backgroundColorEnd,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                child: ElevatedButton(
-                  onPressed: _isGeneratingPdf ? null : _downloadMultiplePdf,
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStatePropertyAll(
-                      _isGeneratingPdf
-                          ? Colors.grey
-                          : GlobalStyles.primaryColor,
-                    ),
-                    padding: const WidgetStatePropertyAll(
-                      EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                    ),
-                    shape: WidgetStatePropertyAll(
-                      RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                    ),
-                  ),
-                  child:
-                      _isGeneratingPdf
-                          ? const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                "Generating PDF...",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
-                          )
-                          : const Text(
-                            "Download PDF",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                ),
-              )
-              : null,
+      // Download PDF button removed
+      bottomNavigationBar: null,
       body: Container(
         height: double.infinity,
         decoration: BoxDecoration(
@@ -131,7 +72,10 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
           ),
         ),
         child: SafeArea(
-          child: _isUploading ? _buildLoadingView() : _buildResultsView(),
+          child:
+              _isUploading
+                  ? _buildLoadingView()
+                  : _buildResultsViewWithFixedButtons(),
         ),
       ),
     );
@@ -169,49 +113,152 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     );
   }
 
-  Widget _buildResultsView() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Analysis Complete',
-            style: TextStyle(
-              fontSize: 24.sp,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+  Widget _buildResultsViewWithFixedButtons() {
+    return Column(
+      children: [
+        // Scrollable content takes up available space
+        Expanded(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(16.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Analysis Complete',
+                  style: TextStyle(
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  '${widget.imagePaths.length} images analyzed',
+                  style: TextStyle(fontSize: 14.sp, color: Colors.white70),
+                ),
+                SizedBox(height: 24.h),
+
+                // Results list
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: widget.imagePaths.length,
+                  itemBuilder: (context, index) {
+                    final imagePath = widget.imagePaths[index];
+                    final status = _uploadResults[imagePath];
+                    final assessmentId = _assessmentIds[imagePath];
+                    return _buildResultCard(
+                      imagePath,
+                      index + 1,
+                      status,
+                      assessmentId,
+                      _apiResponses[imagePath],
+                    );
+                  },
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 8.h),
-          Text(
-            '${widget.imagePaths.length} images analyzed',
-            style: TextStyle(fontSize: 14.sp, color: Colors.white70),
-          ),
-          SizedBox(height: 24.h),
+        ),
 
-          // Results list
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: widget.imagePaths.length,
-            itemBuilder: (context, index) {
-              final imagePath = widget.imagePaths[index];
-              final status = _uploadResults[imagePath];
-              final assessmentId = _assessmentIds[imagePath];
-              return _buildResultCard(
-                imagePath,
-                index + 1,
-                status,
-                assessmentId,
-                _apiResponses[imagePath],
+        // Fixed buttons at the bottom
+        Container(
+          padding: EdgeInsets.all(16.w),
+          decoration: BoxDecoration(
+            color: GlobalStyles.backgroundColorStart.withValues(alpha: 0.95),
+            border: Border(
+              top: BorderSide(
+                color: Colors.white.withValues(alpha: 0.1),
+                width: 1,
+              ),
+            ),
+          ),
+          child: _buildActionButtons(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        // View Assessment Button (top)
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => PDFAssessmentView(
+                        imagePaths: widget.imagePaths,
+                        apiResponses: _apiResponses,
+                        assessmentIds: _assessmentIds,
+                      ),
+                ),
               );
             },
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(Colors.grey.shade700),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            child: Text(
+              "View Assessment",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
+        ),
 
-          SizedBox(height: 80.h), // Space for bottom button
-        ],
-      ),
+        SizedBox(height: 12.h), // Space between buttons
+        // Proceed to Claim Insurance Button (bottom, accent)
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => InsuranceDocumentUpload(
+                        imagePaths: widget.imagePaths,
+                        apiResponses: _apiResponses,
+                        assessmentIds: _assessmentIds,
+                      ),
+                ),
+              );
+            },
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(
+                GlobalStyles.primaryColor,
+              ),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            child: Text(
+              "Proceed to Claim Insurance",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -464,14 +511,17 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                   _getSeverityColor(overallSeverity),
                 ),
               ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: _buildQuickInfoCard(
-                  'Estimate',
-                  costEstimate,
-                  Colors.blue,
+              // Only show estimate if available
+              if (costEstimate != 'Not available') ...[
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: _buildQuickInfoCard(
+                    'Estimate',
+                    costEstimate,
+                    Colors.blue,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
 
@@ -652,7 +702,6 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
 
     setState(() {
       _isUploading = false;
-      _allUploaded = true;
     });
   }
 
@@ -718,61 +767,6 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
           ),
         ),
       );
-    }
-  }
-
-  // Add PDF download functionality for multiple results
-  Future<void> _downloadMultiplePdf() async {
-    if (_apiResponses.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No results available to generate PDF'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isGeneratingPdf = true;
-    });
-
-    try {
-      final filePath = await PDFService.generateMultipleResultsPDF(
-        imagePaths: widget.imagePaths,
-        apiResponses: _apiResponses,
-      );
-
-      if (mounted) {
-        if (filePath != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('PDF downloaded successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to generate PDF'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error generating PDF: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isGeneratingPdf = false;
-      });
     }
   }
 }

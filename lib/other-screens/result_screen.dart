@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
-import 'package:insurevis/utils/pdf_service.dart';
 import 'package:insurevis/utils/network_helper.dart';
 import 'package:insurevis/services/pricing_service.dart';
 
@@ -29,7 +28,6 @@ class ResultsScreen extends StatefulWidget {
 class ResultsScreenState extends State<ResultsScreen> {
   String? _apiResponse;
   bool _isLoading = true;
-  bool _isGeneratingPdf = false;
 
   // Add these cached values to prevent reprocessing
   Map<String, dynamic>? _cachedResultData;
@@ -300,61 +298,6 @@ class ResultsScreenState extends State<ResultsScreen> {
     }
   }
 
-  // Add PDF download functionality
-  Future<void> _downloadPdf() async {
-    if (_cachedResultData == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No data available to generate PDF'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isGeneratingPdf = true;
-    });
-
-    try {
-      final filePath = await PDFService.generateSingleResultPDF(
-        imagePath: _imageFile.path,
-        apiResponse: _cachedResultData!,
-      );
-
-      if (mounted) {
-        if (filePath != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('PDF downloaded successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to generate PDF'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error generating PDF: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isGeneratingPdf = false;
-      });
-    }
-  }
-
   Future<void> _processApiResponse(String response) async {
     try {
       final resultData = json.decode(response);
@@ -430,67 +373,8 @@ class ResultsScreenState extends State<ResultsScreen> {
         color: Colors.white,
         appBarBackgroundColor: Colors.transparent,
       ),
-      // Only show bottom button when not loading
-      bottomNavigationBar:
-          _isLoading
-              ? null
-              : Container(
-                color: GlobalStyles.backgroundColorEnd, // Match background
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                child: ElevatedButton(
-                  onPressed: _isGeneratingPdf ? null : _downloadPdf,
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStatePropertyAll(
-                      _isGeneratingPdf
-                          ? Colors.grey
-                          : GlobalStyles.primaryColor,
-                    ),
-                    padding: const WidgetStatePropertyAll(
-                      EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                    ),
-                    shape: WidgetStatePropertyAll(
-                      RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                    ),
-                  ),
-                  child:
-                      _isGeneratingPdf
-                          ? const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                "Generating PDF...",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
-                          )
-                          : const Text(
-                            "Download PDF",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                ),
-              ),
+      // Download PDF button removed
+      bottomNavigationBar: null,
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -962,14 +846,17 @@ class ResultsScreenState extends State<ResultsScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            costEstimate!,
-                            style: TextStyle(
-                              color: hasCost! ? Colors.white : Colors.white70,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                          // Only show cost estimate if available
+                          if (hasCost! &&
+                              costEstimate != 'Estimate not available')
+                            Text(
+                              costEstimate!,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ],
@@ -1360,6 +1247,10 @@ class ResultsScreenState extends State<ResultsScreen> {
               _buildApiCostBreakdown(
                 selectedOption,
                 selectedOption == 'repair' ? repairPricing! : replacePricing!,
+                damage, // Pass the damage information
+                selectedOption == 'repair'
+                    ? replacePricing
+                    : null, // Pass body-paint data for repair
               ),
             ] else
               Container(
@@ -1393,26 +1284,116 @@ class ResultsScreenState extends State<ResultsScreen> {
     );
   }
 
+  Widget _buildDamageInfoSection(Map<String, dynamic> damage) {
+    // Extract damaged part
+    String damagedPart = 'Unknown';
+    if (damage.containsKey('damaged_part')) {
+      damagedPart = damage['damaged_part']?.toString() ?? 'Unknown';
+    } else if (damage.containsKey('part_name')) {
+      damagedPart = damage['part_name']?.toString() ?? 'Unknown';
+    }
+
+    // Extract damage type
+    String damageType = 'Unknown';
+    if (damage.containsKey('damage_type')) {
+      final damageTypeValue = damage['damage_type'];
+      if (damageTypeValue is Map && damageTypeValue.containsKey('class_name')) {
+        damageType = damageTypeValue['class_name']?.toString() ?? 'Unknown';
+      } else {
+        damageType = damageTypeValue?.toString() ?? 'Unknown';
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Damaged Part
+          Row(
+            children: [
+              Icon(Icons.directions_car, color: Colors.blue, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Damaged Part: ',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              Expanded(
+                child: Text(
+                  damagedPart,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Damage Type
+          Row(
+            children: [
+              Icon(Icons.build, color: Colors.orange, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Damage Type: ',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              Expanded(
+                child: Text(
+                  damageType,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildApiCostBreakdown(
     String option,
     Map<String, dynamic> apiPricing,
+    Map<String, dynamic> damage, // Add damage parameter
+    Map<String, dynamic>? bodyPaintPricing, // Add body-paint pricing for repair
   ) {
     double laborFee = 0.0;
     double finalPrice = 0.0;
-    String source = '';
+    double bodyPaintPrice = 0.0;
 
     if (option == 'replace') {
-      // For replace (body-paint data)
+      // For replace (body-paint data only)
       laborFee =
           (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
       finalPrice = (apiPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-      source = 'body_paint';
     } else {
-      // For repair (thinsmith data)
+      // For repair (thinsmith data + body-paint data)
       laborFee =
           (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
-      finalPrice = (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0;
-      source = apiPricing['source']?.toString() ?? 'thinsmith';
+
+      // Get thinsmith price
+      double thinsmithPrice =
+          (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0;
+
+      // Get body-paint price if available
+      if (bodyPaintPricing != null) {
+        bodyPaintPrice =
+            (bodyPaintPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+      }
+
+      // Combine both prices for repair total
+      finalPrice = thinsmithPrice + bodyPaintPrice;
     }
 
     return Container(
@@ -1447,8 +1428,22 @@ class ResultsScreenState extends State<ResultsScreen> {
           ),
           const SizedBox(height: 8),
 
+          // Display damaged part and damage type information
+          _buildDamageInfoSection(damage),
+          const SizedBox(height: 12),
+
           // Labor fee
           _buildCostItem('Labor Fee (Installation)', laborFee),
+
+          // Show price breakdown for repair
+          if (option == 'repair' && bodyPaintPricing != null) ...[
+            const SizedBox(height: 8),
+            _buildCostItem(
+              'Thinsmith Price',
+              (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0,
+            ),
+            _buildCostItem('Body Paint Price', bodyPaintPrice),
+          ],
 
           const Divider(color: Colors.white30, height: 20),
 
@@ -1459,9 +1454,7 @@ class ResultsScreenState extends State<ResultsScreen> {
               Expanded(
                 flex: 2,
                 child: Text(
-                  source == 'body_paint'
-                      ? 'TOTAL PRICE (INSURANCE)'
-                      : 'FINAL PRICE (INSURANCE)',
+                  option == 'replace' ? 'TOTAL PRICE' : 'TOTAL REPAIR PRICE',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -1480,11 +1473,21 @@ class ResultsScreenState extends State<ResultsScreen> {
             ],
           ),
 
-          // Note for replace option
+          // Notes for different options
           if (option == 'replace') ...[
             const SizedBox(height: 8),
             Text(
               'Total includes part price and paint/materials',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ] else if (option == 'repair' && bodyPaintPricing != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Total includes thinsmith work and body paint costs',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.7),
                 fontSize: 12,

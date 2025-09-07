@@ -43,3 +43,22 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Generated PDFs (for testing and development)
+/generated_pdfs/
+
+# Web portals and related directories
+/web_portal/
+/web_portal_insurance/
+
+# Database files and scripts
+/database/
+
+# Documentation
+/docs/
+
+# InsureVis directory
+/InsureVis/
+
+# Test files
+/test/

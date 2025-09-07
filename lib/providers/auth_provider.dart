@@ -18,29 +18,15 @@ class AuthProvider with ChangeNotifier {
   bool _isSigningUp = false;
   bool _isSigningOut = false;
 
-  // Session management
-  DateTime? _lastActivity;
-  static const Duration _sessionTimeout = Duration(minutes: 30);
-
   // Getters
   UserProfile? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isLoggedIn => _currentUser != null && SupabaseService.isSignedIn;
-  bool get isEmailVerified => SupabaseService.isEmailVerified;
   bool get isInitialized => _isInitialized;
   bool get isSigningIn => _isSigningIn;
   bool get isSigningUp => _isSigningUp;
   bool get isSigningOut => _isSigningOut;
-
-  // Session management getters
-  bool get isSessionActive =>
-      _lastActivity != null &&
-      DateTime.now().difference(_lastActivity!) < _sessionTimeout;
-  Duration? get timeUntilSessionExpiry =>
-      _lastActivity != null
-          ? _sessionTimeout - DateTime.now().difference(_lastActivity!)
-          : null;
 
   /// Initialize the auth provider
   Future<void> initialize() async {
@@ -57,7 +43,6 @@ class AuthProvider with ChangeNotifier {
       if (authState['isSignedIn'] == true) {
         // Load user profile
         await _loadUserProfile(forceRefresh: true);
-        _updateLastActivity();
       }
 
       // Listen to auth state changes
@@ -85,7 +70,6 @@ class AuthProvider with ChangeNotifier {
       case AuthChangeEvent.signedIn:
         if (state.session?.user != null) {
           await _loadUserProfile();
-          _updateLastActivity();
         }
         break;
       case AuthChangeEvent.signedOut:
@@ -132,7 +116,6 @@ class AuthProvider with ChangeNotifier {
         // Load user profile if sign-up was successful
         if (result['user'] != null) {
           await _loadUserProfile();
-          _updateLastActivity();
         }
 
         if (kDebugMode) {
@@ -181,7 +164,6 @@ class AuthProvider with ChangeNotifier {
         // Load user profile if sign-in was successful
         if (result['user'] != null) {
           await _loadUserProfile();
-          _updateLastActivity();
         }
 
         if (kDebugMode) {
@@ -312,8 +294,7 @@ class AuthProvider with ChangeNotifier {
   Future<bool> updateProfile({
     String? name,
     String? phone,
-    String? profileImageUrl,
-    Map<String, dynamic>? preferences,
+    String? address,
   }) async {
     if (_currentUser == null) {
       _error = 'No user signed in';
@@ -330,8 +311,7 @@ class AuthProvider with ChangeNotifier {
         userId: _currentUser!.id,
         name: name,
         phone: phone,
-        profileImageUrl: profileImageUrl,
-        preferences: preferences,
+        address: address,
       );
 
       if (result['success'] == true) {
@@ -374,7 +354,6 @@ class AuthProvider with ChangeNotifier {
 
       // Refresh user profile to validate session
       await _loadUserProfile(forceRefresh: true);
-      _updateLastActivity();
 
       return true;
     } catch (e) {
@@ -412,13 +391,7 @@ class AuthProvider with ChangeNotifier {
   /// Clear user data
   void _clearUserData() {
     _currentUser = null;
-    _lastActivity = null;
     SupabaseService.clearCache();
-  }
-
-  /// Update last activity timestamp
-  void _updateLastActivity() {
-    _lastActivity = DateTime.now();
   }
 
   /// Clear error
@@ -454,14 +427,7 @@ class AuthProvider with ChangeNotifier {
       'currentUser': _currentUser,
       'isLoading': _isLoading,
       'error': _error,
-      'isSessionActive': isSessionActive,
-      'lastActivity': _lastActivity,
     };
-  }
-
-  /// Extend session on user activity
-  void extendSession() {
-    _updateLastActivity();
   }
 
   @override

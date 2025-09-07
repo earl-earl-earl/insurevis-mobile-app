@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/other-screens/result_screen.dart';
+import 'package:insurevis/other-screens/pdf_assessment_view.dart';
+import 'package:insurevis/other-screens/insurance_document_upload.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 
@@ -28,7 +30,6 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       {}; // Track expanded state for each card
   final Map<String, Widget> _cachedImages = {}; // Cache for image widgets
   bool _isUploading = false;
-  bool _allUploaded = false;
   @override
   void initState() {
     super.initState();
@@ -56,42 +57,8 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
           ),
         ),
       ),
-      bottomNavigationBar:
-          _allUploaded
-              ? Container(
-                color: GlobalStyles.backgroundColorEnd,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Download PDF functionality to be implemented later
-                  },
-                  style: ButtonStyle(
-                    backgroundColor: const WidgetStatePropertyAll(
-                      GlobalStyles.primaryColor,
-                    ),
-                    padding: const WidgetStatePropertyAll(
-                      EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                    ),
-                    shape: WidgetStatePropertyAll(
-                      RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                    ),
-                  ),
-                  child: const Text(
-                    "Download PDF",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              )
-              : null,
+      // Download PDF button removed
+      bottomNavigationBar: null,
       body: Container(
         height: double.infinity,
         decoration: BoxDecoration(
@@ -183,9 +150,96 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             },
           ),
 
-          SizedBox(height: 80.h), // Space for bottom button
+          SizedBox(height: 32.h), // Space before buttons
+          // Action buttons
+          _buildActionButtons(),
+
+          SizedBox(height: 80.h), // Space for bottom buffer
         ],
       ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        // View Assessment Button (top)
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => PDFAssessmentView(
+                        imagePaths: widget.imagePaths,
+                        apiResponses: _apiResponses,
+                        assessmentIds: _assessmentIds,
+                      ),
+                ),
+              );
+            },
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(Colors.grey.shade700),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            child: Text(
+              "View Assessment",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+
+        SizedBox(height: 12.h), // Space between buttons
+        // Proceed to Claim Insurance Button (bottom, accent)
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => InsuranceDocumentUpload(
+                        imagePaths: widget.imagePaths,
+                        apiResponses: _apiResponses,
+                        assessmentIds: _assessmentIds,
+                      ),
+                ),
+              );
+            },
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(
+                GlobalStyles.primaryColor,
+              ),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            child: Text(
+              "Proceed to Claim Insurance",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -438,14 +492,17 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                   _getSeverityColor(overallSeverity),
                 ),
               ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: _buildQuickInfoCard(
-                  'Estimate',
-                  costEstimate,
-                  Colors.blue,
+              // Only show estimate if available
+              if (costEstimate != 'Not available') ...[
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: _buildQuickInfoCard(
+                    'Estimate',
+                    costEstimate,
+                    Colors.blue,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
 
@@ -626,7 +683,6 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
 
     setState(() {
       _isUploading = false;
-      _allUploaded = true;
     });
   }
 
