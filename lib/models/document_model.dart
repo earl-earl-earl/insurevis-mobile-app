@@ -268,14 +268,17 @@ class DocumentModel {
       'file_size_bytes': fileSizeBytes,
       'format': format.extension,
       'storage_path': storagePath,
-      'remote_url': remoteUrl,
-      'is_primary': false, // Default to false
-      'description': description,
+      'remote_url': remoteUrl, // Use the actual remote URL field
+      'is_primary':
+          type.isRequired, // Required documents are primary, additional ones are not
+      'description':
+          description ??
+          'Document uploaded for insurance claim ${assessmentId ?? 'general'}',
       'status': status.key,
-      'verified_by_car_company': false, // Default to false for new uploads
-      'car_company_verification_date': null,
-      'car_company_verification_notes': null,
-      'car_company_verified_by': null,
+      'verified_by_car_company': isApproved, // Use the isApproved field
+      'car_company_verification_date': approvedAt?.toIso8601String(),
+      'car_company_verification_notes': reviewNotes,
+      'car_company_verified_by': approvedBy,
       'verified_by_insurance_company':
           false, // Default to false for new uploads
       'insurance_verification_date': null,

@@ -15,18 +15,13 @@ class StorageService {
     String? assessmentId,
   }) async {
     try {
-      // Generate storage path
+      // Generate simplified storage path
       final fileName = path.basename(file.path);
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final sanitizedFileName = _sanitizeFileName(fileName);
 
-      String storagePath;
-      if (assessmentId != null) {
-        storagePath =
-            '$userId/$documentType/$assessmentId/${timestamp}_$sanitizedFileName';
-      } else {
-        storagePath = '$userId/$documentType/${timestamp}_$sanitizedFileName';
-      }
+      // Simplified path structure: userId/timestamp_filename
+      String storagePath = '$userId/${timestamp}_$sanitizedFileName';
 
       // Upload file
       final response = await _supabase.storage
@@ -55,13 +50,8 @@ class StorageService {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final sanitizedFileName = _sanitizeFileName(fileName);
 
-      String storagePath;
-      if (assessmentId != null) {
-        storagePath =
-            '$userId/$documentType/$assessmentId/${timestamp}_$sanitizedFileName';
-      } else {
-        storagePath = '$userId/$documentType/${timestamp}_$sanitizedFileName';
-      }
+      // Simplified path structure: userId/timestamp_filename
+      String storagePath = '$userId/${timestamp}_$sanitizedFileName';
 
       final response = await _supabase.storage
           .from(bucketName)
@@ -267,11 +257,8 @@ class StorageService {
       '_',
     );
 
-    if (assessmentId != null) {
-      return '$userId/$documentType/$assessmentId/${timestamp}_$sanitizedFileName';
-    } else {
-      return '$userId/$documentType/${timestamp}_$sanitizedFileName';
-    }
+    // Simplified path structure: userId/timestamp_filename
+    return '$userId/${timestamp}_$sanitizedFileName';
   }
 
   /// Validate file before upload

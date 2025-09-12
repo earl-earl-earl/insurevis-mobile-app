@@ -42,6 +42,13 @@ class DocumentService {
 
       // 3. Create document record in database
       final fileStats = await file.stat();
+
+      // Generate a signed URL for the uploaded file
+      final signedUrl = await _storageService.getSignedUrl(
+        storagePath,
+        expiresIn: 3600 * 24 * 30, // 30 days
+      );
+
       final document = DocumentModel(
         id: _uuid.v4(),
         userId: userId,
@@ -49,12 +56,15 @@ class DocumentService {
         type: type,
         fileName: file.path.split('/').last,
         filePath: file.path, // Local path
+        remoteUrl: signedUrl, // Set the remote URL for viewing
         storagePath: storagePath, // Supabase storage path
         bucketName: 'insurevis-documents',
         format: DocumentFormat.fromFilePath(file.path),
         status: DocumentStatus.uploaded,
         fileSizeBytes: fileStats.size,
-        description: description,
+        description:
+            description ??
+            'Document uploaded for insurance claim ${assessmentId ?? 'general'} - ${type.displayName}',
         isRequired: isRequired,
         reviewStatus: ReviewStatus.pending,
         isApproved: false,

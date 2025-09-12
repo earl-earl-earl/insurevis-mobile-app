@@ -3,13 +3,61 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../services/local_storage_service.dart';
 
 class PDFService {
-  static Future<String?> generateSingleResultPDF({
+  /// Generate and save PDF with user file picker
+  static Future<String?> generateAndSavePDFWithPicker({
     required String imagePath,
     required Map<String, dynamic> apiResponse,
+    String? suggestedFileName,
   }) async {
+    try {
+      // Generate the PDF first
+      final pdf = await _generateSinglePDF(imagePath, apiResponse);
+      if (pdf == null) return null;
+
+      // Let user pick where to save
+      return await _savePDFWithPicker(
+        pdf,
+        suggestedFileName ??
+            'damage_assessment_${DateTime.now().toString().split(' ')[0]}.pdf',
+      );
+    } catch (e) {
+      print('Error generating PDF with picker: $e');
+      return null;
+    }
+  }
+
+  /// Generate and save multiple results PDF with user file picker
+  static Future<String?> generateAndSaveMultiplePDFWithPicker({
+    required List<String> imagePaths,
+    required Map<String, Map<String, dynamic>> apiResponses,
+    String? suggestedFileName,
+  }) async {
+    try {
+      // Generate the PDF first
+      final pdf = await _generateMultiplePDF(imagePaths, apiResponses);
+      if (pdf == null) return null;
+
+      // Let user pick where to save
+      return await _savePDFWithPicker(
+        pdf,
+        suggestedFileName ??
+            'multi_damage_assessment_${DateTime.now().toString().split(' ')[0]}.pdf',
+      );
+    } catch (e) {
+      print('Error generating multiple PDF with picker: $e');
+      return null;
+    }
+  }
+
+  /// Generate PDF document for single result
+  static Future<pw.Document?> _generateSinglePDF(
+    String imagePath,
+    Map<String, dynamic> apiResponse,
+  ) async {
     try {
       final pdf = pw.Document();
 
@@ -294,21 +342,18 @@ class PDFService {
         ),
       );
 
-      return await _savePDF(
-        pdf,
-        'damage_assessment_${DateTime.now().toString().split(' ')[0]}.pdf',
-      );
+      return pdf;
     } catch (e) {
-      print('Error generating PDF: $e');
-      print('Stack trace: ${StackTrace.current}');
+      print('Error generating single PDF: $e');
       return null;
     }
   }
 
-  static Future<String?> generateMultipleResultsPDF({
-    required List<String> imagePaths,
-    required Map<String, Map<String, dynamic>> apiResponses,
-  }) async {
+  /// Generate PDF document for multiple results
+  static Future<pw.Document?> _generateMultiplePDF(
+    List<String> imagePaths,
+    Map<String, Map<String, dynamic>> apiResponses,
+  ) async {
     try {
       final pdf = pw.Document();
 
@@ -444,6 +489,41 @@ class PDFService {
           },
         ),
       );
+
+      return pdf;
+    } catch (e) {
+      print('Error generating multiple PDF: $e');
+      return null;
+    }
+  }
+
+  /// Original method - saves to default location
+  static Future<String?> generateSingleResultPDF({
+    required String imagePath,
+    required Map<String, dynamic> apiResponse,
+  }) async {
+    try {
+      final pdf = await _generateSinglePDF(imagePath, apiResponse);
+      if (pdf == null) return null;
+
+      return await _savePDF(
+        pdf,
+        'damage_assessment_${DateTime.now().toString().split(' ')[0]}.pdf',
+      );
+    } catch (e) {
+      print('Error generating PDF: $e');
+      print('Stack trace: ${StackTrace.current}');
+      return null;
+    }
+  }
+
+  static Future<String?> generateMultipleResultsPDF({
+    required List<String> imagePaths,
+    required Map<String, Map<String, dynamic>> apiResponses,
+  }) async {
+    try {
+      final pdf = await _generateMultiplePDF(imagePaths, apiResponses);
+      if (pdf == null) return null;
 
       return await _savePDF(
         pdf,
@@ -710,6 +790,62 @@ class PDFService {
       }
 
       return null;
+    }
+  }
+
+  /// Save PDF using file picker - let user choose location
+  static Future<String?> _savePDFWithPicker(
+    pw.Document pdf,
+    String suggestedFileName,
+  ) async {
+    try {
+      // Generate PDF bytes
+      final pdfBytes = await pdf.save();
+
+      // Use FilePicker to let user choose save location
+      String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save PDF Report',
+        fileName: suggestedFileName,
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+
+      if (outputFile == null) {
+        print('User cancelled file picker');
+        return null;
+      }
+
+      // Ensure the file has .pdf extension
+      if (!outputFile.toLowerCase().endsWith('.pdf')) {
+        outputFile = '$outputFile.pdf';
+      }
+
+      // Create and write the file
+      final file = File(outputFile);
+
+      // Create parent directories if they don't exist
+      final directory = file.parent;
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+
+      // Write the PDF bytes
+      await file.writeAsBytes(pdfBytes);
+
+      // Verify file was written successfully
+      if (await file.exists() && await file.length() > 0) {
+        print('PDF saved successfully to user-chosen location: ${file.path}');
+        print('PDF size: ${pdfBytes.length} bytes');
+        return file.path;
+      } else {
+        throw Exception('File was not written successfully to chosen location');
+      }
+    } catch (e) {
+      print('Error saving PDF with file picker: $e');
+
+      // Fallback to default save method
+      print('Falling back to default save location...');
+      return await _savePDF(pdf, suggestedFileName);
     }
   }
 
