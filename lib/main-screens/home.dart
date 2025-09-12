@@ -124,8 +124,13 @@ class _HomeState extends State<Home> {
 
                     SizedBox(height: 24.h),
 
-                    // Insurance Dashboard section
-                    _buildInsuranceDashboard(),
+                    // How it works section
+                    _buildHowItWorksSection(),
+
+                    SizedBox(height: 24.h),
+
+                    // Recent activity or tips section
+                    _buildTipsSection(),
 
                     SizedBox(
                       height: 100.h,
@@ -244,198 +249,44 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Widget _buildInsuranceDashboard() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Material dashboard header
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Overview',
-              style: TextStyle(
-                fontSize: 24.sp,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            TextButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Navigate to detailed analytics'),
-                    backgroundColor: GlobalStyles.primaryColor,
-                  ),
-                );
-              },
-              icon: Icon(
-                Icons.trending_up,
-                size: 16.sp,
-                color: GlobalStyles.primaryColor,
-              ),
-              label: Text(
-                'View Details',
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  color: GlobalStyles.primaryColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: TextButton.styleFrom(
-                backgroundColor: GlobalStyles.primaryColor.withValues(
-                  alpha: 0.1,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20.r),
-                ),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 16.h),
-
-        // Material insurance stats grid
-        Card(
-          elevation: 2,
-          color: Colors.white.withValues(alpha: 0.05),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.r),
-            side: BorderSide(
-              color: Colors.white.withValues(alpha: 0.1),
-              width: 1,
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(20.w),
-            child: Column(
-              children: [
-                // Top row - Claims and Coverage
-                Consumer<AuthProvider>(
-                  builder: (context, authProvider, child) {
-                    final user = authProvider.currentUser;
-                    final stats = user?.stats;
-
-                    return Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildMaterialDashboardCard(
-                                'Total Assessments',
-                                '${stats?.totalAssessments ?? 0}',
-                                Icons.assessment_outlined,
-                                GlobalStyles.primaryColor,
-                              ),
-                            ),
-                            SizedBox(width: 12.w),
-                            Expanded(
-                              child: _buildMaterialDashboardCard(
-                                'Insurance Status',
-                                'Active',
-                                Icons.verified_user_outlined,
-                                Colors.green,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12.h),
-
-                        // Bottom row - Documents and Savings
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildMaterialDashboardCard(
-                                'Documents Submitted',
-                                '${stats?.documentsSubmitted ?? 0}',
-                                Icons.description_outlined,
-                                Colors.orange,
-                              ),
-                            ),
-                            SizedBox(width: 12.w),
-                            Expanded(
-                              child: _buildMaterialDashboardCard(
-                                'Total Saved',
-                                '₱${(stats?.totalSaved ?? 0).toStringAsFixed(0)}',
-                                Icons.savings_outlined,
-                                Colors.blue,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                ),
-
-                SizedBox(height: 20.h),
-
-                // Quick actions
-                _buildMaterialQuickActions(),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMaterialDashboardCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildHowItWorksSection() {
     return Card(
-      elevation: 1,
-      color: Colors.white.withValues(alpha: 0.03),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.r),
-        side: BorderSide(color: color.withValues(alpha: 0.2), width: 1),
-      ),
+      margin: EdgeInsets.all(16.w),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+      elevation: 4,
       child: Padding(
-        padding: EdgeInsets.all(16.w),
+        padding: EdgeInsets.all(20.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8.w),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Icon(icon, color: color, size: 20.sp),
-                ),
-                Container(
-                  width: 8.w,
-                  height: 8.w,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12.h),
             Text(
-              value,
+              'How It Works',
               style: TextStyle(
                 fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: GlobalStyles.primaryColor,
               ),
             ),
-            SizedBox(height: 4.h),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: Colors.white70,
-                fontWeight: FontWeight.w500,
-              ),
+            SizedBox(height: 16.h),
+            _buildStepItem(
+              1,
+              'Take Photos',
+              'Capture clear images of vehicle damage',
+              Icons.camera_alt,
+            ),
+            SizedBox(height: 12.h),
+            _buildStepItem(
+              2,
+              'AI Analysis',
+              'Our AI analyzes damage and estimates costs',
+              Icons.psychology,
+            ),
+            SizedBox(height: 12.h),
+            _buildStepItem(
+              3,
+              'Get Report',
+              'Receive detailed assessment report instantly',
+              Icons.description,
             ),
           ],
         ),
@@ -443,116 +294,115 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Widget _buildMaterialQuickActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildTipsSection() {
+    return Card(
+      margin: EdgeInsets.all(16.w),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+      elevation: 4,
+      child: Padding(
+        padding: EdgeInsets.all(20.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Tips for Best Results',
+              style: TextStyle(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.bold,
+                color: GlobalStyles.primaryColor,
+              ),
+            ),
+            SizedBox(height: 16.h),
+            _buildTipItem(
+              'Ensure good lighting when taking photos',
+              Icons.wb_sunny,
+            ),
+            SizedBox(height: 10.h),
+            _buildTipItem(
+              'Capture damage from multiple angles',
+              Icons.threesixty,
+            ),
+            SizedBox(height: 10.h),
+            _buildTipItem(
+              'Keep the camera steady for clear images',
+              Icons.center_focus_strong,
+            ),
+            SizedBox(height: 10.h),
+            _buildTipItem(
+              'Include reference objects for size context',
+              Icons.straighten,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepItem(
+    int step,
+    String title,
+    String description,
+    IconData icon,
+  ) {
+    return Row(
       children: [
-        Text(
-          'Quick Actions',
-          style: TextStyle(
-            fontSize: 18.sp,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+        Container(
+          width: 32.w,
+          height: 32.w,
+          decoration: BoxDecoration(
+            color: GlobalStyles.primaryColor,
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          child: Center(
+            child: Text(
+              step.toString(),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14.sp,
+              ),
+            ),
           ),
         ),
-        SizedBox(height: 16.h),
-        Row(
-          children: [
-            Expanded(
-              child: _buildMaterialActionButton(
-                'File Claim',
-                Icons.add_circle_outline,
-                Colors.red,
-                () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Navigate to claim filing'),
-                      backgroundColor: GlobalStyles.primaryColor,
-                    ),
-                  );
-                },
-              ),
-            ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: _buildMaterialActionButton(
-                'View Policy',
-                Icons.description_outlined,
-                Colors.blue,
-                () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Navigate to policy details'),
-                      backgroundColor: GlobalStyles.primaryColor,
-                    ),
-                  );
-                },
-              ),
-            ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: _buildMaterialActionButton(
-                'Support',
-                Icons.support_agent_outlined,
-                Colors.green,
-                () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Navigate to customer support'),
-                      backgroundColor: GlobalStyles.primaryColor,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMaterialActionButton(
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return Card(
-      elevation: 1,
-      color: color.withValues(alpha: 0.1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.r),
-        side: BorderSide(color: color.withValues(alpha: 0.3), width: 1),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12.r),
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 8.w),
+        SizedBox(width: 12.w),
+        Icon(icon, color: GlobalStyles.primaryColor, size: 24.sp),
+        SizedBox(width: 12.w),
+        Expanded(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: EdgeInsets.all(8.w),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Icon(icon, color: color, size: 24.sp),
-              ),
-              SizedBox(height: 8.h),
               Text(
-                label,
+                title,
                 style: TextStyle(
-                  fontSize: 12.sp,
-                  color: Colors.white,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
+                  color: Colors.white,
                 ),
-                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 2.h),
+              Text(
+                description,
+                style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
               ),
             ],
           ),
         ),
-      ),
+      ],
+    );
+  }
+
+  Widget _buildTipItem(String tip, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: GlobalStyles.primaryColor, size: 20.sp),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: Text(
+            tip,
+            style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+          ),
+        ),
+      ],
     );
   }
 }
