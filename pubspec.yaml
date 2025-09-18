@@ -38,6 +38,9 @@ dependencies:
   url_launcher: ^6.3.1
   share_plus: ^10.1.2
   supabase_flutter: ^2.9.1
+  firebase_core: ^4.1.0
+  firebase_messaging: ^16.0.1
+  flutter_local_notifications: ^19.4.2
   crypto: ^3.0.6
   path: ^1.8.3
 
@@ -45,7 +48,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4
-  flutter_native_splash: ^2.4.4
+  # flutter_native_splash removed - native splash disabled
 
 flutter:
   uses-material-design: true
@@ -68,16 +71,5 @@ flutter_launcher_icons:
   min_sdk_android: 21
   remove_alpha_ios: true
 
-flutter_native_splash:
-  color: "#ffffff"
-  image: assets/images/logo/logo_box_png.png
-  branding: assets/images/logo/logo_box_png.png
-  color_dark: "#000000"
-  image_dark: assets/images/logo/logo_box_png.png
-  branding_dark: assets/images/logo/logo_box_png.png
-  android_12:
-    image: assets/images/logo/logo_box_png.png
-    color: "#ffffff"
-    image_dark: assets/images/logo/logo_box_png.png
-    color_dark: "#000000"
-  web: false
+# flutter_native_splash configuration removed. If you need to re-enable the native splash,
+# add the package back to dev_dependencies and re-run the package's configuration.

@@ -7,6 +7,7 @@ import 'package:insurevis/services/pricing_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:insurevis/utils/file_writer.dart';
 
 class PDFAssessmentView extends StatefulWidget {
   final List<String> imagePaths;
@@ -1011,67 +1012,114 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         throw Exception('Storage permission not granted');
       }
 
-      // Generate a default filename with timestamp
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final defaultFileName = 'InsureVis_Assessment_Report_$timestamp.pdf';
-
-      // Let user choose where to save the PDF
-      String? outputPath = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save Assessment Report',
-        fileName: defaultFileName,
-        type: FileType.custom,
-        allowedExtensions: ['pdf'],
+      // Ask user whether to auto-save to InsureVis/documents or choose folder
+      final choice = await showDialog<String?>(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: Text('Save Assessment Report'),
+              content: Text('Where do you want to save the generated PDF?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop('auto'),
+                  child: Text('Save to InsureVis/documents'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop('choose'),
+                  child: Text('Choose folder'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(null),
+                  child: Text('Cancel'),
+                ),
+              ],
+            ),
       );
 
-      if (outputPath == null) {
-        // User cancelled the file picker
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Save cancelled'),
-              backgroundColor: Colors.orange,
-            ),
+      if (choice == null) return; // user cancelled
+
+      String? savedPath;
+
+      if (choice == 'auto') {
+        // Auto-save via existing helper which creates InsureVis/documents
+        savedPath = await PDFService.generateMultipleResultsPDF(
+          imagePaths: widget.imagePaths,
+          apiResponses: widget.apiResponses,
+        );
+      } else if (choice == 'choose') {
+        // Generate PDF bytes and ask user for a folder or filepath
+        final bytes = await PDFService.generateMultipleResultsPDFBytes(
+          imagePaths: widget.imagePaths,
+          apiResponses: widget.apiResponses,
+        );
+
+        if (bytes == null) throw Exception('Failed to generate PDF bytes');
+
+        // Try SAF directory picker first (native)
+        String? treeUri;
+        try {
+          treeUri = await FileWriter.pickDirectory();
+        } catch (e) {
+          treeUri = null;
+        }
+
+        if (treeUri != null) {
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final defaultFileName = 'InsureVis_Assessment_Report_$timestamp.pdf';
+          try {
+            final newFileUri = await FileWriter.saveFileToTree(
+              treeUri,
+              defaultFileName,
+              bytes,
+            );
+            savedPath = newFileUri; // content:// URI
+          } catch (e) {
+            // If tree save failed, fall back to saveFile picker
+            savedPath = await PDFService.savePdfBytesWithPicker(
+              bytes,
+              'InsureVis_Assessment_Report_${DateTime.now().millisecondsSinceEpoch}.pdf',
+            );
+          }
+        } else {
+          // Fall back to FilePicker.saveFile which may return content:// URI
+          savedPath = await PDFService.savePdfBytesWithPicker(
+            bytes,
+            'InsureVis_Assessment_Report_${DateTime.now().millisecondsSinceEpoch}.pdf',
           );
         }
-        return;
       }
 
-      // Generate PDF in a temporary location first
-      final tempFilePath = await PDFService.generateMultipleResultsPDF(
-        imagePaths: widget.imagePaths,
-        apiResponses: widget.apiResponses,
-      );
-
-      if (tempFilePath != null) {
-        // Copy the generated PDF to the user-selected location
-        final tempFile = File(tempFilePath);
-
-        await tempFile.copy(outputPath);
-
-        // Clean up temporary file
-        if (await tempFile.exists()) {
-          await tempFile.delete();
-        }
-
-        // Show success message
+      if (savedPath != null) {
         if (mounted) {
+          // Clear any existing snackbars (for example a prior error) so the
+          // success message is visible and no stale error text remains.
+          ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Assessment report saved successfully!'),
+              content: Text('Assessment report saved to: $savedPath'),
               backgroundColor: Colors.green,
               action: SnackBarAction(
                 label: 'Share',
                 textColor: Colors.white,
-                onPressed: () => _sharePDF(outputPath),
+                onPressed: () {
+                  if (savedPath != null) _sharePDF(savedPath);
+                },
               ),
             ),
           );
         }
+
+        // Once we've confirmed a successful save and shown feedback, return
+        // early to avoid any further error-prone work in this try block.
+        return;
       } else {
-        throw Exception('Failed to generate PDF');
+        throw Exception('Failed to generate and save PDF');
       }
     } catch (e) {
       if (mounted) {
+        // Clear any existing snackbars so the error is visible and not
+        // obscured by older messages.
+        ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error saving report: $e'),
@@ -1095,6 +1143,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       ], text: 'Vehicle Assessment Report');
     } catch (e) {
       if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error sharing file: $e'),

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "243531171881",
+    "project_id": "insurevis",
+    "storage_bucket": "insurevis.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:243531171881:android:005c8bcb6ecb74f1593438",
+        "android_client_info": {
+          "package_name": "com.example.insurevis"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEFh9_mRYO4qpw8uQgh9-192_tEVa7anQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -413,8 +413,24 @@ class EnhancedPDFService {
           }
 
           if (externalDir != null) {
-            // Create InsureVis/documents in external storage
-            dir = Directory('${externalDir.path}/../../InsureVis/documents');
+            // Avoid using parent traversal (../../). Prefer public external
+            // documents directories when possible, otherwise use the
+            // app-specific external directory under the app sandbox.
+            try {
+              final externalDocs = await getExternalStorageDirectories(
+                type: StorageDirectory.documents,
+              );
+              if (externalDocs != null && externalDocs.isNotEmpty) {
+                dir = Directory(
+                  '${externalDocs.first.path}/InsureVis/documents',
+                );
+              } else {
+                dir = Directory('${externalDir.path}/InsureVis/documents');
+              }
+            } catch (e) {
+              print('Could not determine public external documents dir: $e');
+              dir = Directory('${externalDir.path}/InsureVis/documents');
+            }
           } else {
             // Fallback to app documents directory
             final appDir = await getApplicationDocumentsDirectory();

@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:insurevis/global_ui_variables.dart';
+import 'package:insurevis/main-screens/claims_screen.dart';
 import 'package:insurevis/main-screens/home.dart';
-import 'package:insurevis/main-screens/status_screen.dart';
-import 'package:insurevis/main-screens/history_screen.dart';
-import 'package:insurevis/main-screens/profile_screen.dart';
+// import 'package:insurevis/main-screens/status_screen.dart';
+// import 'package:insurevis/main-screens/history_screen.dart';
+// import 'package:insurevis/main-screens/profile_screen.dart';
 
 class MainContainer extends StatefulWidget {
   const MainContainer({super.key});
@@ -24,9 +25,9 @@ class _MainContainerState extends State<MainContainer>
   // Core screens including profile
   final List<Widget> _screens = [
     const Home(),
-    const StatusScreen(),
-    const HistoryScreen(),
-    const ProfileScreen(),
+    // const StatusScreen(),
+    const ClaimsScreen(),
+    // const ProfileScreen(),
   ];
 
   @override
@@ -68,7 +69,7 @@ class _MainContainerState extends State<MainContainer>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GlobalStyles.gradientBackgroundStart,
+      backgroundColor: GlobalStyles.backgroundColorStart,
       extendBody: true,
       body: Stack(
         children: [
@@ -130,49 +131,54 @@ class _MainContainerState extends State<MainContainer>
       },
       backgroundColor: GlobalStyles.primaryColor,
       elevation: 6,
-      child: Icon(Icons.camera_alt, color: Colors.white, size: 28.sp),
+      child: Icon(Icons.camera_alt_rounded, color: Colors.white, size: 28.sp),
     );
   }
 
   // Simple material-like bottom navigation without ripple effect
+  // Simple material-like bottom navigation with a top divider
   Widget _buildSimpleBottomNav() {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        splashFactory: NoSplash.splashFactory,
-        highlightColor: Colors.transparent,
-        splashColor: Colors.transparent,
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        backgroundColor: GlobalStyles.backgroundColorStart,
-        selectedItemColor: GlobalStyles.primaryColor,
-        unselectedItemColor: Colors.white54,
-        type: BottomNavigationBarType.fixed,
-        elevation: 8,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
+    // We wrap everything in a Column
+    return Column(
+      mainAxisSize: MainAxisSize.min, // Important to keep the column compact
+      children: [
+        // This is the line you want to add
+        Divider(
+          height: 1.0, // Total space the divider takes vertically
+          thickness: 1.0, // The thickness of the line itself
+          color: Color(0x232A2A2A), // Choose a subtle color
+        ),
+        // Your original BottomNavigationBar code follows
+        Theme(
+          data: Theme.of(context).copyWith(
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            splashColor: Colors.transparent,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.access_time_outlined),
-            activeIcon: Icon(Icons.access_time),
-            label: 'Status',
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            backgroundColor: GlobalStyles.backgroundColorStart,
+            selectedItemColor: GlobalStyles.primaryColor,
+            unselectedItemColor: Colors.black38,
+            type: BottomNavigationBarType.fixed,
+            // Setting elevation to 0 is good practice when adding a manual divider
+            elevation: 0,
+            items: [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined, size: 35.sp),
+                activeIcon: Icon(Icons.home_rounded, size: 35.sp),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.assignment_outlined, size: 35.sp),
+                activeIcon: Icon(Icons.assignment_rounded, size: 35.sp),
+                label: 'Claims',
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history_outlined),
-            activeIcon: Icon(Icons.history),
-            label: 'History',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

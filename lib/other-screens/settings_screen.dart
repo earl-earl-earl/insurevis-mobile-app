@@ -108,13 +108,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildSettingItem(
                     icon: Icons.dark_mode_outlined,
                     title: 'Dark Mode',
-                    subtitle: 'Toggle between light and dark theme',
+                    subtitle: 'Disabled — app uses light mode only',
                     trailing: Switch(
-                      value: themeProvider.isDarkMode,
+                      value: false,
                       activeColor: GlobalStyles.primaryColor,
-                      onChanged: (value) {
-                        themeProvider.toggleTheme();
-                      },
+                      onChanged: null, // disabled
                     ),
                   ),
 

@@ -66,7 +66,7 @@ class _MainContainerState extends State<MainContainer>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GlobalStyles.gradientBackgroundStart,
+      backgroundColor: GlobalStyles.backgroundColorStart,
       extendBody: true,
       body: Stack(
         children: [

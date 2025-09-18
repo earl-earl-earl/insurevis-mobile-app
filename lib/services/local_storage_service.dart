@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:file_picker/file_picker.dart';
+import '../utils/file_writer.dart';
 
 class LocalStorageService {
   static const String APP_FOLDER_NAME = 'InsureVis';
@@ -9,21 +12,18 @@ class LocalStorageService {
   /// Initialize the app folder structure on first launch
   static Future<bool> initializeAppFolders() async {
     try {
-      // Request necessary permissions first
+      // Request necessary permissions first (best-effort)
       await _requestStoragePermissions();
 
-      // Create the main InsureVis folder and documents subfolder
-      final appDir = await _createAppDirectory();
-      final documentsDir = await _createDocumentsDirectory(appDir);
-
-      if (appDir != null && documentsDir != null) {
-        print('App folders initialized successfully:');
-        print('Main folder: ${appDir.path}');
-        print('Documents folder: ${documentsDir.path}');
-        return true;
-      }
-
-      return false;
+      // Ensure application documents directory exists. We intentionally do
+      // not create a top-level 'InsureVis' folder. The app will rely on the
+      // file picker for user-visible saves and use the app documents folder
+      // as a safe fallback.
+      final appDir = await getApplicationDocumentsDirectory();
+      final dir = Directory(appDir.path);
+      if (!await dir.exists()) await dir.create(recursive: true);
+      print('App documents directory ready: ${appDir.path}');
+      return true;
     } catch (e) {
       print('Error initializing app folders: $e');
       return false;
@@ -33,50 +33,14 @@ class LocalStorageService {
   /// Get the InsureVis main folder directory
   static Future<Directory?> getAppDirectory() async {
     try {
-      if (Platform.isAndroid) {
-        // Try to get external storage directory first
-        Directory? externalDir;
-        try {
-          externalDir = await getExternalStorageDirectory();
-        } catch (e) {
-          print('Could not get external storage: $e');
-        }
-
-        if (externalDir != null) {
-          // Create InsureVis in external storage root
-          final appDir = Directory(
-            '${externalDir.path}/../../$APP_FOLDER_NAME',
-          );
-          if (!await appDir.exists()) {
-            await appDir.create(recursive: true);
-          }
-          return appDir;
-        } else {
-          // Fallback to app documents directory
-          final appDir = await getApplicationDocumentsDirectory();
-          final insureVisDir = Directory('${appDir.path}/$APP_FOLDER_NAME');
-          if (!await insureVisDir.exists()) {
-            await insureVisDir.create(recursive: true);
-          }
-          return insureVisDir;
-        }
-      } else if (Platform.isIOS) {
-        // For iOS, use app documents directory
-        final appDir = await getApplicationDocumentsDirectory();
-        final insureVisDir = Directory('${appDir.path}/$APP_FOLDER_NAME');
-        if (!await insureVisDir.exists()) {
-          await insureVisDir.create(recursive: true);
-        }
-        return insureVisDir;
-      } else {
-        // For desktop platforms, use current directory
-        final currentDir = Directory.current;
-        final appDir = Directory('${currentDir.path}/$APP_FOLDER_NAME');
-        if (!await appDir.exists()) {
-          await appDir.create(recursive: true);
-        }
-        return appDir;
-      }
+      // Always return the application documents directory. We intentionally
+      // avoid creating a top-level 'InsureVis' folder to respect platform
+      // storage restrictions and rely on the file picker for user-chosen
+      // locations.
+      final appDir = await getApplicationDocumentsDirectory();
+      final dir = Directory(appDir.path);
+      if (!await dir.exists()) await dir.create(recursive: true);
+      return dir;
     } catch (e) {
       print('Error getting app directory: $e');
       return null;
@@ -107,9 +71,47 @@ class LocalStorageService {
     String fileName,
   ) async {
     try {
+      // First, attempt to present a save dialog to the user via FilePicker.
+      try {
+        String? output = await FilePicker.platform.saveFile(
+          dialogTitle: 'Save file',
+          fileName: fileName,
+          type: FileType.custom,
+          allowedExtensions: [fileName.split('.').last],
+          bytes: Uint8List.fromList(fileBytes),
+        );
+
+        if (output != null) {
+          // If we received a content URI, write via platform writer.
+          if (output.startsWith('content://')) {
+            await FileWriter.writeBytesToUri(
+              output,
+              Uint8List.fromList(fileBytes),
+            );
+            return output;
+          }
+
+          // Ensure extension
+          if (!output.toLowerCase().endsWith('.${fileName.split('.').last}')) {
+            output = '$output.${fileName.split('.').last}';
+          }
+
+          final file = File(output);
+          final parent = file.parent;
+          if (!await parent.exists()) await parent.create(recursive: true);
+          await file.writeAsBytes(fileBytes);
+          if (await file.exists() && await file.length() > 0) {
+            print('File saved successfully via picker: ${file.path}');
+            return file.path;
+          }
+        }
+      } catch (pickerError) {
+        print('FilePicker save failed or cancelled: $pickerError');
+      }
+
+      // Picker not available or cancelled: fallback to app documents folder.
       final documentsDir = await getDocumentsDirectory();
       if (documentsDir != null) {
-        // Generate unique filename if file already exists
         String finalFileName = fileName;
         int counter = 1;
         while (await File('${documentsDir.path}/$finalFileName').exists()) {
@@ -124,12 +126,12 @@ class LocalStorageService {
 
         final file = File('${documentsDir.path}/$finalFileName');
         await file.writeAsBytes(fileBytes);
-
         if (await file.exists() && await file.length() > 0) {
-          print('File saved successfully: ${file.path}');
+          print('File saved to app documents: ${file.path}');
           return file.path;
         }
       }
+
       return null;
     } catch (e) {
       print('Error saving file to documents: $e');

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/providers/auth_provider.dart';
@@ -99,15 +98,13 @@ class AppInitializerState extends State<AppInitializer>
       // Wait a minimum amount of time for smooth UX
       await Future.delayed(const Duration(milliseconds: 500));
 
-      // Remove the native splash screen after initialization is complete
-      FlutterNativeSplash.remove();
+      // Native splash removed - proceed to next screen
 
       if (mounted) {
         _navigateToNextScreen();
       }
     } catch (e) {
-      // Remove splash screen even on error
-      FlutterNativeSplash.remove();
+      // Native splash removed - proceed to error handling
       if (mounted) {
         _showErrorAndNavigateToOnboarding();
       }
@@ -273,7 +270,10 @@ class AppInitializerState extends State<AppInitializer>
                     Container(
                       decoration: const BoxDecoration(
                         image: DecorationImage(
-                          image: AssetImage("assets/images/loggers.png"),
+                          image: AssetImage(
+                            "assets/images/logo/logo_box_gradient_png.png",
+                          ),
+                          fit: BoxFit.contain,
                         ),
                       ),
                       height: 120.h,
@@ -283,12 +283,24 @@ class AppInitializerState extends State<AppInitializer>
                     SizedBox(height: 40.h),
 
                     // App name
-                    Text(
-                      "InsureVis",
-                      style: GlobalStyles.headingStyle.copyWith(
-                        color: Colors.white,
-                        fontSize: 36.sp,
-                        fontWeight: FontWeight.bold,
+                    RichText(
+                      text: TextSpan(
+                        text: "Insure",
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 30.sp,
+                          fontWeight: FontWeight.w900,
+                        ),
+                        children: <TextSpan>[
+                          TextSpan(
+                            text: "Vis",
+                            style: TextStyle(
+                              color: GlobalStyles.primaryColor,
+                              fontSize: 30.sp,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
@@ -336,7 +348,7 @@ class AppInitializerState extends State<AppInitializer>
                           Text(
                             _loadingStatus,
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: Color(0x772A2A2A),
                               fontSize: 14.sp,
                             ),
                             textAlign: TextAlign.center,
@@ -382,7 +394,7 @@ class AppInitializerState extends State<AppInitializer>
                                 Text(
                                   isConnected ? "Connected" : "No Connection",
                                   style: TextStyle(
-                                    color: Colors.white60,
+                                    color: Color(0x572A2A2A),
                                     fontSize: 12.sp,
                                   ),
                                 ),

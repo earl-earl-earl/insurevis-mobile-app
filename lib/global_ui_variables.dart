@@ -3,22 +3,24 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class GlobalStyles {
-  static const MaterialColor richVibrantPurple =
-      MaterialColor(0xFF5E4FCF, <int, Color>{
-        50: Color(0xFFF1EFFB),
-        100: Color(0xFFDAD5F5),
-        200: Color(0xFFC0B9EF),
-        300: Color(0xFFA59CE8),
-        400: Color(0xFF8F84E3),
-        500: Color(0xFF5E4FCF),
-        600: Color(0xFF5346BA),
-        700: Color(0xFF483DA5),
-        800: Color(0xFF3D3390),
-        900: Color(0xFF2E246E),
-      });
+  static const MaterialColor vibrantBlue = MaterialColor(
+    0xFF0066FF,
+    <int, Color>{
+      50: Color(0xFFE6F0FF),
+      100: Color(0xFFB3D1FF),
+      200: Color(0xFF80B3FF),
+      300: Color(0xFF4D94FF),
+      400: Color(0xFF1A75FF),
+      500: Color(0xFF0066FF), // Base
+      600: Color(0xFF0059E6),
+      700: Color(0xFF0047B3),
+      800: Color(0xFF003380),
+      900: Color(0xFF002266),
+    },
+  );
 
-  static const Color primaryColor = Color(0xFF5E4FCF);
-  static const Color secondaryColor = Color(0xFFA39BC8);
+  static const Color primaryColor = Color(0xFF0066FF);
+  static const Color secondaryColor = Color(0xFF4D94FF);
 
   // Dark theme colors
   static const Color darkBackgroundColorStart = Color(0xFF1D1F24);
@@ -56,11 +58,14 @@ class GlobalStyles {
   }
 
   // Keep legacy static colors for backward compatibility
-  static const Color backgroundColorStart = darkBackgroundColorStart;
-  static const Color backgroundColorEnd = darkBackgroundColorEnd;
-  static const Color appBarBackgroundColor = darkAppBarBackgroundColor;
-  static const Color textColor = darkTextColor;
-  static const Color textSecondaryColor = darkTextSecondaryColor;
+  // static const Color backgroundColorStart = darkBackgroundColorStart;
+  // static const Color backgroundColorEnd = darkBackgroundColorEnd;
+  // static const Color appBarBackgroundColor = darkAppBarBackgroundColor;
+  static const Color backgroundColorStart = lightBackgroundColorStart;
+  static const Color backgroundColorEnd = lightBackgroundColorEnd;
+  static const Color appBarBackgroundColor = lightAppBarBackgroundColor;
+  static const Color textColor = lightTextColor;
+  static const Color textSecondaryColor = lightTextSecondaryColor;
 
   static final EdgeInsets defaultPadding = EdgeInsets.symmetric(
     horizontal: 30.w,
@@ -212,8 +217,8 @@ class GlobalStyles {
   static const Color indicatorActiveColor = Colors.white;
   static const Color indicatorInactiveColor = Colors.grey;
 
-  static const Color gradientBackgroundStart = Color(0xFF1E1E1E);
-  static const Color gradientBackgroundEnd = Color.fromARGB(255, 7, 7, 7);
+  // static const Color gradientBackgroundStart = Color(0xFF1E1E1E);
+  // static const Color gradientBackgroundEnd = Color.fromARGB(255, 7, 7, 7);
   static const Color circularButtonColor = Color(0xFF6B4AFF);
 
   static final TextStyle loadingTextStyle = GoogleFonts.poppins(
@@ -225,8 +230,8 @@ class GlobalStyles {
   static BoxDecoration getGradientBackground(bool isDarkMode) => BoxDecoration(
     gradient: LinearGradient(
       colors: [
-        isDarkMode ? gradientBackgroundStart : lightBackgroundColorStart,
-        isDarkMode ? gradientBackgroundEnd : lightBackgroundColorEnd,
+        isDarkMode ? backgroundColorStart : lightBackgroundColorStart,
+        isDarkMode ? backgroundColorEnd : lightBackgroundColorEnd,
       ],
       end: Alignment.bottomCenter,
     ),
@@ -234,7 +239,7 @@ class GlobalStyles {
 
   static final BoxDecoration gradientBackground = const BoxDecoration(
     gradient: LinearGradient(
-      colors: [gradientBackgroundStart, gradientBackgroundEnd],
+      colors: [backgroundColorStart, backgroundColorEnd],
       end: Alignment.bottomCenter,
     ),
   );

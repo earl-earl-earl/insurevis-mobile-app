@@ -1150,10 +1150,23 @@ InsureVis Team
           }
 
           if (externalDir != null) {
-            // Create InsureVis/documents in external storage
-            outputDir = Directory(
-              '${externalDir.path}/../../InsureVis/documents',
-            );
+            try {
+              final externalDocs = await getExternalStorageDirectories(
+                type: StorageDirectory.documents,
+              );
+              if (externalDocs != null && externalDocs.isNotEmpty) {
+                outputDir = Directory(
+                  '${externalDocs.first.path}/InsureVis/documents',
+                );
+              } else {
+                outputDir = Directory(
+                  '${externalDir.path}/InsureVis/documents',
+                );
+              }
+            } catch (e) {
+              print('Could not determine public external documents dir: $e');
+              outputDir = Directory('${externalDir.path}/InsureVis/documents');
+            }
           } else {
             // Fallback to app documents directory
             final appDir = await getApplicationDocumentsDirectory();

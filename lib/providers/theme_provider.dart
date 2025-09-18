@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ThemeProvider with ChangeNotifier {
-  bool _isDarkMode = true; // Default to dark mode for now
+  bool _isDarkMode = false; // Default to light mode
 
   bool get isDarkMode => _isDarkMode;
 
@@ -27,7 +27,7 @@ class ThemeProvider with ChangeNotifier {
       ThemeData.light().textTheme.copyWith(
         bodyLarge: const TextStyle(color: Colors.black),
         bodyMedium: const TextStyle(color: Colors.black87),
-        titleLarge: const TextStyle(color: Colors.black),
+        titleLarge: TextStyle(fontWeight: FontWeight.w700),
       ),
     ),
     colorScheme: ColorScheme.fromSeed(
@@ -66,14 +66,16 @@ class ThemeProvider with ChangeNotifier {
 
   // Toggle theme
   void toggleTheme() {
-    _isDarkMode = !_isDarkMode;
+    // Force light mode only. Ignore toggle requests to enable dark mode.
+    _isDarkMode = false;
     _saveThemeToPrefs();
     notifyListeners();
   }
 
   // Set theme directly
   void setTheme(bool isDark) {
-    _isDarkMode = isDark;
+    // Always enforce light mode regardless of request
+    _isDarkMode = false;
     _saveThemeToPrefs();
     notifyListeners();
   }
@@ -81,7 +83,9 @@ class ThemeProvider with ChangeNotifier {
   // Load theme preference from SharedPreferences
   void _loadThemeFromPrefs() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    _isDarkMode = prefs.getBool('isDarkMode') ?? true; // Default to dark
+    // Always enforce light mode regardless of any previously saved preference
+    _isDarkMode = false;
+    await prefs.setBool('isDarkMode', _isDarkMode);
     notifyListeners();
   }
 
