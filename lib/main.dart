@@ -116,6 +116,83 @@ class MainApp extends StatelessWidget {
           ],
           child: Consumer<ThemeProvider>(
             builder: (context, themeProvider, child) {
+              // Register FCM in-memory callbacks once the widget tree is available
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                try {
+                  final notificationProvider =
+                      Provider.of<NotificationProvider>(context, listen: false);
+
+                  // Foreground message: add immediately to provider
+                  FirebaseMsg.onMessageCallback = (message) {
+                    final title =
+                        message.notification?.title ??
+                        message.data['title'] ??
+                        '';
+                    final body =
+                        message.notification?.body ??
+                        message.data['body'] ??
+                        '';
+                    NotificationType type = NotificationType.system;
+                    if (message.data.containsKey('type')) {
+                      final t = message.data['type'];
+                      if (t is String) {
+                        switch (t.toLowerCase()) {
+                          case 'assessment':
+                            type = NotificationType.assessment;
+                            break;
+                          case 'document':
+                            type = NotificationType.document;
+                            break;
+                          case 'reminder':
+                            type = NotificationType.reminder;
+                            break;
+                          default:
+                            type = NotificationType.system;
+                        }
+                      }
+                    }
+
+                    NotificationPriority priority = NotificationPriority.medium;
+                    if (message.data.containsKey('priority')) {
+                      final p = message.data['priority'];
+                      if (p is String) {
+                        switch (p.toLowerCase()) {
+                          case 'low':
+                            priority = NotificationPriority.low;
+                            break;
+                          case 'high':
+                            priority = NotificationPriority.high;
+                            break;
+                          case 'urgent':
+                            priority = NotificationPriority.urgent;
+                            break;
+                          default:
+                            priority = NotificationPriority.medium;
+                        }
+                      }
+                    }
+
+                    notificationProvider.addNotification(
+                      title: title,
+                      message: body,
+                      type: type,
+                      priority: priority,
+                      data:
+                          message.data.isNotEmpty
+                              ? Map<String, dynamic>.from(message.data)
+                              : null,
+                    );
+                  };
+
+                  // When user opens app from notification
+                  FirebaseMsg.onMessageOpenedCallback = (message) {
+                    // reuse same logic
+                    FirebaseMsg.onMessageCallback?.call(message);
+                  };
+                } catch (e) {
+                  print('Error registering FCM callbacks: $e');
+                }
+              });
               return MaterialApp(
                 title: 'InsureVis',
                 theme: themeProvider.lightTheme,

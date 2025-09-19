@@ -56,6 +56,47 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   Map<int, String> _selectedRepairOptions =
       {}; // Track repair/replace selection for each damage
 
+  // Manual damages added by user via "Add Damage" UI
+  final List<Map<String, String>> _manualDamages = [];
+  bool _showAddDamageForm = false;
+  String? _newDamagePart;
+  String? _newDamageType;
+  String _newSelectedOption = 'repair';
+
+  // Car parts and damage types for dropdowns
+  final List<String> _carParts = [
+    "Back-bumper",
+    "Back-door",
+    "Back-wheel",
+    "Back-window",
+    "Back-windshield",
+    "Fender",
+    "Front-bumper",
+    "Front-door",
+    "Front-wheel",
+    "Front-window",
+    "Grille",
+    "Headlight",
+    "Hood",
+    "License-plate",
+    "Mirror",
+    "Quarter-panel",
+    "Rocker-panel",
+    "Roof",
+    "Tail-light",
+    "Trunk",
+    "Windshield",
+  ];
+
+  final List<String> _carDamageTypes = [
+    "Crack",
+    "Dent",
+    "Shattered Glass",
+    "Broken Lamp",
+    "Scratch / Paint Wear",
+    "Flat Tire",
+  ];
+
   // Document categories and their uploaded files
   Map<String, List<File>> uploadedDocuments = {
     'lto_or': [],
@@ -212,6 +253,21 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         }).toList();
 
     return capitalizedWords.join(' ');
+  }
+
+  // Helper to format labels for UI dropdowns (nicer display)
+  String _formatLabel(String raw) {
+    if (raw.isEmpty) return raw;
+    String formatted = raw.replaceAll('-', ' ').replaceAll('_', ' ').trim();
+    final words = formatted.split(' ');
+    return words
+        .map(
+          (w) =>
+              w.isEmpty
+                  ? w
+                  : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}',
+        )
+        .join(' ');
   }
 
   // Method to fetch pricing data for a damaged part
@@ -1113,9 +1169,8 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       }
     }
 
-    if (damagesList.isEmpty) {
-      return Container();
-    }
+    // Do not return early when there are no API-detected damages.
+    // We still want to allow users to add manual damages.
 
     return Container(
       padding: EdgeInsets.all(16.w),
@@ -1152,9 +1207,296 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           ),
           SizedBox(height: 20.h),
 
-          // Display damage options
-          for (int index = 0; index < damagesList.length; index++)
-            _buildDamageRepairOption(index, damagesList[index]),
+          // Display damage options from API
+          if (damagesList.isEmpty) ...[
+            Container(
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.white54, size: 16.sp),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      'No damages were automatically detected. You can add damages manually.',
+                      style: TextStyle(color: Colors.white70, fontSize: 13.sp),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12.h),
+          ] else ...[
+            for (int index = 0; index < damagesList.length; index++)
+              _buildDamageRepairOption(index, damagesList[index]),
+          ],
+
+          // Display manual damages added by user
+          for (int i = 0; i < _manualDamages.length; i++)
+            _buildManualDamageRepairOption(-(i + 1), _manualDamages[i]),
+
+          SizedBox(height: 12.h),
+
+          // Add Damage form toggle and button
+          if (_showAddDamageForm) ...[
+            _buildAddDamageForm(),
+            SizedBox(height: 8.h),
+          ],
+
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  _showAddDamageForm = !_showAddDamageForm;
+                });
+              },
+              child: Text(_showAddDamageForm ? 'Cancel' : 'Add Damage'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddDamageForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Part dropdown
+        Text(
+          'Detected Damage (Car Part)',
+          style: TextStyle(color: Colors.white70),
+        ),
+        SizedBox(height: 8.h),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 12.w),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(8.r),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          ),
+          child: DropdownButton<String>(
+            value: _newDamagePart,
+            hint: Text('Select part', style: TextStyle(color: Colors.white54)),
+            isExpanded: true,
+            dropdownColor: Colors.grey[900],
+            underline: SizedBox.shrink(),
+            items:
+                _carParts
+                    .map(
+                      (p) => DropdownMenuItem<String>(
+                        value: p,
+                        child: Text(
+                          _formatLabel(p),
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    )
+                    .toList(),
+            onChanged: (val) => setState(() => _newDamagePart = val),
+          ),
+        ),
+        SizedBox(height: 12.h),
+
+        // Damage type dropdown
+        Text('Damage Type', style: TextStyle(color: Colors.white70)),
+        SizedBox(height: 8.h),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 12.w),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(8.r),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          ),
+          child: DropdownButton<String>(
+            value: _newDamageType,
+            hint: Text(
+              'Select damage type',
+              style: TextStyle(color: Colors.white54),
+            ),
+            isExpanded: true,
+            dropdownColor: Colors.grey[900],
+            underline: SizedBox.shrink(),
+            items:
+                _carDamageTypes
+                    .map(
+                      (d) => DropdownMenuItem<String>(
+                        value: d,
+                        child: Text(
+                          _formatLabel(d),
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    )
+                    .toList(),
+            onChanged: (val) => setState(() => _newDamageType = val),
+          ),
+        ),
+        SizedBox(height: 12.h),
+
+        // Repair/Replace buttons for new damage
+        Row(
+          children: [
+            Expanded(
+              child: _buildOptionButton(
+                'Repair',
+                Icons.build,
+                _newSelectedOption == 'repair',
+                () => setState(() => _newSelectedOption = 'repair'),
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: _buildOptionButton(
+                'Replace',
+                Icons.autorenew,
+                _newSelectedOption == 'replace',
+                () => setState(() => _newSelectedOption = 'replace'),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8.h),
+
+        // Add button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed:
+                (_newDamagePart != null && _newDamageType != null)
+                    ? () {
+                      // Add to manual damages list
+                      setState(() {
+                        // compute index for manual damage as negative index to avoid colliding with API indices
+                        final int newGlobalIndex = -(_manualDamages.length + 1);
+
+                        _manualDamages.add({
+                          'damaged_part': _newDamagePart!,
+                          'damage_type': _newDamageType!,
+                        });
+
+                        // Set selected option for this new damage
+                        _selectedRepairOptions[newGlobalIndex] =
+                            _newSelectedOption;
+
+                        // Attempt to fetch pricing for new damage
+                        _fetchPricingForDamage(
+                          newGlobalIndex,
+                          _newDamagePart!,
+                          _newSelectedOption,
+                        );
+
+                        // reset form
+                        _newDamagePart = null;
+                        _newDamageType = null;
+                        _newSelectedOption = 'repair';
+                        _showAddDamageForm = false;
+                      });
+                    }
+                    : null,
+            child: Text('Add Damage'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildManualDamageRepairOption(
+    int globalIndex,
+    Map<String, String> damage,
+  ) {
+    final damagedPart = damage['damaged_part'] ?? 'Unknown Part';
+    final damageType = damage['damage_type'] ?? 'Unknown Damage';
+
+    String selectedOption = _selectedRepairOptions[globalIndex] ?? 'repair';
+
+    final displayIndex = globalIndex < 0 ? (-globalIndex) - 1 : globalIndex;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 16.h),
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(4.w),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.add, color: Colors.green, size: 12.sp),
+              ),
+              SizedBox(width: 8.w),
+              Text(
+                "MANUAL DAMAGE ${displayIndex + 1}",
+                style: TextStyle(
+                  color: GlobalStyles.secondaryColor,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Spacer(),
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    // convert globalIndex back to manual list index
+                    final manualIdx =
+                        globalIndex < 0 ? -globalIndex - 1 : globalIndex;
+                    if (manualIdx >= 0 && manualIdx < _manualDamages.length) {
+                      _manualDamages.removeAt(manualIdx);
+                    }
+                  });
+                },
+                icon: Icon(Icons.delete, color: Colors.red),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          _buildDamageInfo(damagedPart, damageType),
+          SizedBox(height: 16.h),
+          Row(
+            children: [
+              Expanded(
+                child: _buildOptionButton(
+                  'Repair',
+                  Icons.build,
+                  selectedOption == 'repair',
+                  () {
+                    setState(() {
+                      _selectedRepairOptions[globalIndex] = 'repair';
+                    });
+                    _fetchPricingForDamage(globalIndex, damagedPart, 'repair');
+                  },
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: _buildOptionButton(
+                  'Replace',
+                  Icons.autorenew,
+                  selectedOption == 'replace',
+                  () {
+                    setState(() {
+                      _selectedRepairOptions[globalIndex] = 'replace';
+                    });
+                    _fetchPricingForDamage(globalIndex, damagedPart, 'replace');
+                  },
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -1233,12 +1575,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                     setState(() {
                       _selectedRepairOptions[index] = 'repair';
                     });
-                    // Fetch pricing data if not already loaded
-                    if (!_repairPricingData.containsKey(index) &&
-                        damagedPart != 'Unknown Part') {
+                    // Always fetch pricing when user explicitly chooses the option
+                    if (damagedPart != 'Unknown Part') {
                       _fetchPricingForDamage(index, damagedPart, 'repair');
                     } else {
-                      // Recalculate cost with existing data
                       _calculateEstimatedDamageCost();
                     }
                   },
@@ -1254,12 +1594,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                     setState(() {
                       _selectedRepairOptions[index] = 'replace';
                     });
-                    // Fetch pricing data if not already loaded
-                    if (!_replacePricingData.containsKey(index) &&
-                        damagedPart != 'Unknown Part') {
+                    // Always fetch pricing when user explicitly chooses the option
+                    if (damagedPart != 'Unknown Part') {
                       _fetchPricingForDamage(index, damagedPart, 'replace');
                     } else {
-                      // Recalculate cost with existing data
                       _calculateEstimatedDamageCost();
                     }
                   },
@@ -1293,7 +1631,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               ),
               Expanded(
                 child: Text(
-                  damagedPart,
+                  _formatLabel(damagedPart),
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 14.sp,
@@ -1314,7 +1652,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               ),
               Expanded(
                 child: Text(
-                  damageType,
+                  _formatLabel(damageType),
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 14.sp,
@@ -1974,6 +2312,114 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               ? _estimatedDamageCost
               : (estimatedCost ?? 0.0);
 
+      // Build damages payload combining API-detected damages and manual damages
+      // Shape for each damage entry:
+      // {
+      //   'damaged_part': 'Back bumper',            // formatted for API
+      //   'damage_type': 'Dent',                    // human-readable
+      //   'selected_option': 'repair'|'replace',
+      //   'pricing': {
+      //     'repair_insurance': 1234.56,            // nullable
+      //     'replace_insurance': 2345.67            // nullable
+      //   }
+      // }
+      List<Map<String, dynamic>> damagesPayload = [];
+
+      // Extract API-detected damages first
+      if (widget.apiResponses.isNotEmpty) {
+        for (var response in widget.apiResponses.values) {
+          List<Map<String, dynamic>> damagesList = [];
+          if (response['damages'] is List) {
+            damagesList.addAll(
+              (response['damages'] as List).cast<Map<String, dynamic>>(),
+            );
+          } else if (response['prediction'] is List) {
+            damagesList.addAll(
+              (response['prediction'] as List).cast<Map<String, dynamic>>(),
+            );
+          }
+
+          for (int i = 0; i < damagesList.length; i++) {
+            final damage = damagesList[i];
+            String damagedPart =
+                damage.containsKey('damaged_part')
+                    ? damage['damaged_part']?.toString() ?? 'Unknown Part'
+                    : 'Unknown Part';
+
+            String damageType = 'Unknown Damage';
+            if (damage.containsKey('damage_type')) {
+              final dt = damage['damage_type'];
+              if (dt is Map && dt.containsKey('class_name')) {
+                damageType = dt['class_name']?.toString() ?? 'Unknown Damage';
+              } else {
+                damageType = dt?.toString() ?? 'Unknown Damage';
+              }
+            }
+
+            final selectedOption = _selectedRepairOptions[i] ?? 'repair';
+
+            // pricing info (may be null)
+            final repairData = _repairPricingData[i];
+            final replaceData = _replacePricingData[i];
+
+            double? repairInsurance =
+                repairData != null
+                    ? (repairData['insurance'] as num?)?.toDouble()
+                    : null;
+            double? replaceInsurance =
+                replaceData != null
+                    ? (replaceData['srp_insurance'] as num?)?.toDouble()
+                    : null;
+
+            damagesPayload.add({
+              'damaged_part': _formatDamagedPartForApi(damagedPart),
+              'damage_type': damageType,
+              'selected_option': selectedOption,
+              'pricing': {
+                'repair_insurance': repairInsurance,
+                'replace_insurance': replaceInsurance,
+              },
+            });
+          }
+        }
+      }
+
+      // Add manual damages (we used negative global indices for these)
+      for (int mi = 0; mi < _manualDamages.length; mi++) {
+        final manual = _manualDamages[mi];
+        final globalIndex = -(mi + 1);
+        final damagedPart = manual['damaged_part'] ?? 'Unknown Part';
+        final damageType = manual['damage_type'] ?? 'Unknown Damage';
+        final selectedOption = _selectedRepairOptions[globalIndex] ?? 'repair';
+
+        final repairData = _repairPricingData[globalIndex];
+        final replaceData = _replacePricingData[globalIndex];
+
+        double? repairInsurance =
+            repairData != null
+                ? (repairData['insurance'] as num?)?.toDouble()
+                : null;
+        double? replaceInsurance =
+            replaceData != null
+                ? (replaceData['srp_insurance'] as num?)?.toDouble()
+                : null;
+
+        damagesPayload.add({
+          'damaged_part': _formatDamagedPartForApi(damagedPart),
+          'damage_type': damageType,
+          'selected_option': selectedOption,
+          'pricing': {
+            'repair_insurance': repairInsurance,
+            'replace_insurance': replaceInsurance,
+          },
+        });
+      }
+
+      // Debug: print the payload shape being sent
+      print('=== DAMAGES PAYLOAD ===');
+      print(damagesPayload);
+      print('=======================');
+
       // Debug: Print vehicle information being sent
       print('=== VEHICLE DATA DEBUG ===');
       print('Vehicle Make: "${_vehicleMakeController.text.trim()}"');
@@ -2011,6 +2457,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 ? _plateNumberController.text.trim()
                 : null,
         estimatedDamageCost: finalEstimatedCost,
+        damages: damagesPayload,
       );
 
       // Debug: Print claim result

@@ -12,22 +12,7 @@ class NotificationCenter extends StatefulWidget {
   State<NotificationCenter> createState() => _NotificationCenterState();
 }
 
-class _NotificationCenterState extends State<NotificationCenter>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _NotificationCenterState extends State<NotificationCenter> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -142,45 +127,8 @@ class _NotificationCenterState extends State<NotificationCenter>
         ),
         child: Column(
           children: [
-            // Tab bar for filtering notifications
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicatorColor: GlobalStyles.primaryColor,
-                indicatorWeight: 3,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white54,
-                labelStyle: TextStyle(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-                unselectedLabelStyle: TextStyle(fontSize: 12.sp),
-                tabs: [
-                  Tab(text: 'All'),
-                  Tab(text: 'Assessments'),
-                  Tab(text: 'Documents'),
-                  Tab(text: 'System'),
-                ],
-              ),
-            ),
-
-            // Notification list
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildNotificationList(),
-                  _buildNotificationList(NotificationType.assessment),
-                  _buildNotificationList(NotificationType.document),
-                  _buildNotificationList(NotificationType.system),
-                ],
-              ),
-            ),
+            // Single notifications list (no tabs)
+            Expanded(child: _buildNotificationList()),
           ],
         ),
       ),
@@ -247,17 +195,34 @@ class _NotificationCenterState extends State<NotificationCenter>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Notification icon
+                // Notification icon - prefer payload status when present
                 Container(
                   width: 40.w,
                   height: 40.h,
                   decoration: BoxDecoration(
-                    color: _getTypeColor(notification.type).withValues(alpha: 0.2),
+                    color: (notification.data != null &&
+                                notification.data!.containsKey('status')
+                            ? _getStatusColor(
+                              notification.data!['status']?.toString(),
+                            )
+                            : _getTypeColor(notification.type))
+                        .withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
-                    _getTypeIcon(notification.type),
-                    color: _getTypeColor(notification.type),
+                    notification.data != null &&
+                            notification.data!.containsKey('status')
+                        ? _getIconForStatus(
+                          notification.data!['status']?.toString(),
+                        )
+                        : _getTypeIcon(notification.type),
+                    color:
+                        notification.data != null &&
+                                notification.data!.containsKey('status')
+                            ? _getStatusColor(
+                              notification.data!['status']?.toString(),
+                            )
+                            : _getTypeColor(notification.type),
                     size: 20.sp,
                   ),
                 ),
@@ -495,6 +460,56 @@ class _NotificationCenterState extends State<NotificationCenter>
         return Colors.blue;
       case NotificationType.reminder:
         return Colors.green;
+    }
+  }
+
+  // Map payload status string to a specific icon
+  IconData _getIconForStatus(String? status) {
+    if (status == null) return Icons.notifications;
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Icons.hourglass_bottom;
+      case 'in_progress':
+      case 'in-progress':
+      case 'processing':
+        return Icons.autorenew;
+      case 'completed':
+      case 'done':
+        return Icons.check_circle;
+      case 'failed':
+      case 'error':
+        return Icons.error;
+      case 'warning':
+        return Icons.warning;
+      case 'review':
+        return Icons.rate_review;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  // Map payload status to a color to use for icon background and tint
+  Color _getStatusColor(String? status) {
+    if (status == null) return GlobalStyles.primaryColor;
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'in_progress':
+      case 'in-progress':
+      case 'processing':
+        return Colors.blue;
+      case 'completed':
+      case 'done':
+        return Colors.green;
+      case 'failed':
+      case 'error':
+        return Colors.red;
+      case 'warning':
+        return Colors.deepOrange;
+      case 'review':
+        return Colors.purple;
+      default:
+        return GlobalStyles.primaryColor;
     }
   }
 

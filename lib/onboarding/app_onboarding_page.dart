@@ -153,16 +153,19 @@ class _AppOnboardingScreenState extends State<AppOnboardingScreen> {
                       padding: EdgeInsets.only(top: screenHeight * 0.05),
                       child: Text.rich(
                         TextSpan(
-                          text: "InsureVis",
-                          style: TextStyle(
+                          text: "Insure",
+                          style: GoogleFonts.inter(
                             color: Colors.white,
                             fontSize: 35.sp,
                             fontWeight: FontWeight.w900,
                           ),
                           children: [
                             TextSpan(
-                              text: ".",
-                              style: TextStyle(color: Color(0xFF6B4AFF)),
+                              text: "Vis",
+                              style: GoogleFonts.inter(
+                                color: GlobalStyles.primaryColor,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ],
                         ),
@@ -226,10 +229,7 @@ class _AppOnboardingScreenState extends State<AppOnboardingScreen> {
                                 onPressed: () {
                                   if (_isLastPage) {
                                     // Navigate to the SignIn screen
-                                    Navigator.pushReplacementNamed(
-                                      context,
-                                      '/signin',
-                                    );
+                                    Navigator.pushNamed(context, '/signin');
                                   } else {
                                     _controller.nextPage(
                                       duration: const Duration(
@@ -243,6 +243,13 @@ class _AppOnboardingScreenState extends State<AppOnboardingScreen> {
                                   backgroundColor: WidgetStatePropertyAll(
                                     GlobalStyles.primaryColor,
                                   ),
+                                  shape: WidgetStatePropertyAll(
+                                    RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.all(
+                                        Radius.circular(10.0),
+                                      ),
+                                    ),
+                                  ),
                                   splashFactory: InkRipple.splashFactory,
                                 ),
                                 child: Padding(
@@ -251,7 +258,7 @@ class _AppOnboardingScreenState extends State<AppOnboardingScreen> {
                                     _isLastPage
                                         ? "Get Started"
                                         : "Next", // Change Text based on last page
-                                    style: TextStyle(
+                                    style: GoogleFonts.inter(
                                       color: Colors.white,
                                       fontSize: 16.sp,
                                       fontWeight: FontWeight.w900,
@@ -351,7 +358,7 @@ class OnboardingPage extends StatelessWidget {
                 color: GlobalStyles.secondaryColor,
                 fontSize: 35.sp,
                 fontWeight: FontWeight.w900,
-                fontFamily: GoogleFonts.poppins().fontFamily,
+                fontFamily: GoogleFonts.inter().fontFamily,
               ),
             ),
           ],

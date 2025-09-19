@@ -18,17 +18,27 @@ class ThemeProvider with ChangeNotifier {
     primaryColor: const Color(0xFF5E4FCF),
     scaffoldBackgroundColor: Colors.white,
     fontFamily: GoogleFonts.inter().fontFamily,
-    appBarTheme: const AppBarTheme(
+    // AppBarTheme set below with GoogleFonts
+    primaryTextTheme: GoogleFonts.interTextTheme(),
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.white,
       foregroundColor: Colors.black,
       elevation: 0,
-    ),
-    textTheme: GoogleFonts.interTextTheme(
-      ThemeData.light().textTheme.copyWith(
-        bodyLarge: const TextStyle(color: Colors.black),
-        bodyMedium: const TextStyle(color: Colors.black87),
-        titleLarge: TextStyle(fontWeight: FontWeight.w700),
+      titleTextStyle: GoogleFonts.inter(
+        textStyle: const TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.w700,
+          fontSize: 20,
+        ),
       ),
+      toolbarTextStyle: GoogleFonts.inter(
+        textStyle: const TextStyle(color: Colors.black),
+      ),
+    ),
+    textTheme: GoogleFonts.interTextTheme().copyWith(
+      bodyLarge: const TextStyle(color: Colors.black),
+      bodyMedium: const TextStyle(color: Colors.black87),
+      titleLarge: const TextStyle(fontWeight: FontWeight.w700),
     ),
     colorScheme: ColorScheme.fromSeed(
       seedColor: const Color(0xFF5E4FCF),
@@ -43,17 +53,27 @@ class ThemeProvider with ChangeNotifier {
     primaryColor: const Color(0xFF5E4FCF),
     scaffoldBackgroundColor: const Color(0xFF121316),
     fontFamily: GoogleFonts.inter().fontFamily,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFF1E1E1E),
+    // AppBarTheme set below with GoogleFonts
+    primaryTextTheme: GoogleFonts.interTextTheme(),
+    appBarTheme: AppBarTheme(
+      backgroundColor: const Color(0xFF1E1E1E),
       foregroundColor: Colors.white,
       elevation: 0,
-    ),
-    textTheme: GoogleFonts.interTextTheme(
-      ThemeData.dark().textTheme.copyWith(
-        bodyLarge: const TextStyle(color: Colors.white),
-        bodyMedium: const TextStyle(color: Colors.white70),
-        titleLarge: const TextStyle(color: Colors.white),
+      titleTextStyle: GoogleFonts.inter(
+        textStyle: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: 20,
+        ),
       ),
+      toolbarTextStyle: GoogleFonts.inter(
+        textStyle: const TextStyle(color: Colors.white),
+      ),
+    ),
+    textTheme: GoogleFonts.interTextTheme().copyWith(
+      bodyLarge: const TextStyle(color: Colors.white),
+      bodyMedium: const TextStyle(color: Colors.white70),
+      titleLarge: const TextStyle(color: Colors.white),
     ),
     colorScheme: ColorScheme.fromSeed(
       seedColor: const Color(0xFF5E4FCF),

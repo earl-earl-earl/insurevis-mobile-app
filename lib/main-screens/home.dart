@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:insurevis/main-screens/profile_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
@@ -344,9 +345,10 @@ class _HomeState extends State<Home> {
                       children: [
                         Text(
                           "Recent",
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleLarge?.copyWith(fontSize: 24.sp),
+                          style: GoogleFonts.inter(
+                            fontSize: 22.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
@@ -410,12 +412,6 @@ class _HomeState extends State<Home> {
                           children: [
                             for (var i = 0; i < claims.length; i++) ...[
                               _buildClaimTile(claims[i]),
-                              if (i < claims.length - 1)
-                                Divider(
-                                  height: 1.h,
-                                  thickness: 1.h,
-                                  color: Colors.grey[300],
-                                ),
                             ],
                           ],
                         );
@@ -486,6 +482,18 @@ class _HomeState extends State<Home> {
     }
   }
 
+  Widget _buildClaimIcon(String status, Color color) {
+    return Container(
+      height: 50.sp,
+      width: 50.sp,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(_statusIcon(status), color: color, size: 25.sp),
+    );
+  }
+
   Widget _buildClaimTile(ClaimModel claim) {
     // Non-clickable claim tile — preserve appearance but remove InkWell
     return Container(
@@ -496,66 +504,58 @@ class _HomeState extends State<Home> {
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Details
+          // Icon
+          _buildClaimIcon(claim.status, _statusColor(claim.status)),
+          SizedBox(width: 12.w),
+          // Details column takes remaining width
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      claim.claimNumber,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16.sp,
+                    // Constrain the claim number so it can ellipsize instead of
+                    // pushing the amount offscreen and causing flex errors.
+                    Expanded(
+                      child: Text(
+                        claim.claimNumber,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
+                    // Small fixed gap between number and amount
+                    SizedBox(width: 8.w),
+                    // Amount should take only the space it needs.
                     Text(
                       _formatCurrency(claim.estimatedDamageCost),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20.sp,
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.sp,
+                        color: GlobalStyles.primaryColor,
                       ),
                     ),
                   ],
                 ),
                 SizedBox(height: 6.h),
-                Text(
-                  '${claim.incidentLocation} • ${claim.vehicleMake ?? ''} ${claim.vehicleModel ?? ''}'
-                      .trim(),
-                  style: TextStyle(color: Colors.grey[700], fontSize: 12.sp),
-                ),
-                SizedBox(height: 8.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 8.w,
-                        vertical: 4.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _statusColor(
-                          claim.status,
-                        ).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(18.r),
-                      ),
-                      child: Text(
-                        _formatStatus(claim.status),
-                        style: TextStyle(
-                          color: _statusColor(claim.status),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12.sp,
-                        ),
+                    Text(
+                      _formatStatus(claim.status),
+                      style: GoogleFonts.inter(
+                        color: _statusColor(claim.status),
+                        fontSize: 12.sp,
                       ),
                     ),
-                    SizedBox(width: 8.w),
                     Text(
-                      claim.incidentDate.toIso8601String().split('T').first,
-                      style: TextStyle(
-                        color: Colors.grey[600],
+                      DateFormat.yMMMd().format(claim.incidentDate),
+                      style: GoogleFonts.inter(
+                        color: Colors.grey,
                         fontSize: 12.sp,
                       ),
                     ),

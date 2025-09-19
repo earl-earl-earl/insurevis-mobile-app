@@ -547,6 +547,7 @@ class PDFService {
           final fallback = await LocalStorageService.saveFileToDocuments(
             pdfBytes,
             suggestedFileName,
+            allowPicker: false,
           );
           return fallback;
         }
@@ -686,6 +687,7 @@ class PDFService {
         final saved = await LocalStorageService.saveFileToDocuments(
           pdfBytes,
           fileName,
+          allowPicker: false,
         );
         if (saved != null) return saved;
       } catch (e) {

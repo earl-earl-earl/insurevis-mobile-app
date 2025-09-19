@@ -68,63 +68,78 @@ class LocalStorageService {
   /// Save a file to the InsureVis documents folder
   static Future<String?> saveFileToDocuments(
     List<int> fileBytes,
-    String fileName,
-  ) async {
+    String fileName, {
+    bool allowPicker = true,
+  }) async {
     try {
       // First, attempt to present a save dialog to the user via FilePicker.
-      try {
-        String? output = await FilePicker.platform.saveFile(
-          dialogTitle: 'Save file',
-          fileName: fileName,
-          type: FileType.custom,
-          allowedExtensions: [fileName.split('.').last],
-          bytes: Uint8List.fromList(fileBytes),
-        );
+      if (allowPicker) {
+        try {
+          String? output = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save file',
+            fileName: fileName,
+            type: FileType.custom,
+            allowedExtensions: [fileName.split('.').last],
+            bytes: Uint8List.fromList(fileBytes),
+          );
 
-        if (output != null) {
-          // If we received a content URI, write via platform writer.
-          if (output.startsWith('content://')) {
-            await FileWriter.writeBytesToUri(
-              output,
-              Uint8List.fromList(fileBytes),
-            );
-            return output;
-          }
+          if (output != null) {
+            // If we received a content URI, write via platform writer.
+            if (output.startsWith('content://')) {
+              await FileWriter.writeBytesToUri(
+                output,
+                Uint8List.fromList(fileBytes),
+              );
+              return output;
+            }
 
-          // Ensure extension
-          if (!output.toLowerCase().endsWith('.${fileName.split('.').last}')) {
-            output = '$output.${fileName.split('.').last}';
-          }
+            // Ensure extension
+            if (!output.toLowerCase().endsWith(
+              '.${fileName.split('.').last}',
+            )) {
+              output = '$output.${fileName.split('.').last}';
+            }
 
-          final file = File(output);
-          final parent = file.parent;
-          if (!await parent.exists()) await parent.create(recursive: true);
-          await file.writeAsBytes(fileBytes);
-          if (await file.exists() && await file.length() > 0) {
-            print('File saved successfully via picker: ${file.path}');
-            return file.path;
+            final file = File(output);
+            final parent = file.parent;
+            if (!await parent.exists()) await parent.create(recursive: true);
+            await file.writeAsBytes(fileBytes);
+            if (await file.exists() && await file.length() > 0) {
+              print('File saved successfully via picker: ${file.path}');
+              return file.path;
+            }
           }
+        } catch (pickerError) {
+          print('FilePicker save failed or cancelled: $pickerError');
         }
-      } catch (pickerError) {
-        print('FilePicker save failed or cancelled: $pickerError');
       }
 
       // Picker not available or cancelled: fallback to app documents folder.
       final documentsDir = await getDocumentsDirectory();
       if (documentsDir != null) {
-        String finalFileName = fileName;
+        // Build a safe filename with extension; avoid duplicating extension
+        final extension =
+            fileName.contains('.') ? fileName.split('.').last : '';
+        final baseName = fileName.replaceAll(RegExp(r'\.[^.]+$'), '');
+
+        String finalFileName = extension.isNotEmpty ? fileName : '$baseName';
+        if (extension.isNotEmpty) {
+          // keep provided filename
+        } else {
+          finalFileName = '$baseName';
+        }
+
         int counter = 1;
-        while (await File('${documentsDir.path}/$finalFileName').exists()) {
-          final nameWithoutExtension = fileName.replaceAll(
-            RegExp(r'\.[^.]+$'),
-            '',
-          );
-          final extension = fileName.split('.').last;
-          finalFileName = '${nameWithoutExtension}_$counter.$extension';
+        String candidate = finalFileName;
+        while (await File('${documentsDir.path}/$candidate').exists()) {
+          candidate =
+              extension.isNotEmpty
+                  ? '${baseName}_$counter.$extension'
+                  : '${baseName}_$counter';
           counter++;
         }
 
-        final file = File('${documentsDir.path}/$finalFileName');
+        final file = File('${documentsDir.path}/$candidate');
         await file.writeAsBytes(fileBytes);
         if (await file.exists() && await file.length() > 0) {
           print('File saved to app documents: ${file.path}');

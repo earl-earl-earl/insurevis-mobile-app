@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/providers/auth_provider.dart';
@@ -108,7 +109,13 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text("Signed in successfully!"),
+            content: Text(
+              "Signed in successfully!",
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -170,9 +177,15 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
           (context) => AlertDialog(
             title: const Text("Reset Password"),
             content: const Text("Sending password reset email..."),
-            backgroundColor: GlobalStyles.backgroundColorStart,
-            titleTextStyle: TextStyle(color: Colors.white, fontSize: 18.sp),
-            contentTextStyle: TextStyle(color: Colors.white70, fontSize: 14.sp),
+            backgroundColor: Colors.white,
+            titleTextStyle: GoogleFonts.inter(
+              color: Colors.black,
+              fontSize: 18.sp,
+            ),
+            contentTextStyle: GoogleFonts.inter(
+              color: Colors.black54,
+              fontSize: 14.sp,
+            ),
           ),
     );
 
@@ -213,22 +226,13 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         appBar: GlobalStyles.buildCustomAppBar(
           context: context,
           icon: Icons.arrow_back_rounded,
-          color: GlobalStyles.paleWhite,
+          color: Color(0xFF2A2A2A),
           appBarBackgroundColor: Colors.transparent,
         ),
         body: Container(
           height: double.infinity,
           width: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                GlobalStyles.backgroundColorStart,
-                GlobalStyles.backgroundColorEnd,
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
+          decoration: const BoxDecoration(color: Colors.white),
           child: FadeTransition(
             opacity: _fadeAnimation,
             child: Column(
@@ -242,44 +246,36 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           SizedBox(height: topSpacingHeight),
+                          SizedBox(height: 10.h),
 
                           // Welcome Header Section
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                decoration: const BoxDecoration(
-                                  image: DecorationImage(
-                                    image: AssetImage(
-                                      "assets/images/loggers.png",
-                                    ),
-                                  ),
-                                ),
-                                height: 80.h,
-                                width: 80.w,
-                              ),
-                              SizedBox(height: 16.h),
                               Text(
-                                "Hello!",
-                                style: GlobalStyles.headingStyle.copyWith(
-                                  color: GlobalStyles.secondaryColor,
-                                  fontSize: 36.sp,
+                                "Welcome to",
+                                style: GoogleFonts.inter(
+                                  fontSize: 24.sp,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                               Text.rich(
                                 TextSpan(
-                                  text: "Welcome to InsureVis",
-                                  style: GlobalStyles.subheadingStyle.copyWith(
-                                    fontSize: 18.sp,
+                                  text: "Insure",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 40.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.black,
+                                    height: 0.8,
                                   ),
                                   children: [
                                     TextSpan(
-                                      text: ".",
-                                      style: GlobalStyles.subheadingStyle
-                                          .copyWith(
-                                            color: GlobalStyles.primaryColor,
-                                            fontSize: 18.sp,
-                                          ),
+                                      text: "Vis",
+                                      style: GoogleFonts.inter(
+                                        color: GlobalStyles.primaryColor,
+                                        fontSize: 40.sp,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -288,6 +284,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                           ),
 
                           SizedBox(height: middleSpacingHeight),
+                          SizedBox(height: 70.h),
 
                           // Email Field
                           _buildInputLabel("Email"),
@@ -320,9 +317,9 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _isPasswordVisible
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                                color: Colors.white54,
+                                    ? Icons.visibility_rounded
+                                    : Icons.visibility_off_rounded,
+                                color: Color(0x992A2A2A),
                                 size: 20.sp,
                               ),
                               onPressed: () {
@@ -337,7 +334,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                             _buildErrorText(_passwordError!),
                           ],
 
-                          SizedBox(height: 20.h),
+                          SizedBox(height: 10.h),
 
                           // Remember Me & Forgot Password
                           Row(
@@ -395,7 +392,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                                     SizedBox(width: 8.w),
                                     Text(
                                       "Remember me",
-                                      style: TextStyle(
+                                      style: GoogleFonts.inter(
                                         color: Colors.white70,
                                         fontSize: 13.sp,
                                       ),
@@ -414,7 +411,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                                 ),
                                 child: Text(
                                   "Forgot password?",
-                                  style: TextStyle(
+                                  style: GoogleFonts.inter(
                                     color: GlobalStyles.primaryColor,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13.sp,
@@ -470,7 +467,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                                 ),
                                 child: Text(
                                   "Sign in",
-                                  style: GlobalStyles.buttonTextStyle.copyWith(
+                                  style: GoogleFonts.inter(
                                     color: Colors.white,
                                     fontSize: 16.sp,
                                     fontWeight: FontWeight.w600,
@@ -501,8 +498,8 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                         children: [
                           Text(
                             "Don't have an account? ",
-                            style: TextStyle(
-                              color: Colors.white70,
+                            style: GoogleFonts.inter(
+                              color: Color(0xFF2A2A2A),
                               fontSize: 14.sp,
                             ),
                           ),
@@ -512,7 +509,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                             },
                             child: Text(
                               "Sign Up",
-                              style: TextStyle(
+                              style: GoogleFonts.inter(
                                 color: GlobalStyles.primaryColor,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14.sp,
@@ -537,10 +534,10 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
   Widget _buildInputLabel(String label) {
     return Text(
       label,
-      style: TextStyle(
-        color: Colors.white,
+      style: GoogleFonts.inter(
+        color: Color(0x992A2A2A),
         fontSize: 14.sp,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
@@ -556,36 +553,32 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
     bool hasError = false,
   }) {
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12.r),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: TextField(
         controller: controller,
         focusNode: focusNode,
         obscureText: obscureText,
         keyboardType: keyboardType,
-        style: TextStyle(fontSize: 15.sp, color: Colors.white),
+        style: GoogleFonts.inter(fontSize: 14.sp, color: Color(0xFF2A2A2A)),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: TextStyle(color: Colors.white38, fontSize: 15.sp),
+          hintStyle: GoogleFonts.inter(
+            color: Color(0x992A2A2A),
+            fontSize: 14.sp,
+          ),
           contentPadding: EdgeInsets.symmetric(
             vertical: 18.h,
             horizontal: 16.w,
           ),
-          prefixIcon: Icon(prefixIcon, color: Colors.white54, size: 20.sp),
           suffixIcon: suffixIcon,
           filled: true,
-          fillColor: Colors.white.withAlpha(20), // 0.08 * 255
+          fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide.none,
+            borderSide: BorderSide(
+              color: GlobalStyles.primaryColor,
+              width: 1.5.w,
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.r),
@@ -617,7 +610,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         Expanded(
           child: Text(
             errorMessage,
-            style: TextStyle(
+            style: GoogleFonts.inter(
               color: Colors.red[300],
               fontSize: 12.sp,
               fontWeight: FontWeight.w400,

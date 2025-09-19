@@ -158,7 +158,7 @@ class _MainContainerState extends State<MainContainer>
           child: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
-            backgroundColor: GlobalStyles.backgroundColorStart,
+            backgroundColor: Colors.white,
             selectedItemColor: GlobalStyles.primaryColor,
             unselectedItemColor: Colors.black38,
             type: BottomNavigationBarType.fixed,
