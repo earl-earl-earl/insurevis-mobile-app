@@ -8,6 +8,7 @@ import 'package:insurevis/other-screens/faq_screen.dart';
 import 'package:insurevis/other-screens/gallery_view.dart';
 import 'package:insurevis/other-screens/insurance_document_upload.dart';
 import 'package:insurevis/other-screens/privacy_policy_screen.dart';
+import 'package:insurevis/other-screens/terms_of_service_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -58,8 +59,8 @@ void main() async {
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
+      statusBarColor: Color(0xFF2A2A2A),
+      statusBarIconBrightness: Brightness.light,
       statusBarBrightness: Brightness.light,
       systemNavigationBarIconBrightness: Brightness.dark,
       systemNavigationBarColor: Colors.white,
@@ -97,19 +98,8 @@ class MainApp extends StatelessWidget {
             >(
               create: (_) => AssessmentProvider(),
               update: (_, notificationProvider, assessmentProvider) {
-                if (assessmentProvider != null) {
-                  assessmentProvider.onNotificationNeeded = (
-                    type,
-                    title,
-                    message,
-                  ) {
-                    if (type == 'assessment_started') {
-                      notificationProvider.addAssessmentStarted(title);
-                    } else if (type == 'assessment_completed') {
-                      notificationProvider.addAssessmentCompleted(title);
-                    }
-                  };
-                }
+                // Intentionally not forwarding assessment lifecycle events into NotificationProvider.
+                // If you want assessment-driven notifications later, re-enable here with caution.
                 return assessmentProvider ?? AssessmentProvider();
               },
             ),
@@ -122,72 +112,27 @@ class MainApp extends StatelessWidget {
                   final notificationProvider =
                       Provider.of<NotificationProvider>(context, listen: false);
 
-                  // Foreground message: add immediately to provider
+                  // Foreground message: only refresh from database
+                  // The server already creates the notification in DB and sends FCM
+                  // We just need to sync the database notification to show in UI
                   FirebaseMsg.onMessageCallback = (message) {
-                    final title =
-                        message.notification?.title ??
-                        message.data['title'] ??
-                        '';
-                    final body =
-                        message.notification?.body ??
-                        message.data['body'] ??
-                        '';
-                    NotificationType type = NotificationType.system;
-                    if (message.data.containsKey('type')) {
-                      final t = message.data['type'];
-                      if (t is String) {
-                        switch (t.toLowerCase()) {
-                          case 'assessment':
-                            type = NotificationType.assessment;
-                            break;
-                          case 'document':
-                            type = NotificationType.document;
-                            break;
-                          case 'reminder':
-                            type = NotificationType.reminder;
-                            break;
-                          default:
-                            type = NotificationType.system;
-                        }
-                      }
-                    }
-
-                    NotificationPriority priority = NotificationPriority.medium;
-                    if (message.data.containsKey('priority')) {
-                      final p = message.data['priority'];
-                      if (p is String) {
-                        switch (p.toLowerCase()) {
-                          case 'low':
-                            priority = NotificationPriority.low;
-                            break;
-                          case 'high':
-                            priority = NotificationPriority.high;
-                            break;
-                          case 'urgent':
-                            priority = NotificationPriority.urgent;
-                            break;
-                          default:
-                            priority = NotificationPriority.medium;
-                        }
-                      }
-                    }
-
-                    notificationProvider.addNotification(
-                      title: title,
-                      message: body,
-                      type: type,
-                      priority: priority,
-                      data:
-                          message.data.isNotEmpty
-                              ? Map<String, dynamic>.from(message.data)
-                              : null,
-                    );
+                    // Only refresh from database - don't show additional local notification
+                    // The FCM message itself provides the system notification
+                    notificationProvider.refreshNotifications();
                   };
 
                   // When user opens app from notification
                   FirebaseMsg.onMessageOpenedCallback = (message) {
-                    // reuse same logic
-                    FirebaseMsg.onMessageCallback?.call(message);
+                    // Only refresh from database and handle navigation
+                    // Don't show additional local notification
+                    notificationProvider.refreshNotifications();
+
+                    // TODO: Handle navigation to specific screen based on message data
+                    // You can access message.data here to navigate to specific screens
+                    // For example:
+                    // if (message.data['screen'] == 'claims') {
+                    //   Navigator.of(context).pushNamed('/claims');
+                    // }
                   };
                 } catch (e) {
                   print('Error registering FCM callbacks: $e');
@@ -220,6 +165,7 @@ class MainApp extends StatelessWidget {
                   '/gallery': (context) => const GalleryScreen(),
                   '/faq': (context) => const FAQScreen(),
                   '/policy': (context) => const PrivacyPolicyScreen(),
+                  '/terms': (context) => const TermsOfServiceScreen(),
                 },
               );
             },

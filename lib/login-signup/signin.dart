@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/providers/auth_provider.dart';
 import 'package:insurevis/services/supabase_service.dart';
+import 'package:insurevis/login-signup/forgot_password.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -160,76 +161,17 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
     );
   }
 
-  void _handleForgotPassword() async {
-    if (_emailController.text.trim().isEmpty) {
-      setState(() {
-        _emailError = "Please enter your email address first";
-      });
-      return;
-    }
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (context) => AlertDialog(
-            title: const Text("Reset Password"),
-            content: const Text("Sending password reset email..."),
-            backgroundColor: Colors.white,
-            titleTextStyle: GoogleFonts.inter(
-              color: Colors.black,
-              fontSize: 18.sp,
-            ),
-            contentTextStyle: GoogleFonts.inter(
-              color: Colors.black54,
-              fontSize: 14.sp,
-            ),
-          ),
-    );
-
-    final success = await authProvider.resetPassword(
-      email: _emailController.text.trim().toLowerCase(),
-    );
-
-    Navigator.of(context).pop(); // Close loading dialog
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Password reset email sent! Check your inbox."),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          margin: const EdgeInsets.all(20),
-        ),
-      );
-    } else {
-      final errorMessage =
-          authProvider.error ?? 'Failed to send reset email. Please try again.';
-      _showErrorSnackBar(errorMessage);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    final double topSpacingHeight = isKeyboardVisible ? 40.h : 80.h;
-    final double middleSpacingHeight = isKeyboardVisible ? 20.h : 40.h;
+    final double topSpacingHeight = isKeyboardVisible ? 10.h : 30.h;
+    final double middleSpacingHeight = isKeyboardVisible ? 5.h : 30.h;
 
-    return SafeArea(
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        appBar: GlobalStyles.buildCustomAppBar(
-          context: context,
-          icon: Icons.arrow_back_rounded,
-          color: Color(0xFF2A2A2A),
-          appBarBackgroundColor: Colors.transparent,
-        ),
-        body: Container(
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(),
+      body: SafeArea(
+        child: Container(
           height: double.infinity,
           width: double.infinity,
           decoration: const BoxDecoration(color: Colors.white),
@@ -239,246 +181,248 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: GlobalStyles.defaultPadding,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: topSpacingHeight),
-                          SizedBox(height: 10.h),
+                  child: Padding(
+                    padding: GlobalStyles.defaultPadding,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: topSpacingHeight),
 
-                          // Welcome Header Section
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Welcome to",
+                        // Welcome Header Section
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Welcome to",
+                              style: GoogleFonts.inter(
+                                fontSize: 24.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text.rich(
+                              TextSpan(
+                                text: "Insure",
                                 style: GoogleFonts.inter(
-                                  fontSize: 24.sp,
+                                  fontSize: 40.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.black,
+                                  height: 0.8,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: "Vis",
+                                    style: GoogleFonts.inter(
+                                      color: GlobalStyles.primaryColor,
+                                      fontSize: 40.sp,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        SizedBox(height: middleSpacingHeight),
+                        SizedBox(height: 70.h),
+
+                        // Email Field
+                        _buildInputLabel("Email"),
+                        SizedBox(height: 8.h),
+                        _buildTextField(
+                          controller: _emailController,
+                          focusNode: _emailFocusNode,
+                          hintText: "Enter your email",
+                          prefixIcon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                          hasError: _emailError != null,
+                        ),
+                        if (_emailError != null) ...[
+                          SizedBox(height: 8.h),
+                          _buildErrorText(_emailError!),
+                        ],
+
+                        SizedBox(height: 24.h),
+
+                        // Password Field
+                        _buildInputLabel("Password"),
+                        SizedBox(height: 8.h),
+                        _buildTextField(
+                          controller: _passwordController,
+                          focusNode: _passwordFocusNode,
+                          hintText: "Enter your password",
+                          prefixIcon: Icons.lock_outline,
+                          obscureText: !_isPasswordVisible,
+                          hasError: _passwordError != null,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility_rounded
+                                  : Icons.visibility_off_rounded,
+                              color: Color(0x992A2A2A),
+                              size: 20.sp,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible;
+                              });
+                            },
+                          ),
+                        ),
+                        if (_passwordError != null) ...[
+                          SizedBox(height: 8.h),
+                          _buildErrorText(_passwordError!),
+                        ],
+
+                        SizedBox(height: 10.h),
+
+                        // Remember Me & Forgot Password
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            GestureDetector(
+                              onTap:
+                                  () => setState(
+                                    () => _rememberMe = !_rememberMe,
+                                  ),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    height: 20.h,
+                                    width: 20.w,
+                                    child: Material(
+                                      color:
+                                          _rememberMe
+                                              ? GlobalStyles.primaryColor
+                                              : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(4.r),
+                                      child: Checkbox(
+                                        value: _rememberMe,
+                                        onChanged: (bool? value) {
+                                          setState(
+                                            () => _rememberMe = value ?? false,
+                                          );
+                                        },
+                                        fillColor:
+                                            WidgetStateProperty.resolveWith(
+                                              (states) =>
+                                                  _rememberMe
+                                                      ? GlobalStyles
+                                                          .primaryColor
+                                                      : Colors.transparent,
+                                            ),
+                                        checkColor: Colors.white,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        side: BorderSide(
+                                          color: GlobalStyles.primaryColor
+                                              .withAlpha(153),
+                                          width: 1.5.w,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            4.r,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Text(
+                                    "Remember me",
+                                    style: GoogleFonts.inter(
+                                      color: Color(0xFF2A2A2A),
+                                      fontSize: 13.sp,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ForgotPassword(),
+                                  ),
+                                );
+                              },
+                              style: TextButton.styleFrom(
+                                minimumSize: Size.zero,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w,
+                                  vertical: 4.h,
+                                ),
+                              ),
+                              child: Text(
+                                "Forgot password?",
+                                style: GoogleFonts.inter(
+                                  color: GlobalStyles.primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13.sp,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        SizedBox(height: 10.h),
+
+                        // Sign In Button
+                        _isLoading
+                            ? Container(
+                              height: 60.h,
+                              decoration: BoxDecoration(
+                                color: GlobalStyles.primaryColor.withValues(
+                                  alpha: 0.7,
+                                ),
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 24.w,
+                                  height: 24.h,
+                                  child: const CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                ),
+                              ),
+                            )
+                            : ElevatedButton(
+                              onPressed: _handleSignIn,
+                              style: ButtonStyle(
+                                backgroundColor: WidgetStatePropertyAll(
+                                  GlobalStyles.primaryColor,
+                                ),
+                                padding: WidgetStatePropertyAll(
+                                  EdgeInsets.symmetric(
+                                    vertical: 20.h,
+                                    horizontal: 20.w,
+                                  ),
+                                ),
+                                shape: WidgetStatePropertyAll(
+                                  RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
+                                  ),
+                                ),
+                                minimumSize: WidgetStatePropertyAll(
+                                  Size(double.infinity, 60.h),
+                                ),
+                              ),
+                              child: Text(
+                                "Sign in",
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: 16.sp,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              Text.rich(
-                                TextSpan(
-                                  text: "Insure",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 40.sp,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.black,
-                                    height: 0.8,
-                                  ),
-                                  children: [
-                                    TextSpan(
-                                      text: "Vis",
-                                      style: GoogleFonts.inter(
-                                        color: GlobalStyles.primaryColor,
-                                        fontSize: 40.sp,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          SizedBox(height: middleSpacingHeight),
-                          SizedBox(height: 70.h),
-
-                          // Email Field
-                          _buildInputLabel("Email"),
-                          SizedBox(height: 8.h),
-                          _buildTextField(
-                            controller: _emailController,
-                            focusNode: _emailFocusNode,
-                            hintText: "Enter your email",
-                            prefixIcon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
-                            hasError: _emailError != null,
-                          ),
-                          if (_emailError != null) ...[
-                            SizedBox(height: 8.h),
-                            _buildErrorText(_emailError!),
-                          ],
-
-                          SizedBox(height: 24.h),
-
-                          // Password Field
-                          _buildInputLabel("Password"),
-                          SizedBox(height: 8.h),
-                          _buildTextField(
-                            controller: _passwordController,
-                            focusNode: _passwordFocusNode,
-                            hintText: "Enter your password",
-                            prefixIcon: Icons.lock_outline,
-                            obscureText: !_isPasswordVisible,
-                            hasError: _passwordError != null,
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isPasswordVisible
-                                    ? Icons.visibility_rounded
-                                    : Icons.visibility_off_rounded,
-                                color: Color(0x992A2A2A),
-                                size: 20.sp,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isPasswordVisible = !_isPasswordVisible;
-                                });
-                              },
                             ),
-                          ),
-                          if (_passwordError != null) ...[
-                            SizedBox(height: 8.h),
-                            _buildErrorText(_passwordError!),
-                          ],
 
-                          SizedBox(height: 10.h),
-
-                          // Remember Me & Forgot Password
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              GestureDetector(
-                                onTap:
-                                    () => setState(
-                                      () => _rememberMe = !_rememberMe,
-                                    ),
-                                child: Row(
-                                  children: [
-                                    SizedBox(
-                                      height: 20.h,
-                                      width: 20.w,
-                                      child: Material(
-                                        color:
-                                            _rememberMe
-                                                ? GlobalStyles.primaryColor
-                                                : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(
-                                          4.r,
-                                        ),
-                                        child: Checkbox(
-                                          value: _rememberMe,
-                                          onChanged: (bool? value) {
-                                            setState(
-                                              () =>
-                                                  _rememberMe = value ?? false,
-                                            );
-                                          },
-                                          fillColor:
-                                              WidgetStateProperty.resolveWith(
-                                                (states) =>
-                                                    _rememberMe
-                                                        ? GlobalStyles
-                                                            .primaryColor
-                                                        : Colors.transparent,
-                                              ),
-                                          checkColor: Colors.white,
-                                          materialTapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                          side: BorderSide(
-                                            color: Colors.white54,
-                                            width: 1.5.w,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              4.r,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(width: 8.w),
-                                    Text(
-                                      "Remember me",
-                                      style: GoogleFonts.inter(
-                                        color: Colors.white70,
-                                        fontSize: 13.sp,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: _handleForgotPassword,
-                                style: TextButton.styleFrom(
-                                  minimumSize: Size.zero,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 8.w,
-                                    vertical: 4.h,
-                                  ),
-                                ),
-                                child: Text(
-                                  "Forgot password?",
-                                  style: GoogleFonts.inter(
-                                    color: GlobalStyles.primaryColor,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13.sp,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          SizedBox(height: 30.h),
-
-                          // Sign In Button
-                          _isLoading
-                              ? Container(
-                                height: 60.h,
-                                decoration: BoxDecoration(
-                                  color: GlobalStyles.primaryColor.withValues(
-                                    alpha: 0.7,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8.r),
-                                ),
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 24.w,
-                                    height: 24.h,
-                                    child: const CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              : ElevatedButton(
-                                onPressed: _handleSignIn,
-                                style: ButtonStyle(
-                                  backgroundColor: WidgetStatePropertyAll(
-                                    GlobalStyles.primaryColor,
-                                  ),
-                                  padding: WidgetStatePropertyAll(
-                                    EdgeInsets.symmetric(
-                                      vertical: 20.h,
-                                      horizontal: 20.w,
-                                    ),
-                                  ),
-                                  shape: WidgetStatePropertyAll(
-                                    RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8.r),
-                                    ),
-                                  ),
-                                  minimumSize: WidgetStatePropertyAll(
-                                    Size(double.infinity, 60.h),
-                                  ),
-                                ),
-                                child: Text(
-                                  "Sign in",
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-
-                          // Extra space at bottom when keyboard is visible
-                          if (isKeyboardVisible) SizedBox(height: 40.h),
-                        ],
-                      ),
+                        // Extra space at bottom when keyboard is visible
+                        if (isKeyboardVisible) SizedBox(height: 40.h),
+                      ],
                     ),
                   ),
                 ),

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../config/supabase_config.dart';
 
 class SupabaseService {
@@ -844,4 +846,112 @@ class SupabaseService {
 
   /// Check if user is signed in
   static bool get isSignedIn => _supabase.auth.currentUser != null;
+
+  /// Check if a user with the given email exists in the users table
+  /// Returns true if found, false otherwise. Non-fatal on errors.
+  static Future<bool> userExists(String email) async {
+    try {
+      final response = await _supabase
+          .from('users')
+          .select('id')
+          .eq('email', email.trim().toLowerCase())
+          .maybeSingle()
+          .timeout(const Duration(seconds: 10));
+
+      return response != null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('userExists check failed: $e');
+      }
+      // If there's an issue checking, return false so caller can decide
+      return false;
+    }
+  }
+
+  /// Attempt a manual password reset for a user identified by email.
+  ///
+  /// IMPORTANT: Changing a user's password server-side requires an admin
+  /// privileged call (service_role key or a server-side RPC/function). This
+  /// method attempts to call an RPC named 'admin_reset_user_password' which
+  /// should be implemented on your Supabase/Postgres side and must perform the
+  /// password update using the Admin API. If that RPC does not exist or the
+  /// project is not configured to allow this, this method will return a
+  /// helpful failure message. Do NOT embed service_role keys in the client.
+  static Future<Map<String, dynamic>> manualResetPassword({
+    required String email,
+    required String newPassword,
+  }) async {
+    try {
+      // Validate inputs
+      final emailError = validateEmail(email.trim().toLowerCase());
+      if (emailError != null) {
+        return {'success': false, 'message': emailError};
+      }
+
+      final passwordError = validatePassword(newPassword);
+      if (passwordError != null) {
+        return {'success': false, 'message': passwordError};
+      }
+
+      // Call the deployed serverless edge function which performs the admin reset.
+      // The function should be deployed securely (service_role key kept server-side).
+      final uri = Uri.parse(
+        '${SupabaseConfig.supabaseUrl}/functions/v1/rapid-service',
+      );
+      final resp = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${SupabaseConfig.supabaseAnonKey}',
+            },
+            body: jsonEncode({
+              'email': email.trim().toLowerCase(),
+              'newPassword': newPassword,
+            }),
+          )
+          .timeout(_sessionTimeout);
+
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        // Try parse JSON
+        try {
+          final body = jsonDecode(resp.body);
+          final success = body['success'] == true;
+          final message = body['message'] ?? 'Password updated';
+          return {'success': success, 'message': message};
+        } catch (_) {
+          return {
+            'success': true,
+            'message': 'Password updated (no JSON body)',
+          };
+        }
+      } else {
+        String message = 'Server returned ${resp.statusCode}';
+        try {
+          final body = jsonDecode(resp.body);
+          if (body is Map && body['message'] != null) message = body['message'];
+        } catch (_) {}
+        return {'success': false, 'message': message};
+      }
+    } on PostgrestException catch (e) {
+      if (kDebugMode) {
+        print('manualResetPassword PostgrestException: $e');
+      }
+      return {
+        'success': false,
+        'message': e.message, // PostgrestException.message is non-null
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('manualResetPassword error: $e');
+      }
+
+      // If RPC not available or other error, return a clear message
+      return {
+        'success': false,
+        'message':
+            'Manual password reset is not configured on the server. Please implement a server-side RPC named "admin_reset_user_password" or configure email sending.',
+      };
+    }
+  }
 }

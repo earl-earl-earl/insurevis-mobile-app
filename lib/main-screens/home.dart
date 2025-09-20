@@ -108,7 +108,7 @@ class _HomeState extends State<Home> {
       if (supabaseUser != null) {
         final userId = supabaseUser.id;
         final claims = await ClaimsService.getUserClaims(userId);
-        return claims.take(3).toList();
+        return claims.take(5).toList();
       }
 
       // No authenticated Supabase user -> fall back to demo/local store.
@@ -187,242 +187,236 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: GlobalStyles.backgroundColorStart,
-      child: SafeArea(
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            automaticallyImplyLeading: false,
-            title: RichText(
-              text: TextSpan(
-                text: "Insure",
-                style: TextStyle(
-                  color: Colors.black,
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+        title: RichText(
+          text: TextSpan(
+            text: "Insure",
+            style: GoogleFonts.inter(
+              color: Colors.black,
+              fontSize: 30.sp,
+              fontWeight: FontWeight.w900,
+            ),
+            children: <TextSpan>[
+              TextSpan(
+                text: "Vis",
+                style: GoogleFonts.inter(
+                  color: GlobalStyles.primaryColor,
                   fontSize: 30.sp,
                   fontWeight: FontWeight.w900,
-                ),
-                children: <TextSpan>[
-                  TextSpan(
-                    text: "Vis",
-                    style: TextStyle(
-                      color: GlobalStyles.primaryColor,
-                      fontSize: 30.sp,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              // Material notification button with badge
-              Consumer<NotificationProvider>(
-                builder: (context, notificationProvider, child) {
-                  final unreadCount = notificationProvider.unreadCount;
-                  return IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NotificationCenter(),
-                        ),
-                      );
-                    },
-                    icon: Badge(
-                      isLabelVisible: unreadCount > 0,
-                      label: Text(
-                        unreadCount > 99 ? '99+' : unreadCount.toString(),
-                        style: TextStyle(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.notifications_rounded,
-                        color: Color(0xFF2A2A2A),
-                        size: 28.sp,
-                      ),
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.white.withValues(alpha: 0.1),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              SizedBox(width: 5.w),
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) {
-                        return Scaffold(
-                          body: ProfileScreen(),
-                          appBar: GlobalStyles.buildCustomAppBar(
-                            context: context,
-                            icon: Icons.arrow_back_rounded,
-                            color: Color(0xFF2A2A2A),
-                            appBarBackgroundColor: Colors.transparent,
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-                icon: Icon(
-                  Icons.settings_rounded,
-                  color: Color(0xFF2A2A2A),
-                  size: 28.sp,
-                ),
-              ),
-              SizedBox(width: 14.w),
-            ],
-          ),
-          body: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 12.h),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    SizedBox(height: 8.h),
-
-                    // Material feature card
-                    _buildActionButton(
-                      icon: Icons.photo_rounded,
-                      label: "Scan Image",
-                      iconColor: GlobalStyles.primaryColor,
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/gallery');
-                      },
-                    ),
-                    SizedBox(width: 15.w),
-                    _buildActionButton(
-                      icon: Icons.description_rounded,
-                      label: "File Claim",
-                      iconColor: Colors.green,
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/claim_create');
-                      },
-                    ),
-                    SizedBox(width: 15.w),
-                    _buildActionButton(
-                      icon: Icons.question_answer_rounded,
-                      label: "View FAQs",
-                      iconColor: Colors.orange,
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/faq');
-                      },
-                    ),
-                    SizedBox(width: 15.w),
-                    _buildActionButton(
-                      icon: Icons.shield_rounded,
-                      label: "View Policy",
-                      iconColor: Colors.purple,
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/policy');
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 20.h),
-              Container(height: 7.h, color: Color(0x18444444)),
-              SizedBox(height: 15.h),
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(horizontal: 12.sp),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Recent",
-                          style: GoogleFonts.inter(
-                            fontSize: 22.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 12.h),
-                    FutureBuilder<List<ClaimModel>>(
-                      future: _recentClaimsFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return SizedBox(
-                            height: 60.h,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: GlobalStyles.primaryColor,
-                              ),
-                            ),
-                          );
-                        }
-
-                        final claims = snapshot.data ?? [];
-                        if (claims.isEmpty) {
-                          // If the user isn't signed in, offer a sign-in CTA so
-                          // they can view their real claims from Supabase.
-                          final supabaseUser = SupabaseService.currentUser;
-                          if (supabaseUser == null) {
-                            return Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: TextButton(
-                                    onPressed: () {
-                                      Navigator.pushNamed(context, '/signin');
-                                    },
-                                    child: Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        'No recent claims — Sign in to view your claims',
-                                        style: TextStyle(
-                                          color: GlobalStyles.primaryColor,
-                                          fontSize: 14.sp,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }
-
-                          return Text(
-                            'No recent claims',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 14.sp,
-                            ),
-                          );
-                        }
-
-                        return Column(
-                          children: [
-                            for (var i = 0; i < claims.length; i++) ...[
-                              _buildClaimTile(claims[i]),
-                            ],
-                          ],
-                        );
-                      },
-                    ),
-                  ],
                 ),
               ),
             ],
           ),
         ),
+        actions: [
+          // Material notification button with badge
+          Consumer<NotificationProvider>(
+            builder: (context, notificationProvider, child) {
+              final unreadCount = notificationProvider.unreadCount;
+              return IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationCenter(),
+                    ),
+                  );
+                },
+                icon: Badge(
+                  isLabelVisible: unreadCount > 0,
+                  label: Text(
+                    unreadCount > 99 ? '99+' : unreadCount.toString(),
+                    style: GoogleFonts.inter(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.notifications_rounded,
+                    color: Color(0xFF2A2A2A),
+                    size: 28.sp,
+                  ),
+                ),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                ),
+              );
+            },
+          ),
+          SizedBox(width: 5.w),
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) {
+                    return Scaffold(
+                      body: ProfileScreen(),
+                      appBar: GlobalStyles.buildCustomAppBar(
+                        context: context,
+                        icon: Icons.arrow_back_rounded,
+                        color: Color(0xFF2A2A2A),
+                        appBarBackgroundColor: Colors.transparent,
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+            icon: Icon(
+              Icons.settings_rounded,
+              color: Color(0xFF2A2A2A),
+              size: 28.sp,
+            ),
+          ),
+          SizedBox(width: 14.w),
+        ],
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 12.h),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SizedBox(height: 8.h),
+
+                // Material feature card
+                _buildActionButton(
+                  icon: Icons.photo_rounded,
+                  label: "Scan Image",
+                  iconColor: GlobalStyles.primaryColor,
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/gallery');
+                  },
+                ),
+                SizedBox(width: 15.w),
+                _buildActionButton(
+                  icon: Icons.description_rounded,
+                  label: "File Claim",
+                  iconColor: Colors.green,
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/claim_create');
+                  },
+                ),
+                SizedBox(width: 15.w),
+                _buildActionButton(
+                  icon: Icons.question_answer_rounded,
+                  label: "View FAQs",
+                  iconColor: Colors.orange,
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/faq');
+                  },
+                ),
+                SizedBox(width: 15.w),
+                _buildActionButton(
+                  icon: Icons.shield_rounded,
+                  label: "View Policy",
+                  iconColor: Colors.purple,
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/policy');
+                  },
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 20.h),
+          Container(height: 7.h, color: Color(0x18444444)),
+          SizedBox(height: 15.h),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 12.sp),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Recent",
+                      style: GoogleFonts.inter(
+                        fontSize: 22.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+                FutureBuilder<List<ClaimModel>>(
+                  future: _recentClaimsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return SizedBox(
+                        height: 60.h,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: GlobalStyles.primaryColor,
+                          ),
+                        ),
+                      );
+                    }
+
+                    final claims = snapshot.data ?? [];
+                    if (claims.isEmpty) {
+                      // If the user isn't signed in, offer a sign-in CTA so
+                      // they can view their real claims from Supabase.
+                      final supabaseUser = SupabaseService.currentUser;
+                      if (supabaseUser == null) {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () {
+                                  Navigator.pushNamed(context, '/signin');
+                                },
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'No recent claims — Sign in to view your claims',
+                                    style: GoogleFonts.inter(
+                                      color: GlobalStyles.primaryColor,
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Text(
+                        'No recent claims',
+                        style: GoogleFonts.inter(
+                          color: Colors.grey,
+                          fontSize: 14.sp,
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        for (var i = 0; i < claims.length; i++) ...[
+                          _buildClaimTile(claims[i]),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -445,7 +439,7 @@ class _HomeState extends State<Home> {
   IconData _statusIcon(String status) {
     switch (status.toLowerCase()) {
       case 'submitted':
-        return Icons.send_rounded;
+        return Icons.upload_rounded;
       case 'under review':
         return Icons.search_rounded;
       case 'approved':
@@ -585,7 +579,7 @@ class _HomeState extends State<Home> {
         SizedBox(height: 8.h),
         Text(
           label,
-          style: TextStyle(
+          style: GoogleFonts.inter(
             color: Color(0xFF2A2A2A),
             fontSize: 14.sp,
             fontWeight: FontWeight.bold,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
@@ -103,13 +104,16 @@ class _GalleryScreenState extends State<GalleryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GlobalStyles.backgroundColorStart,
+      backgroundColor: Colors.white,
       appBar: _buildAppBar(),
       body: _buildContent(),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: _isLoading ? null : _pickImages,
         backgroundColor: GlobalStyles.primaryColor,
-        icon:
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child:
             _isLoading
                 ? SizedBox(
                   width: 20.w,
@@ -119,37 +123,40 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     strokeWidth: 2,
                   ),
                 )
-                : Icon(Icons.add_photo_alternate, color: Colors.white),
-        label: Text(
-          _isLoading ? 'Loading...' : 'Select Images',
-          style: TextStyle(color: Colors.white, fontSize: 14.sp),
-        ),
+                : Icon(
+                  Icons.add_photo_alternate,
+                  color: Colors.white,
+                  size: 28.sp,
+                ),
       ),
     );
   }
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: GlobalStyles.backgroundColorStart,
+      backgroundColor: Colors.white,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        icon: const Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
         _selectedImages.isNotEmpty
             ? '${_selectedImages.length} images selected'
             : 'Select Images',
-        style: TextStyle(
+        style: GoogleFonts.inter(
           fontSize: 20.sp,
           fontWeight: FontWeight.bold,
-          color: Colors.white,
+          color: Color(0xFF2A2A2A),
         ),
       ),
       actions: [
         if (_selectedImages.isNotEmpty) ...[
           IconButton(
-            icon: const Icon(Icons.clear_all, color: Colors.white),
+            icon: const Icon(
+              Icons.playlist_remove_rounded,
+              color: Color(0xFF2A2A2A),
+            ),
             onPressed: _clearAllImages,
             tooltip: 'Clear all',
           ),
@@ -163,7 +170,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 backgroundColor: GlobalStyles.primaryColor,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                textStyle: TextStyle(fontSize: 14.sp),
+                textStyle: GoogleFonts.inter(fontSize: 14.sp),
               ),
             ),
           ),
@@ -183,7 +190,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
         Container(
           width: double.infinity,
           padding: EdgeInsets.all(16.w),
-          color: Colors.black.withValues(alpha: 0.1),
+          color: Colors.white,
           child: Row(
             children: [
               Icon(
@@ -194,16 +201,19 @@ class _GalleryScreenState extends State<GalleryScreen> {
               SizedBox(width: 8.w),
               Text(
                 'Selected Images',
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: Color(0xFF2A2A2A),
                 ),
               ),
               const Spacer(),
               Text(
                 '${_selectedImages.length} images',
-                style: TextStyle(fontSize: 14.sp, color: Colors.white70),
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  color: Color(0xFF2A2A2A),
+                ),
               ),
             ],
           ),
@@ -237,43 +247,30 @@ class _GalleryScreenState extends State<GalleryScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.photo_library_outlined,
+              Icons.photo_library_rounded,
               size: 80.sp,
-              color: Colors.white30,
+              color: GlobalStyles.primaryColor,
             ),
             SizedBox(height: 24.h),
             Text(
               'No Images Selected',
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 24.sp,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Color(0xFF2A2A2A),
               ),
             ),
             SizedBox(height: 16.h),
             Text(
               'Select images from your device to process and analyze for vehicle damage assessment.',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 16.sp,
-                color: Colors.white70,
+                color: Color(0xFF2A2A2A),
                 height: 1.5,
               ),
             ),
             SizedBox(height: 32.h),
-            ElevatedButton.icon(
-              onPressed: _pickImages,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: GlobalStyles.primaryColor,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.h),
-              ),
-              icon: Icon(Icons.add_photo_alternate, size: 24.sp),
-              label: Text(
-                'Select Images',
-                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
-              ),
-            ),
           ],
         ),
       ),
@@ -312,8 +309,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       SizedBox(height: 4.h),
                       Text(
                         'Failed to load',
-                        style: TextStyle(
-                          color: Colors.white54,
+                        style: GoogleFonts.inter(
+                          color: Color(0xFF2A2A2A),
                           fontSize: 10.sp,
                         ),
                       ),
@@ -354,7 +351,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 ),
                 child: Text(
                   '${index + 1}',
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                     color: Colors.white,
                     fontSize: 10.sp,
                     fontWeight: FontWeight.bold,

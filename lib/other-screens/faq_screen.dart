@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:insurevis/global_ui_variables.dart';
 
 class FAQScreen extends StatefulWidget {
@@ -157,36 +158,26 @@ class _FAQScreenState extends State<FAQScreen> {
         filteredFAQs.map((faq) => faq['category']!).toSet().toList();
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Frequently Asked Questions',
-          style: TextStyle(
-            color: Colors.white,
+          style: GoogleFonts.inter(
+            color: Color(0xFF2A2A2A),
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
           ),
         ),
       ),
-      body: Container(
+      body: SizedBox(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.backgroundColorStart,
-              GlobalStyles.backgroundColorEnd,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
         child: SafeArea(
           child: Column(
             children: [
@@ -195,10 +186,10 @@ class _FAQScreenState extends State<FAQScreen> {
                 padding: EdgeInsets.all(20.w),
                 child: TextField(
                   controller: _searchController,
-                  style: const TextStyle(color: Colors.white),
+                  style: GoogleFonts.inter(color: Color(0xFF2A2A2A)),
                   decoration: InputDecoration(
                     hintText: 'Search FAQs...',
-                    hintStyle: const TextStyle(color: Colors.white60),
+                    hintStyle: GoogleFonts.inter(color: Color(0x992A2A2A)),
                     prefixIcon: const Icon(
                       Icons.search,
                       color: GlobalStyles.primaryColor,
@@ -219,17 +210,17 @@ class _FAQScreenState extends State<FAQScreen> {
                             )
                             : null,
                     filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.1),
+                    fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.3),
+                        color: Colors.black12.withAlpha((0.04 * 255).toInt()),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.3),
+                        color: Colors.black12.withAlpha((0.04 * 255).toInt()),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -273,7 +264,7 @@ class _FAQScreenState extends State<FAQScreen> {
                                     ),
                                     child: Text(
                                       category,
-                                      style: TextStyle(
+                                      style: GoogleFonts.inter(
                                         color: GlobalStyles.primaryColor,
                                         fontSize: 18.sp,
                                         fontWeight: FontWeight.bold,
@@ -317,17 +308,19 @@ class _FAQScreenState extends State<FAQScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: GlobalStyles.primaryColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         children: [
           ListTile(
             title: Text(
               faq['question']!,
-              style: TextStyle(
-                color: Colors.white,
+              style: GoogleFonts.inter(
+                color: Color(0xFF2A2A2A),
                 fontSize: 15.sp,
                 fontWeight: FontWeight.w600,
               ),
@@ -344,13 +337,13 @@ class _FAQScreenState extends State<FAQScreen> {
             },
           ),
           if (isExpanded) ...[
-            const Divider(color: Colors.white30, height: 1),
+            const Divider(color: Color(0x332A2A2A), height: 1),
             Padding(
               padding: EdgeInsets.all(16.w),
               child: Text(
                 faq['answer']!,
-                style: TextStyle(
-                  color: Colors.white70,
+                style: GoogleFonts.inter(
+                  color: Color(0x992A2A2A),
                   fontSize: 14.sp,
                   height: 1.5,
                 ),
@@ -371,7 +364,7 @@ class _FAQScreenState extends State<FAQScreen> {
           SizedBox(height: 20.h),
           Text(
             'No results found',
-            style: TextStyle(
+            style: GoogleFonts.inter(
               color: Colors.white,
               fontSize: 18.sp,
               fontWeight: FontWeight.w600,
@@ -380,7 +373,7 @@ class _FAQScreenState extends State<FAQScreen> {
           SizedBox(height: 10.h),
           Text(
             'Try different keywords or contact support',
-            style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+            style: GoogleFonts.inter(color: Colors.white70, fontSize: 14.sp),
           ),
           SizedBox(height: 30.h),
           ElevatedButton(
@@ -410,27 +403,46 @@ class _FAQScreenState extends State<FAQScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text(
+          backgroundColor: Colors.white,
+          title: Text(
             'Need More Help?',
-            style: TextStyle(color: Colors.white),
+            style: GoogleFonts.inter(color: Color(0xFF2A2A2A)),
           ),
-          content: const Text(
+          content: Text(
             'Can\'t find what you\'re looking for? Our support team is here to help!',
-            style: TextStyle(color: Colors.white70),
+            style: GoogleFonts.inter(color: Color(0x992A2A2A)),
           ),
           actions: [
             TextButton(
+              style: ButtonStyle(
+                foregroundColor: WidgetStatePropertyAll(
+                  GlobalStyles.primaryColor,
+                ),
+              ),
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              ),
             ),
             TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: GlobalStyles.primaryColor,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
               onPressed: () {
                 Navigator.pop(context);
                 // Navigate to contact screen
                 Navigator.pushNamed(context, '/contact');
               },
-              child: const Text('Contact Support'),
+              child: Text(
+                'Contact Support',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         );

@@ -1,0 +1,19 @@
+{
+  "user_id": "user-uuid-1234-5678-90ab-cdef",
+  "title": "Documents received",
+  "body": "We received your documents for your claim with Acme Insurance.",
+  "payload": {
+    "type": "document",
+    "assessmentId": null,
+    "insuranceCompany": "Acme Insurance",
+    "referenceId": "doc-sub-20250919-0001"
+  },
+  "channel": "in_app",
+  "priority": 1,
+  "is_read": false,
+  "metadata": {
+    "client_id": "client-uuid-or-random-id-abc123",
+    "origin": "mobile_app",
+    "fcm_message_id": "fcm-msg-id-9876"
+  }
+}

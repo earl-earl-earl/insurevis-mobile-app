@@ -604,7 +604,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Handle sign out logic
                 Navigator.pushNamedAndRemoveUntil(
                   context,
-                  '/login',
+                  '/signin',
                   (route) => false,
                 );
               },

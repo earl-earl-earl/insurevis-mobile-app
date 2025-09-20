@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
@@ -124,6 +126,16 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     'stencil_strips': true,
     'additional_documents': false,
   };
+
+  // Currency formatter for display with commas
+  final NumberFormat _currencyFormat = NumberFormat.currency(
+    locale: 'en_PH',
+    symbol: '₱',
+    decimalDigits: 2,
+  );
+
+  // Inline error messages to show above the submit button
+  // (removed inline error messages) We'll show validation errors via SnackBar instead.
 
   @override
   void initState() {
@@ -345,35 +357,26 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GlobalStyles.backgroundColorStart,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: GlobalStyles.backgroundColorStart,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Upload Documents',
-          style: TextStyle(
+          style: GoogleFonts.inter(
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Color(0xFF2A2A2A),
           ),
         ),
       ),
       body: Container(
         height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.backgroundColorStart,
-              GlobalStyles.backgroundColorEnd,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        color: Colors.white,
         child: Column(
           children: [
             Expanded(
@@ -383,17 +386,40 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildInstructions(),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 40.h),
                     _buildVehicleInformationSection(),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 40.h),
                     _buildIncidentInformationSection(),
-                    SizedBox(height: 24.h),
                     _buildDamageAssessmentImagesSection(),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 40.h),
                     _buildRepairOptionsSection(),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 40.h),
                     _buildEstimatedCostSection(),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 20.h),
+                    Padding(
+                      padding: EdgeInsets.all(20.sp),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Document Upload Section",
+                            style: GoogleFonts.inter(
+                              color: Color(0xFF2A2A2A),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 24.sp,
+                            ),
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            'Please upload all required documents listed below.',
+                            style: GoogleFonts.inter(
+                              color: Color(0x992A2A2A),
+                              fontSize: 14.sp,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     _buildDocumentCategories(),
                   ],
                 ),
@@ -408,13 +434,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   Widget _buildInstructions() {
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.all(20.sp),
       decoration: BoxDecoration(
         color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(
-          color: GlobalStyles.primaryColor.withValues(alpha: 0.3),
-        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,14 +445,14 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           Row(
             children: [
               Icon(
-                Icons.info_outline,
+                Icons.info_rounded,
                 color: GlobalStyles.primaryColor,
                 size: 24.sp,
               ),
               SizedBox(width: 12.w),
               Text(
                 'Required Documents',
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                   color: GlobalStyles.primaryColor,
@@ -442,7 +465,11 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             'Please upload the following documents to process your insurance claim. '
             'All documents marked with * are required. Ensure documents are clear, readable, '
             'and in PDF format when possible (photocopies should be scanned as PDF).',
-            style: TextStyle(fontSize: 14.sp, color: Colors.white, height: 1.5),
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              color: Color(0xFF2A2A2A),
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -452,50 +479,27 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   Widget _buildVehicleInformationSection() {
     return Container(
       padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.directions_car,
-                color: GlobalStyles.primaryColor,
-                size: 24.sp,
-              ),
-              SizedBox(width: 12.w),
               Text(
                 'Vehicle Information',
-                style: TextStyle(
-                  fontSize: 18.sp,
+                style: GoogleFonts.inter(
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                ' *',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2A2A2A),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 8.h),
           Text(
             'Please provide your vehicle details for the insurance claim.',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: Colors.white70,
-              height: 1.5,
-            ),
+            style: GoogleFonts.inter(fontSize: 14.sp, color: Color(0x992A2A2A)),
           ),
-          SizedBox(height: 20.h),
+          SizedBox(height: 30.h),
 
           // Vehicle Make
           _buildVehicleInputField(
@@ -556,15 +560,15 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             SizedBox(width: 8.w),
             Text(
               label,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: Color(0x992A2A2A),
               ),
             ),
             Text(
               ' *',
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 14.sp,
                 color: Colors.red,
                 fontWeight: FontWeight.bold,
@@ -577,12 +581,15 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           controller: controller,
           keyboardType: keyboardType,
           maxLength: maxLength,
-          style: TextStyle(color: Colors.white, fontSize: 14.sp),
+          style: GoogleFonts.inter(color: Color(0xFF2A2A2A), fontSize: 14.sp),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.white54, fontSize: 14.sp),
+            hintStyle: GoogleFonts.inter(
+              color: Color(0x992A2A2A),
+              fontSize: 14.sp,
+            ),
             filled: true,
-            fillColor: Colors.black.withValues(alpha: 0.3),
+            fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
               borderSide: BorderSide(
@@ -598,7 +605,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
               borderSide: BorderSide(
-                color: GlobalStyles.primaryColor,
+                color: GlobalStyles.primaryColor.withAlpha(153),
                 width: 2,
               ),
             ),
@@ -615,51 +622,28 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   Widget _buildIncidentInformationSection() {
     return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
+      padding: EdgeInsets.all(20.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.location_on,
-                color: GlobalStyles.primaryColor,
-                size: 24.sp,
-              ),
-              SizedBox(width: 12.w),
               Text(
                 'Incident Information',
-                style: TextStyle(
-                  fontSize: 18.sp,
+                style: GoogleFonts.inter(
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                ' *',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2A2A2A),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 8.h),
           Text(
             'Please provide details about when and where the incident occurred.',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: Colors.white70,
-              height: 1.5,
-            ),
+            style: GoogleFonts.inter(fontSize: 14.sp, color: Color(0x992A2A2A)),
           ),
-          SizedBox(height: 20.h),
+          SizedBox(height: 30.h),
 
           // Incident Location
           _buildIncidentInputField(
@@ -693,15 +677,15 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             SizedBox(width: 8.w),
             Text(
               label,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: Color(0x992A2A2A),
               ),
             ),
             Text(
               ' *',
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 14.sp,
                 color: Colors.red,
                 fontWeight: FontWeight.bold,
@@ -713,12 +697,15 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
-          style: TextStyle(color: Colors.white, fontSize: 14.sp),
+          style: GoogleFonts.inter(color: Color(0xFF2A2A2A), fontSize: 14.sp),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.white54, fontSize: 14.sp),
+            hintStyle: GoogleFonts.inter(
+              color: Color(0x992A2A2A),
+              fontSize: 14.sp,
+            ),
             filled: true,
-            fillColor: Colors.black.withValues(alpha: 0.3),
+            fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
               borderSide: BorderSide(
@@ -734,7 +721,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
               borderSide: BorderSide(
-                color: GlobalStyles.primaryColor,
+                color: GlobalStyles.primaryColor.withAlpha(153),
                 width: 2,
               ),
             ),
@@ -762,15 +749,15 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             SizedBox(width: 8.w),
             Text(
               'Incident Date',
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: Color(0x992A2A2A),
               ),
             ),
             Text(
               ' *',
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 14.sp,
                 color: Colors.red,
                 fontWeight: FontWeight.bold,
@@ -782,12 +769,15 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         TextFormField(
           controller: _incidentDateController,
           readOnly: true,
-          style: TextStyle(color: Colors.white, fontSize: 14.sp),
+          style: GoogleFonts.inter(color: Color(0xFF2A2A2A), fontSize: 14.sp),
           decoration: InputDecoration(
             hintText: 'Select incident date',
-            hintStyle: TextStyle(color: Colors.white54, fontSize: 14.sp),
+            hintStyle: GoogleFonts.inter(
+              color: Color(0x992A2A2A),
+              fontSize: 14.sp,
+            ),
             filled: true,
-            fillColor: Colors.black.withValues(alpha: 0.3),
+            fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
               borderSide: BorderSide(
@@ -803,7 +793,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
               borderSide: BorderSide(
-                color: GlobalStyles.primaryColor,
+                color: GlobalStyles.primaryColor.withAlpha(153),
                 width: 2,
               ),
             ),
@@ -811,7 +801,11 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               horizontal: 12.w,
               vertical: 12.h,
             ),
-            suffixIcon: Icon(Icons.calendar_today, color: Colors.white54),
+            suffixIcon: Icon(
+              Icons.calendar_today_rounded,
+              color: Color(0x992A2A2A),
+              size: 16.sp,
+            ),
           ),
           onTap: () async {
             final DateTime? picked = await showDatePicker(
@@ -847,70 +841,42 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   Widget _buildEstimatedCostSection() {
     return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(
-          color: GlobalStyles.primaryColor.withValues(alpha: 0.3),
-        ),
-      ),
+      padding: EdgeInsets.all(20.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.monetization_on,
-                color: GlobalStyles.primaryColor,
-                size: 24.sp,
-              ),
-              SizedBox(width: 12.w),
               Text(
                 'Estimated Damage Cost',
-                style: TextStyle(
-                  fontSize: 18.sp,
+                style: GoogleFonts.inter(
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color(0xFF2A2A2A),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 8.h),
           Text(
             'This is the estimated cost based on the damage assessment from your photos.',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: Colors.white70,
-              height: 1.5,
-            ),
+            style: GoogleFonts.inter(fontSize: 14.sp, color: Color(0x992A2A2A)),
           ),
-          SizedBox(height: 20.h),
+          SizedBox(height: 30.h),
           Container(
             width: double.infinity,
             padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  GlobalStyles.primaryColor.withValues(alpha: 0.2),
-                  GlobalStyles.secondaryColor.withValues(alpha: 0.1),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
               borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(
-                color: GlobalStyles.primaryColor.withValues(alpha: 0.5),
-                width: 2,
-              ),
+              color: GlobalStyles.primaryColor.withValues(alpha: 0.15),
             ),
             child: Column(
               children: [
                 Text(
                   'Total Estimated Cost',
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                     fontSize: 16.sp,
-                    color: Colors.white70,
+                    color: Color(0x992A2A2A),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -930,7 +896,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                       SizedBox(width: 8.w),
                       Text(
                         'Calculating pricing...',
-                        style: TextStyle(
+                        style: GoogleFonts.inter(
                           fontSize: 12.sp,
                           color: GlobalStyles.primaryColor,
                           fontWeight: FontWeight.w500,
@@ -940,10 +906,8 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                   ),
                 ] else ...[
                   Text(
-                    _estimatedDamageCost > 0
-                        ? '₱${_estimatedDamageCost.toStringAsFixed(2)}'
-                        : '₱0.00',
-                    style: TextStyle(
+                    _currencyFormat.format(_estimatedDamageCost),
+                    style: GoogleFonts.inter(
                       fontSize: 28.sp,
                       color: GlobalStyles.primaryColor,
                       fontWeight: FontWeight.bold,
@@ -957,9 +921,9 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                     _selectedRepairOptions.isEmpty
                         ? 'Select repair/replace options to calculate cost'
                         : 'Cost will be calculated based on repair options',
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 12.sp,
-                      color: Colors.white54,
+                      color: Color(0x992A2A2A),
                       fontStyle: FontStyle.italic,
                     ),
                     textAlign: TextAlign.center,
@@ -979,43 +943,34 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     }
 
     return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
+      padding: EdgeInsets.all(20.w),
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                Icons.assessment,
-                color: GlobalStyles.primaryColor,
-                size: 24.sp,
-              ),
-              SizedBox(width: 12.w),
               Text(
-                'Damage Assessment Images',
-                style: TextStyle(
-                  fontSize: 18.sp,
+                'Damage Assessment\nImages',
+                style: GoogleFonts.inter(
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color(0xFF2A2A2A),
                 ),
               ),
               SizedBox(width: 8.w),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12.r),
+                  color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(6.r),
                 ),
                 child: Text(
                   '${widget.imagePaths.length}',
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                     fontSize: 12.sp,
-                    color: Colors.green,
+                    color: GlobalStyles.primaryColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1025,9 +980,9 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           SizedBox(height: 16.h),
           Text(
             'These are the images you took for damage assessment. They have been automatically included as damage proof for your claim.',
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 14.sp,
-              color: Colors.white70,
+              color: Color(0x992A2A2A),
               height: 1.5,
             ),
           ),
@@ -1092,7 +1047,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                         SizedBox(height: 4.h),
                         Text(
                           'Image Error',
-                          style: TextStyle(
+                          style: GoogleFonts.inter(
                             color: Colors.white54,
                             fontSize: 10.sp,
                           ),
@@ -1116,7 +1071,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 ),
                 child: Text(
                   'ASSESSED',
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                     color: Colors.white,
                     fontSize: 8.sp,
                     fontWeight: FontWeight.bold,
@@ -1132,12 +1087,12 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.7),
+                  color: GlobalStyles.primaryColor.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(4.r),
                 ),
                 child: Text(
                   '${index + 1}',
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                     color: Colors.white,
                     fontSize: 10.sp,
                     fontWeight: FontWeight.bold,
@@ -1173,57 +1128,52 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     // We still want to allow users to add manual damages.
 
     return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
+      padding: EdgeInsets.all(20.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.build, color: GlobalStyles.primaryColor, size: 24.sp),
-              SizedBox(width: 12.w),
               Text(
                 'Repair Options',
-                style: TextStyle(
-                  fontSize: 18.sp,
+                style: GoogleFonts.inter(
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color(0xFF2A2A2A),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 8.h),
           Text(
             'Please select your preferred option for each damaged part.',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: Colors.white70,
-              height: 1.5,
-            ),
+            style: GoogleFonts.inter(fontSize: 14.sp, color: Color(0x992A2A2A)),
           ),
-          SizedBox(height: 20.h),
+          SizedBox(height: 30.h),
 
           // Display damage options from API
           if (damagesList.isEmpty) ...[
             Container(
               padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.15),
+                color: GlobalStyles.primaryColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.white54, size: 16.sp),
+                  Icon(
+                    Icons.info_rounded,
+                    color: GlobalStyles.primaryColor,
+                    size: 16.sp,
+                  ),
                   SizedBox(width: 8.w),
                   Expanded(
                     child: Text(
                       'No damages were automatically detected. You can add damages manually.',
-                      style: TextStyle(color: Colors.white70, fontSize: 13.sp),
+                      style: GoogleFonts.inter(
+                        color: Color(0x992A2A2A),
+                        fontSize: 12.sp,
+                      ),
                     ),
                   ),
                 ],
@@ -1249,13 +1199,35 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton(
+            height: 50.h,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                  side: BorderSide.none,
+                ),
+                backgroundColor:
+                    _showAddDamageForm
+                        ? GlobalStyles.primaryColor.withValues(alpha: 0.3)
+                        : GlobalStyles.primaryColor,
+              ),
               onPressed: () {
                 setState(() {
                   _showAddDamageForm = !_showAddDamageForm;
                 });
               },
-              child: Text(_showAddDamageForm ? 'Cancel' : 'Add Damage'),
+              child: Text(
+                _showAddDamageForm ? 'Cancel' : 'Add Damage',
+                style: GoogleFonts.inter(
+                  color:
+                      _showAddDamageForm
+                          ? GlobalStyles.primaryColor
+                          : Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14.sp,
+                ),
+              ),
             ),
           ),
         ],
@@ -1270,21 +1242,31 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         // Part dropdown
         Text(
           'Detected Damage (Car Part)',
-          style: TextStyle(color: Colors.white70),
+          style: GoogleFonts.inter(
+            color: Color(0x992A2A2A),
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         SizedBox(height: 8.h),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 12.w),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black12.withAlpha((0.04 * 255).toInt()),
             borderRadius: BorderRadius.circular(8.r),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: DropdownButton<String>(
             value: _newDamagePart,
-            hint: Text('Select part', style: TextStyle(color: Colors.white54)),
+            hint: Text(
+              'Select part',
+              style: GoogleFonts.inter(
+                color: Color(0x992A2A2A),
+                fontSize: 12.sp,
+              ),
+            ),
+            style: GoogleFonts.inter(color: Color(0xFF2A2A2A), fontSize: 14.sp),
             isExpanded: true,
-            dropdownColor: Colors.grey[900],
+            dropdownColor: Colors.white,
             underline: SizedBox.shrink(),
             items:
                 _carParts
@@ -1293,7 +1275,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                         value: p,
                         child: Text(
                           _formatLabel(p),
-                          style: TextStyle(color: Colors.white),
+                          style: GoogleFonts.inter(
+                            color: Color(0xFF2A2A2A),
+                            fontSize: 14.sp,
+                          ),
                         ),
                       ),
                     )
@@ -1304,23 +1289,30 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         SizedBox(height: 12.h),
 
         // Damage type dropdown
-        Text('Damage Type', style: TextStyle(color: Colors.white70)),
+        Text(
+          'Damage Type',
+          style: GoogleFonts.inter(
+            color: Color(0x992A2A2A),
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         SizedBox(height: 8.h),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 12.w),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black12.withAlpha((0.04 * 255).toInt()),
             borderRadius: BorderRadius.circular(8.r),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: DropdownButton<String>(
             value: _newDamageType,
             hint: Text(
               'Select damage type',
-              style: TextStyle(color: Colors.white54),
+              style: GoogleFonts.inter(color: Color(0x992A2A2A)),
             ),
             isExpanded: true,
-            dropdownColor: Colors.grey[900],
+            style: GoogleFonts.inter(color: Color(0xFF2A2A2A), fontSize: 14.sp),
+            dropdownColor: Colors.white,
             underline: SizedBox.shrink(),
             items:
                 _carDamageTypes
@@ -1329,7 +1321,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                         value: d,
                         child: Text(
                           _formatLabel(d),
-                          style: TextStyle(color: Colors.white),
+                          style: GoogleFonts.inter(
+                            color: Color(0xFF2A2A2A),
+                            fontSize: 14.sp,
+                          ),
                         ),
                       ),
                     )
@@ -1361,12 +1356,40 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             ),
           ],
         ),
-        SizedBox(height: 8.h),
+        SizedBox(height: 12.h),
 
         // Add button
         SizedBox(
           width: double.infinity,
+          height: 50.h,
           child: ElevatedButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.disabled)) {
+                  return Colors.grey; // Disabled background
+                }
+                return GlobalStyles.primaryColor; // Enabled background
+              }),
+              foregroundColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.disabled)) {
+                  return Colors.white70; // Disabled text color
+                }
+                return Colors.white; // Enabled text color
+              }),
+              side: WidgetStateBorderSide.resolveWith((states) {
+                if (states.contains(WidgetState.disabled)) {
+                  return BorderSide(color: Colors.grey); // Disabled border
+                }
+                return BorderSide(
+                  color: GlobalStyles.primaryColor,
+                ); // Enabled border
+              }),
+              shape: WidgetStatePropertyAll<RoundedRectangleBorder>(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
+            ),
             onPressed:
                 (_newDamagePart != null && _newDamageType != null)
                     ? () {
@@ -1399,7 +1422,13 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                       });
                     }
                     : null,
-            child: Text('Add Damage'),
+            child: Text(
+              'Add Damage',
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
       ],
@@ -1419,35 +1448,25 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 8.h, bottom: 16.h),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
+        color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: EdgeInsets.all(4.w),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.add, color: Colors.green, size: 12.sp),
-              ),
-              SizedBox(width: 8.w),
               Text(
-                "MANUAL DAMAGE ${displayIndex + 1}",
-                style: TextStyle(
+                "Manual Damage ${displayIndex + 1}",
+                style: GoogleFonts.inter(
                   color: GlobalStyles.secondaryColor,
                   fontSize: 14.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Spacer(),
               IconButton(
                 onPressed: () {
                   setState(() {
@@ -1459,13 +1478,16 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                     }
                   });
                 },
-                icon: Icon(Icons.delete, color: Colors.red),
+                icon: Icon(
+                  Icons.remove_circle_rounded,
+                  color: Colors.red,
+                  size: 20.sp,
+                ),
               ),
             ],
           ),
-          SizedBox(height: 12.h),
           _buildDamageInfo(damagedPart, damageType),
-          SizedBox(height: 16.h),
+          SizedBox(height: 7.h),
           Row(
             children: [
               Expanded(
@@ -1528,9 +1550,8 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
+        color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1538,18 +1559,9 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           // Damage info
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(4.w),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.check, color: Colors.green, size: 12.sp),
-              ),
-              SizedBox(width: 8.w),
               Text(
-                "DAMAGE ${index + 1}",
-                style: TextStyle(
+                "Damage ${index + 1}",
+                style: GoogleFonts.inter(
                   color: GlobalStyles.secondaryColor,
                   fontSize: 14.sp,
                   fontWeight: FontWeight.bold,
@@ -1557,11 +1569,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               ),
             ],
           ),
-          SizedBox(height: 12.h),
 
           // Part and damage type info
           _buildDamageInfo(damagedPart, damageType),
-          SizedBox(height: 16.h),
+          SizedBox(height: 7.h),
 
           // Repair/Replace options
           Row(
@@ -1612,30 +1623,32 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   Widget _buildDamageInfo(String damagedPart, String damageType) {
     return Container(
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
+      padding: EdgeInsets.symmetric(vertical: 12.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.directions_car, color: Colors.blue, size: 16.sp),
+              Icon(
+                Icons.directions_car_filled_rounded,
+                color: Colors.blue,
+                size: 16.sp,
+              ),
               SizedBox(width: 8.w),
               Text(
                 'Damaged Part: ',
-                style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                style: GoogleFonts.inter(
+                  color: Color(0x992A2A2A),
+                  fontSize: 14.sp,
+                ),
               ),
               Expanded(
                 child: Text(
                   _formatLabel(damagedPart),
-                  style: TextStyle(
-                    color: Colors.white,
+                  style: GoogleFonts.inter(
+                    color: Color(0xFF2A2A2A),
                     fontSize: 14.sp,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -1644,17 +1657,24 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           SizedBox(height: 8.h),
           Row(
             children: [
-              Icon(Icons.build, color: Colors.orange, size: 16.sp),
+              Icon(
+                Icons.build_circle_rounded,
+                color: Colors.orange,
+                size: 16.sp,
+              ),
               SizedBox(width: 8.w),
               Text(
                 'Damage Type: ',
-                style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                style: GoogleFonts.inter(
+                  color: Color(0x992A2A2A),
+                  fontSize: 14.sp,
+                ),
               ),
               Expanded(
                 child: Text(
                   _formatLabel(damageType),
-                  style: TextStyle(
-                    color: Colors.white,
+                  style: GoogleFonts.inter(
+                    color: Color(0xFF2A2A2A),
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1680,31 +1700,23 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
         decoration: BoxDecoration(
           color:
-              isSelected
-                  ? GlobalStyles.primaryColor.withValues(alpha: 0.2)
-                  : Colors.transparent,
+              isSelected ? Colors.green : Colors.green.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(
-            color:
-                isSelected
-                    ? GlobalStyles.primaryColor
-                    : Colors.white.withValues(alpha: 0.3),
-            width: 2,
-          ),
+          border: Border.all(color: Colors.green, width: 2),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              color: isSelected ? GlobalStyles.primaryColor : Colors.white70,
+              color: isSelected ? Colors.white : Colors.green,
               size: 20.sp,
             ),
             SizedBox(width: 8.w),
             Text(
               title,
-              style: TextStyle(
-                color: isSelected ? GlobalStyles.primaryColor : Colors.white70,
+              style: GoogleFonts.inter(
+                color: isSelected ? Colors.white : Colors.green,
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
               ),
@@ -1722,80 +1734,114 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           'LTO O.R (Official Receipt)',
           'lto_or',
           'Upload photocopy/PDF of LTO Official Receipt with number',
-          Icons.receipt_long,
-          Colors.blue,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(
+          height: 16.h,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Divider(color: Color(0x442A2A2A)),
+          ),
+        ),
         _buildDocumentCategory(
           'LTO C.R (Certificate of Registration)',
           'lto_cr',
           'Upload photocopy/PDF of LTO Certificate of Registration with number',
-          Icons.assignment,
-          Colors.green,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(
+          height: 16.h,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Divider(color: Color(0x442A2A2A)),
+          ),
+        ),
         _buildDocumentCategory(
           'Driver\'s License',
           'drivers_license',
           'Upload photocopy/PDF of driver\'s license',
-          Icons.badge,
-          Colors.orange,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(
+          height: 16.h,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Divider(color: Color(0x442A2A2A)),
+          ),
+        ),
         _buildDocumentCategory(
           'Valid ID of Owner',
           'owner_valid_id',
           'Upload photocopy/PDF of owner\'s valid government ID',
-          Icons.perm_identity,
-          Colors.purple,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(
+          height: 16.h,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Divider(color: Color(0x442A2A2A)),
+          ),
+        ),
         _buildDocumentCategory(
           'Police Report/Affidavit',
           'police_report',
           'Upload original police report or affidavit',
-          Icons.local_police,
-          Colors.red,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(
+          height: 16.h,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Divider(color: Color(0x442A2A2A)),
+          ),
+        ),
         _buildDocumentCategory(
           'Insurance Policy',
           'insurance_policy',
           'Upload photocopy/PDF of your insurance policy',
-          Icons.policy,
-          Colors.indigo,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(
+          height: 16.h,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Divider(color: Color(0x442A2A2A)),
+          ),
+        ),
         _buildDocumentCategory(
           'Job Estimate',
           'job_estimate',
           'Upload repair/job estimate from service provider',
-          Icons.engineering,
-          Colors.brown,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(
+          height: 16.h,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Divider(color: Color(0x442A2A2A)),
+          ),
+        ),
         _buildDocumentCategory(
           'Pictures of Damage',
           'damage_photos',
           'Assessment photos are already included. You can add more damage photos if needed.',
-          Icons.photo_camera,
-          Colors.teal,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(
+          height: 16.h,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Divider(color: Color(0x442A2A2A)),
+          ),
+        ),
         _buildDocumentCategory(
           'Stencil Strips',
           'stencil_strips',
           'Upload stencil strips documentation',
-          Icons.straighten,
-          Colors.cyan,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(
+          height: 16.h,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Divider(color: Color(0x442A2A2A)),
+          ),
+        ),
         _buildDocumentCategory(
           'Additional Documents',
           'additional_documents',
           'Upload any other relevant documents (Optional)',
-          Icons.folder,
-          Colors.grey,
         ),
       ],
     );
@@ -1805,39 +1851,20 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     String title,
     String category,
     String description,
-    IconData icon,
-    Color color,
   ) {
     final isRequired = requiredDocuments[category] ?? false;
     final uploadedFiles = uploadedDocuments[category] ?? [];
     final hasFiles = uploadedFiles.isNotEmpty;
 
     return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(
-          color:
-              hasFiles
-                  ? Colors.green.withValues(alpha: 0.5)
-                  : Colors.white.withValues(alpha: 0.2),
-        ),
-      ),
+      padding: EdgeInsets.all(20.sp),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Container(
-                padding: EdgeInsets.all(8.w),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Icon(icon, color: color, size: 20.sp),
-              ),
-              SizedBox(width: 12.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1846,18 +1873,18 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                       children: [
                         Text(
                           title,
-                          style: TextStyle(
+                          style: GoogleFonts.inter(
                             fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: Color(0xFF2A2A2A),
                           ),
                         ),
                         if (isRequired) ...[
                           SizedBox(width: 4.w),
                           Text(
                             '*',
-                            style: TextStyle(
-                              fontSize: 16.sp,
+                            style: GoogleFonts.inter(
+                              fontSize: 18.sp,
                               color: Colors.red,
                               fontWeight: FontWeight.bold,
                             ),
@@ -1868,7 +1895,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                     SizedBox(height: 4.h),
                     Text(
                       description,
-                      style: TextStyle(fontSize: 12.sp, color: Colors.white70),
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        color: Color(0x992A2A2A),
+                      ),
                     ),
                   ],
                 ),
@@ -1877,14 +1907,14 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12.r),
+                    color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: Text(
                     '${uploadedFiles.length}',
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 12.sp,
-                      color: Colors.green,
+                      color: GlobalStyles.primaryColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1905,10 +1935,16 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () => _pickDocument(category),
-                  icon: Icon(Icons.upload_file, size: 16.sp),
-                  label: Text('Upload File', style: TextStyle(fontSize: 12.sp)),
+                  icon: Icon(Icons.upload_file_rounded, size: 16.sp),
+                  label: Text(
+                    'Upload File',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: color.withValues(alpha: 0.8),
+                    backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(vertical: 8.h),
                     shape: RoundedRectangleBorder(
@@ -1922,9 +1958,15 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 child: ElevatedButton.icon(
                   onPressed: () => _takePhoto(category),
                   icon: Icon(Icons.camera_alt, size: 16.sp),
-                  label: Text('Take Photo', style: TextStyle(fontSize: 12.sp)),
+                  label: Text(
+                    'Take Photo',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: color.withValues(alpha: 0.6),
+                    backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(vertical: 8.h),
                     shape: RoundedRectangleBorder(
@@ -1941,22 +1983,16 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   }
 
   Widget _buildUploadedFilesList(String category, List<File> files) {
-    return Container(
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-      ),
+    return SizedBox(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Uploaded Files:',
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 12.sp,
               fontWeight: FontWeight.w600,
-              color: Colors.green,
+              color: GlobalStyles.primaryColor,
             ),
           ),
           SizedBox(height: 8.h),
@@ -1979,26 +2015,17 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
     return Container(
       margin: EdgeInsets.only(bottom: 8.h),
-      padding: EdgeInsets.all(8.w),
+      padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
-        color:
-            isAssessmentImage
-                ? Colors.green.withValues(alpha: 0.1)
-                : Colors.black.withValues(alpha: 0.2),
+        color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(6.r),
-        border:
-            isAssessmentImage
-                ? Border.all(
-                  color: Colors.green.withValues(alpha: 0.3),
-                  width: 1,
-                )
-                : null,
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Icon(
-            isImage ? Icons.image : Icons.description,
-            color: isAssessmentImage ? Colors.green : Colors.white70,
+            isImage ? Icons.image_rounded : Icons.description_rounded,
+            color: GlobalStyles.primaryColor,
             size: 16.sp,
           ),
           SizedBox(width: 8.w),
@@ -2008,9 +2035,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               children: [
                 Text(
                   fileName,
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                     fontSize: 12.sp,
-                    color: isAssessmentImage ? Colors.green : Colors.white,
+                    color: GlobalStyles.primaryColor,
+                    fontWeight: FontWeight.w700,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -2018,9 +2046,9 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                   SizedBox(height: 2.h),
                   Text(
                     'Assessment Image',
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 10.sp,
-                      color: Colors.green.withValues(alpha: 0.8),
+                      color: GlobalStyles.primaryColor,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -2032,12 +2060,12 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
               decoration: BoxDecoration(
-                color: Colors.green,
+                color: GlobalStyles.primaryColor,
                 borderRadius: BorderRadius.circular(4.r),
               ),
               child: Text(
                 'PROOF',
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   color: Colors.white,
                   fontSize: 8.sp,
                   fontWeight: FontWeight.bold,
@@ -2045,11 +2073,16 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               ),
             )
           else
-            IconButton(
-              onPressed: () => _removeFile(category, file),
-              icon: Icon(Icons.close, color: Colors.red, size: 16.sp),
-              constraints: BoxConstraints(minWidth: 32.w, minHeight: 32.h),
-              padding: EdgeInsets.zero,
+            Container(
+              height: 30.h,
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                onPressed: () => _removeFile(category, file),
+                icon: Icon(Icons.close_rounded, color: Colors.red, size: 16.sp),
+              ),
             ),
         ],
       ),
@@ -2057,59 +2090,18 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   }
 
   Widget _buildBottomActions() {
-    final requiredDocsUploaded = _checkRequiredDocuments();
-    final vehicleInfoFilled = _checkVehicleInformation();
-    final incidentInfoFilled = _checkIncidentInformation();
-    final isFormValid =
-        requiredDocsUploaded && vehicleInfoFilled && incidentInfoFilled;
-    final totalUploaded = uploadedDocuments.values.fold<int>(
-      0,
-      (sum, files) => sum + files.length,
-    );
-
     return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 1),
-        ),
-      ),
+      padding: EdgeInsets.all(20.w),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Documents uploaded: $totalUploaded',
-                style: TextStyle(fontSize: 14.sp, color: Colors.white70),
-              ),
-              Text(
-                isFormValid
-                    ? 'Ready to submit'
-                    : !requiredDocsUploaded
-                    ? 'Missing required docs'
-                    : !vehicleInfoFilled
-                    ? 'Missing vehicle info'
-                    : !incidentInfoFilled
-                    ? 'Missing incident info'
-                    : 'Form incomplete',
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  color: isFormValid ? Colors.green : Colors.orange,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
+          // Validation errors are shown via SnackBar when the Submit button is tapped
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: isFormValid ? _submitClaim : null,
+              // Always allow tap; validation happens in _onSubmitPressed
+              onPressed: _onSubmitPressed,
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isFormValid ? GlobalStyles.primaryColor : Colors.grey,
+                backgroundColor: GlobalStyles.primaryColor,
                 padding: EdgeInsets.symmetric(vertical: 16.h),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.r),
@@ -2127,7 +2119,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                       )
                       : Text(
                         'Submit Insurance Claim',
-                        style: TextStyle(
+                        style: GoogleFonts.inter(
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -2138,6 +2130,83 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         ],
       ),
     );
+  }
+
+  void _onSubmitPressed() {
+    final requiredDocsUploaded = _checkRequiredDocuments();
+    final vehicleInfoFilled = _checkVehicleInformation();
+    final incidentInfoFilled = _checkIncidentInformation();
+    final isFormValid =
+        requiredDocsUploaded && vehicleInfoFilled && incidentInfoFilled;
+
+    if (isFormValid) {
+      _submitClaim();
+      return;
+    }
+
+    List<String> messages = [];
+    if (!requiredDocsUploaded) {
+      final missing =
+          requiredDocuments.keys
+              .where(
+                (k) =>
+                    requiredDocuments[k]! &&
+                    (uploadedDocuments[k] ?? []).isEmpty,
+              )
+              .map((k) => _documentTitleFromKey(k))
+              .toList();
+      if (missing.isNotEmpty) {
+        messages.add('Missing required documents: ${missing.join(', ')}');
+      } else {
+        messages.add('Some required documents are missing');
+      }
+    }
+
+    if (!vehicleInfoFilled) {
+      messages.add(
+        'Please complete vehicle information (make, model, year, plate)',
+      );
+    }
+
+    if (!incidentInfoFilled) {
+      messages.add('Please provide incident date and location');
+    }
+
+    final snackText = messages.join('\n');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(snackText),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  String _documentTitleFromKey(String key) {
+    switch (key) {
+      case 'lto_or':
+        return 'LTO O.R.';
+      case 'lto_cr':
+        return 'LTO C.R.';
+      case 'drivers_license':
+        return 'Driver\'s License';
+      case 'owner_valid_id':
+        return 'Owner Valid ID';
+      case 'police_report':
+        return 'Police Report';
+      case 'insurance_policy':
+        return 'Insurance Policy';
+      case 'job_estimate':
+        return 'Job Estimate';
+      case 'damage_photos':
+        return 'Damage Photos';
+      case 'stencil_strips':
+        return 'Stencil Strips';
+      default:
+        return key;
+    }
   }
 
   Future<void> _pickDocument(String category) async {
@@ -2564,7 +2633,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 SizedBox(width: 12.w),
                 Text(
                   'Claim Submitted',
-                  style: TextStyle(color: Colors.white, fontSize: 18.sp),
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 18.sp,
+                  ),
                 ),
               ],
             ),
@@ -2574,7 +2646,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               children: [
                 Text(
                   'Your insurance claim has been submitted successfully.',
-                  style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                  style: GoogleFonts.inter(
+                    color: Colors.white70,
+                    fontSize: 14.sp,
+                  ),
                 ),
                 if (claimNumber != null) ...[
                   SizedBox(height: 16.h),
@@ -2598,7 +2673,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                         SizedBox(width: 8.w),
                         Text(
                           'Claim #: $claimNumber',
-                          style: TextStyle(
+                          style: GoogleFonts.inter(
                             color: Colors.green,
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w500,
@@ -2611,7 +2686,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 SizedBox(height: 12.h),
                 Text(
                   'You will receive a confirmation email shortly.',
-                  style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+                  style: GoogleFonts.inter(
+                    color: Colors.white70,
+                    fontSize: 12.sp,
+                  ),
                 ),
               ],
             ),
@@ -2623,7 +2701,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 },
                 child: Text(
                   'OK',
-                  style: TextStyle(color: GlobalStyles.primaryColor),
+                  style: GoogleFonts.inter(color: GlobalStyles.primaryColor),
                 ),
               ),
             ],

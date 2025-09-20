@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -50,6 +51,9 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
   Animation<Offset>? _step2Offset;
   Animation<double>? _step1Opacity;
   Animation<double>? _step2Opacity;
+  // Tap recognizers for inline links
+  late TapGestureRecognizer _tosRecognizer;
+  late TapGestureRecognizer _privacyRecognizer;
 
   @override
   void initState() {
@@ -92,10 +96,17 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
     _step2Opacity = Tween<double>(begin: 0.0, end: 1.0).animate(stepCurve);
     // Rebuild when step animation starts/ends so Offstage logic updates
     _stepController.addStatusListener((_) => setState(() {}));
+
+    // initialize inline link recognizers
+    _tosRecognizer = TapGestureRecognizer()..onTap = _openTermsOfService;
+    _privacyRecognizer = TapGestureRecognizer()..onTap = _openPrivacyPolicy;
   }
 
   @override
   void dispose() {
+    // dispose recognizers
+    _tosRecognizer.dispose();
+    _privacyRecognizer.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -136,6 +147,16 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
       return 'Passwords do not match';
     }
     return null;
+  }
+
+  // Handlers to open terms/privacy - update to use internal routes or external URLs
+  void _openTermsOfService() {
+    // Example: navigate to an internal route named '/terms'
+    Navigator.pushNamed(context, '/terms');
+  }
+
+  void _openPrivacyPolicy() {
+    Navigator.pushNamed(context, '/policy');
   }
 
   void _handleSignUp() async {
@@ -237,18 +258,18 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    final double topSpacingHeight = isKeyboardVisible ? 30.h : 60.h;
+    final double topSpacingHeight = isKeyboardVisible ? 20.h : 60.h;
 
-    return SafeArea(
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        appBar: GlobalStyles.buildCustomAppBar(
-          context: context,
-          icon: Icons.arrow_back_rounded,
-          color: Color(0xFF2A2A2A),
-          appBarBackgroundColor: Colors.transparent,
-        ),
-        body: Container(
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: GlobalStyles.buildCustomAppBar(
+        context: context,
+        icon: Icons.arrow_back_rounded,
+        color: Color(0xFF2A2A2A),
+        appBarBackgroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: Container(
           height: double.infinity,
           width: double.infinity,
           decoration: const BoxDecoration(color: Colors.white),
@@ -269,9 +290,10 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
 
                           // Header Section
                           Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(height: 16.h),
+                              SizedBox(height: 20.h),
                               Text(
                                 "Create Account",
                                 style: GoogleFonts.inter(
@@ -321,10 +343,10 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
                                 ],
                               ),
                             ),
-                            SizedBox(height: 16.h),
+                            SizedBox(height: 8.h),
                           ],
 
-                          SizedBox(height: 80.h),
+                          SizedBox(height: 50.h),
                           // Form Container with animated step transitions
                           Container(
                             decoration: BoxDecoration(
@@ -385,9 +407,9 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
                                 // Back button for step 2 (larger tappable area)
                                 if (_currentStep == 2)
                                   Positioned(
-                                    left: -15.w,
-                                    top: -40.h,
-                                    
+                                    right: 0.w,
+                                    top: 0.h,
+
                                     child: GestureDetector(
                                       onTap: () {
                                         _stepController.reverse().then((_) {
@@ -401,14 +423,17 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
                                           }
                                         });
                                       },
-                                      child: SizedBox(
-                                        width: 40.w,
-                                        height: 40.h,
-                                        child: Center(
-                                          child: Icon(
-                                            Icons.arrow_back_rounded,
-                                            color: Color(0xFF2A2A2A),
-                                            size: 20.sp,
+                                      child: Center(
+                                        child: Text(
+                                          'Go Back',
+                                          style: GoogleFonts.inter(
+                                            color: GlobalStyles.primaryColor,
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w600,
+                                            decoration:
+                                                TextDecoration.underline,
+                                            decorationColor:
+                                                GlobalStyles.primaryColor,
                                           ),
                                         ),
                                       ),
@@ -418,92 +443,7 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
                             ),
                           ),
 
-                          // Terms and Conditions (only show on step 2)
-                          if (_currentStep == 2) ...[
-                            GestureDetector(
-                              onTap:
-                                  () => setState(
-                                    () => _agreeToTerms = !_agreeToTerms,
-                                  ),
-                              child: Row(
-                                children: [
-                                  SizedBox(
-                                    width: 20.w,
-                                    child: Material(
-                                      color:
-                                          _agreeToTerms
-                                              ? GlobalStyles.primaryColor
-                                              : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(4.r),
-                                      child: Checkbox(
-                                        value: _agreeToTerms,
-                                        onChanged: (bool? value) {
-                                          setState(
-                                            () =>
-                                                _agreeToTerms = value ?? false,
-                                          );
-                                        },
-                                        fillColor:
-                                            WidgetStateProperty.resolveWith(
-                                              (states) =>
-                                                  _agreeToTerms
-                                                      ? GlobalStyles
-                                                          .primaryColor
-                                                      : Colors.transparent,
-                                            ),
-                                        checkColor: Colors.white,
-                                        materialTapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                        side: BorderSide(
-                                          color: Colors.white54,
-                                          width: 1.5.w,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            4.r,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12.w),
-                                  Expanded(
-                                    child: Text.rich(
-                                      TextSpan(
-                                        text: "I agree to the ",
-                                        style: GoogleFonts.inter(
-                                          color: Colors.white70,
-                                          fontSize: 13.sp,
-                                        ),
-                                        children: [
-                                          TextSpan(
-                                            text: "Terms of Service",
-                                            style: GoogleFonts.inter(
-                                              color: GlobalStyles.primaryColor,
-                                              fontWeight: FontWeight.w600,
-                                              decoration:
-                                                  TextDecoration.underline,
-                                            ),
-                                          ),
-                                          TextSpan(text: " and "),
-                                          TextSpan(
-                                            text: "Privacy Policy",
-                                            style: GoogleFonts.inter(
-                                              color: GlobalStyles.primaryColor,
-                                              fontWeight: FontWeight.w600,
-                                              decoration:
-                                                  TextDecoration.underline,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: 30.h),
-                          ],
+                          // Terms moved into step 2 content inside _buildStepContentFor(2)
 
                           // Bottom Button area
                           _isLoading
@@ -575,9 +515,6 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
                                   ),
                                 ),
                               ),
-
-                          // Extra space at bottom when keyboard is visible
-                          if (isKeyboardVisible) SizedBox(height: 40.h),
                         ],
                       ),
                     ),
@@ -678,12 +615,12 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
         textCapitalization: textCapitalization,
         inputFormatters: inputFormatters,
         validator: validator,
-        style: GoogleFonts.inter(fontSize: 15.sp, color: Color(0xFF2A2A2A)),
+        style: GoogleFonts.inter(fontSize: 14.sp, color: Color(0xFF2A2A2A)),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: GoogleFonts.inter(
             color: Color(0x992A2A2A),
-            fontSize: 15.sp,
+            fontSize: 14.sp,
           ),
           contentPadding: EdgeInsets.symmetric(
             vertical: 18.h,
@@ -800,7 +737,7 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
               _isPasswordVisible
                   ? Icons.visibility_off_rounded
                   : Icons.visibility_rounded,
-              color: Colors.white60,
+              color: Color(0x992A2A2A),
               size: 20.sp,
             ),
             onPressed: () {
@@ -827,7 +764,7 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
               _isConfirmPasswordVisible
                   ? Icons.visibility_off_rounded
                   : Icons.visibility_rounded,
-              color: Colors.white60,
+              color: Color(0x992A2A2A),
               size: 20.sp,
             ),
             onPressed: () {
@@ -837,6 +774,85 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
             },
           ),
         ),
+        SizedBox(height: 20.h),
+
+        // Terms and Conditions placed inside step 2 content
+        GestureDetector(
+          onTap: () => setState(() => _agreeToTerms = !_agreeToTerms),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 20.h,
+                width: 20.w,
+                child: Material(
+                  color:
+                      _agreeToTerms
+                          ? GlobalStyles.primaryColor
+                          : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4.r),
+                  child: Checkbox(
+                    value: _agreeToTerms,
+                    onChanged: (bool? value) {
+                      setState(() => _agreeToTerms = value ?? false);
+                    },
+                    fillColor: WidgetStateProperty.resolveWith(
+                      (states) =>
+                          _agreeToTerms
+                              ? GlobalStyles.primaryColor
+                              : Colors.transparent,
+                    ),
+                    checkColor: Colors.white,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    side: BorderSide(
+                      color: GlobalStyles.primaryColor.withAlpha(153),
+                      width: 1.5.w,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text: "I agree to the ",
+                    style: GoogleFonts.inter(
+                      color: Color(0xFF2A2A2A),
+                      fontSize: 13.sp,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: "Terms of Service",
+                        style: GoogleFonts.inter(
+                          color: GlobalStyles.primaryColor,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          decorationColor: GlobalStyles.primaryColor,
+                        ),
+                        recognizer: _tosRecognizer,
+                      ),
+                      TextSpan(text: " and "),
+                      TextSpan(
+                        text: "Privacy Policy",
+                        style: GoogleFonts.inter(
+                          color: GlobalStyles.primaryColor,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          decorationColor: GlobalStyles.primaryColor,
+                        ),
+                        recognizer: _privacyRecognizer,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 69.h),
       ],
     );
   }

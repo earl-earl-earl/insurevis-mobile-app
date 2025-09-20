@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+// Note: Supabase DB insertion for received FCM messages is now handled by
+// the server-side edge function. We keep local persistence here only.
 
 class FirebaseMsg {
   final msgService = FirebaseMessaging.instance;
@@ -117,6 +119,39 @@ class FirebaseMsg {
       platformDetails,
       payload: message.data.isNotEmpty ? message.data.toString() : null,
     );
+  }
+
+  /// Show a simple local notification using the already-initialized
+  /// FlutterLocalNotificationsPlugin. This is used by internal callers
+  /// (for example, NotificationProvider) to display a system-tray
+  /// notification without going through FCM.
+  static Future<void> showLocalNotification(String title, String body) async {
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        _channel.id,
+        _channel.name,
+        channelDescription: _channel.description,
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+      );
+
+      final platformDetails = NotificationDetails(android: androidDetails);
+
+      final notificationId = DateTime.now().millisecondsSinceEpoch.remainder(
+        1 << 31,
+      );
+
+      await _localNotificationsPlugin.show(
+        notificationId,
+        title,
+        body,
+        platformDetails,
+        payload: null,
+      );
+    } catch (e) {
+      print('Error showing local notification: $e');
+    }
   }
 }
 
@@ -236,6 +271,10 @@ Future<void> storeRemoteMessageAsNotification(RemoteMessage message) async {
 
     await prefs.setStringList(_notificationsKey, updated);
     print('Stored notification from FCM: ${jsonMap['title']}');
+    // NOTE: DB persistence for FCM messages is intentionally omitted here.
+    // The edge function `send-notification` will insert the notification row
+    // into the database when sending the FCM message to the user's devices.
+    // This avoids duplicate rows from both server and client inserts.
   } catch (e) {
     print('Error storing FCM message: $e');
   }

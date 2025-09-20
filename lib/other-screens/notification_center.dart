@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/providers/notification_provider.dart';
 import 'package:intl/intl.dart';
+import 'notification_view.dart';
 
 class NotificationCenter extends StatefulWidget {
   const NotificationCenter({super.key});
@@ -16,117 +18,88 @@ class _NotificationCenterState extends State<NotificationCenter> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GlobalStyles.backgroundColorStart,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: GlobalStyles.backgroundColorStart,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Notifications',
-          style: TextStyle(
+          style: GoogleFonts.inter(
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Color(0xFF2A2A2A),
           ),
         ),
         actions: [
           Consumer<NotificationProvider>(
             builder: (context, provider, child) {
-              return PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert, color: Colors.white),
-                color: GlobalStyles.backgroundColorEnd,
-                onSelected: (value) {
-                  switch (value) {
-                    case 'mark_all_read':
-                      provider.markAllAsRead();
-                      break;
-                    case 'clear_all':
-                      _showClearConfirmation();
-                      break;
-                    case 'settings':
-                      _showNotificationSettings();
-                      break;
-                    case 'add_test':
-                      provider.addTestNotifications();
-                      break;
-                  }
-                },
-                itemBuilder:
-                    (context) => [
-                      PopupMenuItem(
-                        value: 'mark_all_read',
-                        child: Row(
-                          children: [
-                            Icon(Icons.mark_email_read, color: Colors.white70),
-                            SizedBox(width: 12.w),
-                            Text(
-                              'Mark all as read',
-                              style: TextStyle(color: Colors.white),
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Refresh notifications',
+                    icon:
+                        provider.isRefreshing
+                            ? SizedBox(
+                              width: 20.w,
+                              height: 20.h,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFF2A2A2A),
+                              ),
+                            )
+                            : Icon(
+                              Icons.refresh_rounded,
+                              color: Color(0xFF2A2A2A),
                             ),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'clear_all',
-                        child: Row(
-                          children: [
-                            Icon(Icons.clear_all, color: Colors.red),
-                            SizedBox(width: 12.w),
-                            Text(
-                              'Clear all',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'settings',
-                        child: Row(
-                          children: [
-                            Icon(Icons.settings, color: Colors.white70),
-                            SizedBox(width: 12.w),
-                            Text(
-                              'Settings',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'add_test',
-                        child: Row(
-                          children: [
-                            Icon(Icons.add_circle, color: Colors.blue),
-                            SizedBox(width: 12.w),
-                            Text(
-                              'Add Test Notifications',
-                              style: TextStyle(color: Colors.blue),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    onPressed:
+                        provider.isRefreshing
+                            ? null
+                            : () => provider.refreshNotifications(),
+                  ),
+                  IconButton(
+                    tooltip: 'Mark all as read',
+                    icon: Icon(
+                      Icons.mark_email_read_rounded,
+                      color: Color(0xFF2A2A2A),
+                    ),
+                    onPressed: () => provider.markAllAsRead(),
+                  ),
+                  IconButton(
+                    tooltip: 'Clear all notifications',
+                    icon: Icon(
+                      Icons.playlist_remove_rounded,
+                      color: Colors.red,
+                    ),
+                    onPressed: _showClearConfirmation,
+                  ),
+                  SizedBox(width: 8.w),
+                ],
               );
             },
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.backgroundColorStart,
-              GlobalStyles.backgroundColorEnd,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+      body: SizedBox(
         child: Column(
           children: [
+            // Loading indicator during refresh
+            Consumer<NotificationProvider>(
+              builder: (context, provider, child) {
+                return provider.isRefreshing
+                    ? LinearProgressIndicator(
+                      color: GlobalStyles.primaryColor,
+                      backgroundColor: GlobalStyles.primaryColor.withOpacity(
+                        0.2,
+                      ),
+                    )
+                    : const SizedBox.shrink();
+              },
+            ),
             // Single notifications list (no tabs)
             Expanded(child: _buildNotificationList()),
           ],
@@ -146,16 +119,35 @@ class _NotificationCenterState extends State<NotificationCenter> {
         }
 
         if (notifications.isEmpty) {
-          return _buildEmptyState(filterType);
+          return RefreshIndicator(
+            backgroundColor: Colors.white,
+            color: GlobalStyles.primaryColor,
+
+            onRefresh: () => provider.refreshNotifications(),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  child: _buildEmptyState(filterType),
+                ),
+              ],
+            ),
+          );
         }
 
-        return ListView.builder(
-          padding: EdgeInsets.all(16.w),
-          itemCount: notifications.length,
-          itemBuilder: (context, index) {
-            final notification = notifications[index];
-            return _buildNotificationCard(notification);
-          },
+        return RefreshIndicator(
+          backgroundColor: Colors.white,
+          color: GlobalStyles.primaryColor,
+          onRefresh: () => provider.refreshNotifications(),
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: notifications.length,
+            itemBuilder: (context, index) {
+              final notification = notifications[index];
+              return _buildNotificationCard(notification);
+            },
+          ),
         );
       },
     );
@@ -168,37 +160,26 @@ class _NotificationCenterState extends State<NotificationCenter> {
         notification.priority == NotificationPriority.urgent;
 
     return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.r),
         color:
             notification.isRead
-                ? Colors.black.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color:
-              notification.isRead
-                  ? Colors.transparent
-                  : isHighPriority
-                  ? Colors.red.withValues(alpha: 0.5)
-                  : GlobalStyles.primaryColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
+                ? Colors.white
+                : GlobalStyles.primaryColor.withValues(alpha: 0.1),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16.r),
           onTap: () => _handleNotificationTap(notification),
           child: Padding(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Notification icon - prefer payload status when present
                 Container(
-                  width: 40.w,
-                  height: 40.h,
+                  width: 60.w,
+                  height: 60.h,
                   decoration: BoxDecoration(
                     color: (notification.data != null &&
                                 notification.data!.containsKey('status')
@@ -207,7 +188,7 @@ class _NotificationCenterState extends State<NotificationCenter> {
                             )
                             : _getTypeColor(notification.type))
                         .withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10.r),
+                    shape: BoxShape.circle,
                   ),
                   child: Icon(
                     notification.data != null &&
@@ -223,7 +204,7 @@ class _NotificationCenterState extends State<NotificationCenter> {
                               notification.data!['status']?.toString(),
                             )
                             : _getTypeColor(notification.type),
-                    size: 20.sp,
+                    size: 30.sp,
                   ),
                 ),
                 SizedBox(width: 12.w),
@@ -238,32 +219,25 @@ class _NotificationCenterState extends State<NotificationCenter> {
                           Expanded(
                             child: Text(
                               notification.title,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14.sp,
+                              style: GoogleFonts.inter(
+                                color: Color(0xFF2A2A2A),
+                                fontSize: 16.sp,
                                 fontWeight:
                                     notification.isRead
-                                        ? FontWeight.w500
-                                        : FontWeight.bold,
+                                        ? FontWeight.w600
+                                        : FontWeight.w800,
                               ),
                             ),
                           ),
-                          if (!notification.isRead)
-                            Container(
-                              width: 8.w,
-                              height: 8.h,
-                              decoration: BoxDecoration(
-                                color: GlobalStyles.primaryColor,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
                         ],
                       ),
                       SizedBox(height: 4.h),
                       Text(
                         notification.message,
-                        style: TextStyle(
-                          color: Colors.white70,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          color: Color(0xFF2A2A2A),
                           fontSize: 12.sp,
                         ),
                       ),
@@ -272,8 +246,8 @@ class _NotificationCenterState extends State<NotificationCenter> {
                         children: [
                           Text(
                             timeAgo,
-                            style: TextStyle(
-                              color: Colors.white54,
+                            style: GoogleFonts.inter(
+                              color: Color(0x772A2A2A),
                               fontSize: 10.sp,
                             ),
                           ),
@@ -290,7 +264,7 @@ class _NotificationCenterState extends State<NotificationCenter> {
                               ),
                               child: Text(
                                 'HIGH',
-                                style: TextStyle(
+                                style: GoogleFonts.inter(
                                   color: Colors.red,
                                   fontSize: 8.sp,
                                   fontWeight: FontWeight.bold,
@@ -307,11 +281,11 @@ class _NotificationCenterState extends State<NotificationCenter> {
                 // Action button
                 PopupMenuButton<String>(
                   icon: Icon(
-                    Icons.more_vert,
-                    color: Colors.white54,
-                    size: 16.sp,
+                    Icons.more_horiz_rounded,
+                    color: Color(0x992A2A2A),
+                    size: 20.sp,
                   ),
-                  color: GlobalStyles.backgroundColorEnd,
+                  color: Colors.white,
                   onSelected: (value) {
                     final provider = Provider.of<NotificationProvider>(
                       context,
@@ -334,16 +308,17 @@ class _NotificationCenterState extends State<NotificationCenter> {
                             child: Row(
                               children: [
                                 Icon(
-                                  Icons.mark_email_read,
-                                  color: Colors.white70,
+                                  Icons.mark_email_read_rounded,
+                                  color: Color(0xFF2A2A2A),
                                   size: 16.sp,
                                 ),
                                 SizedBox(width: 8.w),
                                 Text(
                                   'Mark as read',
-                                  style: TextStyle(
-                                    color: Colors.white,
+                                  style: GoogleFonts.inter(
+                                    color: Color(0xFF2A2A2A),
                                     fontSize: 12.sp,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
@@ -354,16 +329,17 @@ class _NotificationCenterState extends State<NotificationCenter> {
                           child: Row(
                             children: [
                               Icon(
-                                Icons.delete,
+                                Icons.delete_rounded,
                                 color: Colors.red,
                                 size: 16.sp,
                               ),
                               SizedBox(width: 8.w),
                               Text(
                                 'Remove',
-                                style: TextStyle(
+                                style: GoogleFonts.inter(
                                   color: Colors.red,
                                   fontSize: 12.sp,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -409,28 +385,24 @@ class _NotificationCenterState extends State<NotificationCenter> {
             width: 80.w,
             height: 80.h,
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.2),
+              color: Colors.grey.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 40.sp,
-              color: Colors.white.withValues(alpha: 0.5),
-            ),
+            child: Icon(icon, size: 40.sp, color: Colors.grey[600]),
           ),
           SizedBox(height: 16.h),
           Text(
             message,
-            style: TextStyle(
-              color: Colors.white,
+            style: GoogleFonts.inter(
+              color: Color(0xFF2A2A2A),
               fontSize: 16.sp,
               fontWeight: FontWeight.w600,
             ),
           ),
           SizedBox(height: 8.h),
           Text(
-            'Notifications will appear here',
-            style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+            'Pull down to refresh',
+            style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 12.sp),
           ),
         ],
       ),
@@ -440,13 +412,13 @@ class _NotificationCenterState extends State<NotificationCenter> {
   IconData _getTypeIcon(NotificationType type) {
     switch (type) {
       case NotificationType.assessment:
-        return Icons.assessment;
+        return Icons.assessment_rounded;
       case NotificationType.document:
-        return Icons.description;
+        return Icons.description_rounded;
       case NotificationType.system:
-        return Icons.settings;
+        return Icons.settings_rounded;
       case NotificationType.reminder:
-        return Icons.alarm;
+        return Icons.alarm_rounded;
     }
   }
 
@@ -468,23 +440,32 @@ class _NotificationCenterState extends State<NotificationCenter> {
     if (status == null) return Icons.notifications;
     switch (status.toLowerCase()) {
       case 'pending':
-        return Icons.hourglass_bottom;
+        return Icons.hourglass_bottom_rounded;
       case 'in_progress':
       case 'in-progress':
       case 'processing':
-        return Icons.autorenew;
+        return Icons.autorenew_rounded;
       case 'completed':
       case 'done':
-        return Icons.check_circle;
+        return Icons.check_circle_rounded;
       case 'failed':
       case 'error':
-        return Icons.error;
+        return Icons.error_rounded;
       case 'warning':
-        return Icons.warning;
+        return Icons.warning_rounded;
       case 'review':
-        return Icons.rate_review;
+        return Icons.rate_review_rounded;
+      case 'approved':
+      case 'accept':
+      case 'accepted':
+        return Icons.fact_check_rounded;
+      case 'rejected':
+      case 'declined':
+      case 'deny':
+      case 'denied':
+        return Icons.cancel_rounded;
       default:
-        return Icons.notifications;
+        return Icons.notifications_rounded;
     }
   }
 
@@ -508,6 +489,15 @@ class _NotificationCenterState extends State<NotificationCenter> {
         return Colors.deepOrange;
       case 'review':
         return Colors.purple;
+      case 'approved':
+      case 'accept':
+      case 'accepted':
+        return Colors.green;
+      case 'rejected':
+      case 'declined':
+      case 'deny':
+      case 'denied':
+        return Colors.red;
       default:
         return GlobalStyles.primaryColor;
     }
@@ -548,7 +538,23 @@ class _NotificationCenterState extends State<NotificationCenter> {
         // Navigate to documents screen
         Navigator.pop(context);
         // Add navigation logic here
+      } else {
+        // No special target — open the notification viewer
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => NotificationView(notification: notification),
+          ),
+        );
       }
+    } else {
+      // No data — open viewer
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => NotificationView(notification: notification),
+        ),
+      );
     }
   }
 
@@ -563,16 +569,19 @@ class _NotificationCenterState extends State<NotificationCenter> {
             ),
             title: Text(
               'Clear All Notifications',
-              style: TextStyle(color: Colors.white),
+              style: GoogleFonts.inter(color: Colors.white),
             ),
             content: Text(
               'Are you sure you want to clear all notifications? This action cannot be undone.',
-              style: TextStyle(color: Colors.white70),
+              style: GoogleFonts.inter(color: Colors.white70),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Cancel', style: TextStyle(color: Colors.white70)),
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.inter(color: Colors.white70),
+                ),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -584,55 +593,6 @@ class _NotificationCenterState extends State<NotificationCenter> {
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 child: Text('Clear All'),
-              ),
-            ],
-          ),
-    );
-  }
-
-  void _showNotificationSettings() {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            backgroundColor: GlobalStyles.backgroundColorStart,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.r),
-            ),
-            title: Text(
-              'Notification Settings',
-              style: TextStyle(color: Colors.white),
-            ),
-            content: Consumer<NotificationProvider>(
-              builder: (context, provider, child) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SwitchListTile(
-                      title: Text(
-                        'Enable Notifications',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      subtitle: Text(
-                        'Turn on/off all notifications',
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                      value: provider.notificationsEnabled,
-                      onChanged:
-                          (value) => provider.setNotificationsEnabled(value),
-                      activeColor: GlobalStyles.primaryColor,
-                    ),
-                  ],
-                );
-              },
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'Close',
-                  style: TextStyle(color: GlobalStyles.primaryColor),
-                ),
               ),
             ],
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:insurevis/global_ui_variables.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
@@ -8,36 +9,26 @@ class PrivacyPolicyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Privacy Policy',
-          style: TextStyle(
-            color: Colors.white,
+          style: GoogleFonts.inter(
+            color: Color(0xFF2A2A2A),
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
           ),
         ),
       ),
-      body: Container(
+      body: SizedBox(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.backgroundColorStart,
-              GlobalStyles.backgroundColorEnd,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
         child: SafeArea(
           child: SingleChildScrollView(
             padding: EdgeInsets.all(20.w),
@@ -169,42 +160,6 @@ Data Protection Officer: dpo@insurevis.com
 Last updated: January 1, 2025''',
                 ),
 
-                SizedBox(height: 30.h),
-
-                // Contact Button
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(horizontal: 20.w),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Open email or contact form
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Contact feature will open your email app',
-                          ),
-                          backgroundColor: Colors.blue,
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: GlobalStyles.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 15.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      'Contact Privacy Team',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-
                 SizedBox(height: 20.h),
               ],
             ),
@@ -218,17 +173,13 @@ Last updated: January 1, 2025''',
     return Container(
       margin: EdgeInsets.only(bottom: 20.h),
       padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: TextStyle(
+            style: GoogleFonts.inter(
               color: GlobalStyles.primaryColor,
               fontSize: 16.sp,
               fontWeight: FontWeight.bold,
@@ -237,7 +188,11 @@ Last updated: January 1, 2025''',
           SizedBox(height: 10.h),
           Text(
             content,
-            style: TextStyle(color: Colors.white, fontSize: 14.sp, height: 1.5),
+            style: GoogleFonts.inter(
+              color: Color(0xFF2A2A2A),
+              fontSize: 14.sp,
+              height: 1.5,
+            ),
           ),
         ],
       ),
