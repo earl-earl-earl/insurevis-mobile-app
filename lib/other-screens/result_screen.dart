@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:provider/provider.dart';
@@ -366,41 +368,44 @@ class ResultsScreenState extends State<ResultsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: GlobalStyles.buildCustomAppBar(
-        context: context,
-        icon: Icons.arrow_back_rounded,
-        color: Colors.white,
-        appBarBackgroundColor: Colors.transparent,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: const Color(0xFF2A2A2A)),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+        backgroundColor: Colors.white,
+        title: Text(
+          'Assessment Result',
+          style: GoogleFonts.inter(
+            color: const Color(0xFF2A2A2A),
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+          ),
+        ),
       ),
       // Download PDF button removed
       bottomNavigationBar: null,
-      body: Container(
+      body: SizedBox(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.backgroundColorStart,
-              GlobalStyles.backgroundColorEnd,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
         child:
             _isLoading
-                ? const Center(
+                ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       CircularProgressIndicator(
                         color: GlobalStyles.primaryColor,
                       ),
-                      SizedBox(height: 20),
+                      const SizedBox(height: 20),
                       Text(
                         'Analyzing damage...',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
+                        style: GoogleFonts.inter(
+                          color: const Color.fromARGB(255, 32, 21, 21),
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -411,15 +416,6 @@ class ResultsScreenState extends State<ResultsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Damage Assessment',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.file(
@@ -434,11 +430,11 @@ class ResultsScreenState extends State<ResultsScreen> {
                               return Container(
                                 width: double.infinity,
                                 height: 200,
-                                color: Colors.grey[800],
+                                color: Colors.grey[300],
                                 child: const Center(
                                   child: Icon(
                                     Icons.error_outline,
-                                    color: Colors.white,
+                                    color: Colors.black,
                                     size: 50,
                                   ),
                                 ),
@@ -463,33 +459,27 @@ class ResultsScreenState extends State<ResultsScreen> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(vertical: 10.h),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: GlobalStyles.primaryColor),
-              const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
+                style: GoogleFonts.inter(
+                  color: Colors.black,
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16.h),
           content,
         ],
       ),
@@ -499,36 +489,38 @@ class ResultsScreenState extends State<ResultsScreen> {
   Widget _buildErrorCard(String message) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(vertical: 10.h),
       decoration: BoxDecoration(
         color: Colors.red.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(
+          color: Colors.red.withValues(alpha: 0.3),
+          width: 1.w,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.error_outline, color: Colors.red),
-              SizedBox(width: 8),
+              SizedBox(width: 8.w),
               Text(
                 'Error',
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   color: Colors.red,
-                  fontSize: 18,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8.h),
           Text(
             message,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+            style: GoogleFonts.inter(color: Color(0xFF2A2A2A), fontSize: 14.sp),
           ),
         ],
-        // Fixed: Removed one extra closing parenthesis here. Was `));`, now `);`
       ),
     );
   }
@@ -537,18 +529,18 @@ class ResultsScreenState extends State<ResultsScreen> {
   Widget _buildDamageItem(String displayValue) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(10.sp),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1,
-        ),
+        color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8.r),
       ),
       child: Text(
         displayValue,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
+        style: GoogleFonts.inter(
+          color: Color(0xFF2A2A2A),
+          fontSize: 14.sp,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -557,30 +549,28 @@ class ResultsScreenState extends State<ResultsScreen> {
   Widget _buildFormattedDamageItem(String fieldName, String displayValue) {
     if (fieldName.toLowerCase().contains('severity')) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: 10.h, vertical: 6.h),
         decoration: BoxDecoration(
           color: _getSeverityColor(displayValue).withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           border: Border.all(
             color: _getSeverityColor(displayValue).withValues(alpha: 0.3),
-            width: 1,
+            width: 1.w,
           ),
         ),
         child: Text(
           _capitalizeFirst(displayValue),
-          style: TextStyle(
+          style: GoogleFonts.inter(
             color: _getSeverityColor(displayValue),
             fontWeight: FontWeight.bold,
-            fontSize: 14,
+            fontSize: 14.sp,
           ),
         ),
       );
     }
 
-    // Standard rendering for non-severity fields (can reuse _buildDamageItem logic or keep separate)
-    return _buildDamageItem(
-      displayValue,
-    ); // Or duplicate the Container logic if preferred
+    // Standard rendering for non-severity fields
+    return _buildDamageItem(displayValue);
   }
 
   // Format the value based on field name and content
@@ -668,16 +658,9 @@ class ResultsScreenState extends State<ResultsScreen> {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
+      margin: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.all(12.sp),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -693,18 +676,18 @@ class ResultsScreenState extends State<ResultsScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: GoogleFonts.inter(
                       color: GlobalStyles.secondaryColor,
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Icon(
                     isExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: Colors.white70,
-                    size: 18,
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: Color(0x992A2A2A),
+                    size: 18.sp,
                   ),
                 ],
               ),
@@ -712,14 +695,42 @@ class ResultsScreenState extends State<ResultsScreen> {
           else
             Text(
               title,
-              style: const TextStyle(
+              style: GoogleFonts.inter(
                 color: GlobalStyles.secondaryColor,
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
           const SizedBox(height: 8),
           if (index == null || isExpanded) content,
+        ],
+      ),
+    );
+  }
+
+  // *** MODIFICATION START ***
+  // New helper method for the severe damage case
+  Widget _buildSevereDamageWarning() {
+    return _buildResultCard(
+      title: "Severe Damage Detected",
+      icon: Icons.warning_amber_rounded,
+      content: Column(
+        children: [
+          const Icon(
+            Icons.report_problem_outlined,
+            color: Colors.red,
+            size: 48,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "The damage is severe. Please proceed to issuing a claim.",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -736,10 +747,18 @@ class ResultsScreenState extends State<ResultsScreen> {
         return _buildErrorCard('Failed to parse response: Invalid data');
       }
 
+      final overallSeverity = _cachedOverallSeverity;
+
+      // Check for severe damage and show the specific UI
+      if (overallSeverity != null &&
+          overallSeverity.toLowerCase() == 'severe') {
+        return _buildSevereDamageWarning();
+      }
+
+      // If not severe, proceed with the original detailed view
       final damageInfo = _cachedDamageInfo;
       final costEstimate = _cachedCostEstimate;
       final hasCost = _cachedHasCost;
-      final overallSeverity = _cachedOverallSeverity;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,22 +768,22 @@ class ResultsScreenState extends State<ResultsScreen> {
             icon: Icons.analytics,
             content: Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.sp),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
                     _getSeverityColor(overallSeverity!).withValues(alpha: 0.15),
-                    Colors.black.withValues(alpha: 0.1),
+                    Colors.grey.withValues(alpha: 0.1),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.sp),
                 border: Border.all(
                   color: _getSeverityColor(
                     overallSeverity,
                   ).withValues(alpha: 0.3),
-                  width: 1,
+                  width: 1.w,
                 ),
               ),
               child: Column(
@@ -776,38 +795,38 @@ class ResultsScreenState extends State<ResultsScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "Overall Severity",
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
+                            style: GoogleFonts.inter(
+                              color: Color(0xFF2A2A2A),
+                              fontSize: 14.sp,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6.h),
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10.sp,
+                                  vertical: 5.sp,
                                 ),
                                 decoration: BoxDecoration(
                                   color: _getSeverityColor(
                                     overallSeverity,
                                   ).withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(20.r),
                                   border: Border.all(
                                     color: _getSeverityColor(
                                       overallSeverity,
                                     ).withValues(alpha: 0.5),
-                                    width: 1,
+                                    width: 1.w,
                                   ),
                                 ),
                                 child: Text(
                                   overallSeverity,
-                                  style: TextStyle(
+                                  style: GoogleFonts.inter(
                                     color: _getSeverityColor(overallSeverity),
-                                    fontSize: 14,
+                                    fontSize: 14.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -819,14 +838,14 @@ class ResultsScreenState extends State<ResultsScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text(
+                          Text(
                             "Total Damages",
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
+                            style: GoogleFonts.inter(
+                              color: Color(0xFF2A2A2A),
+                              fontSize: 14.sp,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6.h),
                           Text(
                             () {
                               if (resultData.containsKey('damages')) {
@@ -839,21 +858,20 @@ class ResultsScreenState extends State<ResultsScreen> {
                               }
                               return "0";
                             }(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
+                            style: GoogleFonts.inter(
+                              color: Color(0xFF2A2A2A),
+                              fontSize: 20.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          // Only show cost estimate if available
+                          SizedBox(height: 8.h),
                           if (hasCost! &&
                               costEstimate != 'Estimate not available')
                             Text(
                               costEstimate!,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
+                              style: GoogleFonts.inter(
+                                color: Color(0xFF2A2A2A),
+                                fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -865,7 +883,7 @@ class ResultsScreenState extends State<ResultsScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16.h),
           _buildResultCard(
             title: 'Damage Detection',
             icon: Icons.car_crash,
@@ -875,52 +893,53 @@ class ResultsScreenState extends State<ResultsScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 4.h,
                       ),
                       decoration: BoxDecoration(
                         color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(4.r),
                       ),
-                      child: const Text(
-                        'Analysis complete',
-                        style: TextStyle(
+                      child: Text(
+                        'Analysis Complete',
+                        style: GoogleFonts.inter(
                           color: GlobalStyles.primaryColor,
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16.h),
                 _buildDamageInfoDisplay(damageInfo),
               ],
             ),
-          ), // Add some bottom padding
+          ),
         ],
       );
     } catch (e) {
-      // DEBUG: print("Error building results content: $e");
       return _buildErrorCard('Error displaying results: $e');
     }
   }
+
+  // *** MODIFICATION END ***
 
   // Build the damage information display based on type
   Widget _buildDamageInfoDisplay(dynamic damageInfo) {
     if (damageInfo is String &&
         damageInfo == 'No damage information available') {
-      return const Row(
+      return Row(
         children: [
-          Icon(Icons.info_outline, color: Colors.grey, size: 20),
-          SizedBox(width: 8),
+          const Icon(Icons.info_outline, color: Color(0x772A2A2A), size: 20),
+          SizedBox(width: 8.w),
           Expanded(
             child: Text(
               'No damage information available',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
+              style: GoogleFonts.inter(
+                color: Color(0x992A2A2A),
+                fontSize: 16.sp,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -950,25 +969,25 @@ class ResultsScreenState extends State<ResultsScreen> {
               // Only show damage_type and damaged_part fields
               if (_shouldShowField(entry.key.toString()))
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 10.0),
+                  padding: EdgeInsets.only(bottom: 10.h),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
                           _getFieldIcon(entry.key.toString()),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8.w),
                           Text(
                             "${_formatFieldName(entry.key.toString())}:",
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                            style: GoogleFonts.inter(
+                              color: Color(0x992A2A2A),
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4.h),
                       _buildFormattedDamageItem(
                         // Use formatted item for key-value
                         entry.key.toString(),
@@ -993,7 +1012,6 @@ class ResultsScreenState extends State<ResultsScreen> {
           return _buildDamageInfoDisplay(damageMap);
         }
       } catch (e) {
-        // DEBUG: print("Error parsing damage info string: $e");
         // Fall through to default display if parsing fails
       }
     }
@@ -1012,16 +1030,9 @@ class ResultsScreenState extends State<ResultsScreen> {
     if (damage is Map<String, dynamic>) {
       return Container(
         width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.1),
-            width: 1,
-          ),
-        ),
+        margin: EdgeInsets.only(bottom: 12.h),
+        padding: EdgeInsets.all(12.sp),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1036,24 +1047,11 @@ class ResultsScreenState extends State<ResultsScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.check,
-                          color: Colors.green,
-                          size: 12,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
                       Text(
-                        "DAMAGE ${index + 1}",
-                        style: const TextStyle(
+                        "Damage ${index + 1}",
+                        style: GoogleFonts.inter(
                           color: GlobalStyles.secondaryColor,
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1061,16 +1059,16 @@ class ResultsScreenState extends State<ResultsScreen> {
                   ),
                   Icon(
                     isExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: Colors.white70,
-                    size: 18,
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: Color(0xFF2A2A2A),
+                    size: 18.sp,
                   ),
                 ],
               ),
             ),
             Divider(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: Colors.grey.withValues(alpha: 0.3),
               height: 16,
               thickness: 1,
             ),
@@ -1079,29 +1077,25 @@ class ResultsScreenState extends State<ResultsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (final subEntry in damage.entries)
-                    // Only show damage_type and damaged_part fields
                     if (_shouldShowField(subEntry.key.toString()))
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0),
+                        padding: EdgeInsets.only(bottom: 10.h),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                _getFieldIcon(subEntry.key.toString()),
-                                const SizedBox(width: 8),
                                 Text(
                                   "${_formatFieldName(subEntry.key.toString())}:",
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
+                                  style: GoogleFonts.inter(
+                                    color: Color(0x992A2A2A),
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 4),
-                            // Corrected: Use _buildFormattedDamageItem for key-value pairs
+                            SizedBox(height: 4.h),
                             _buildFormattedDamageItem(
                               subEntry.key.toString(),
                               _formatValue(
@@ -1121,13 +1115,10 @@ class ResultsScreenState extends State<ResultsScreen> {
         ),
       );
     } else {
-      // Simple list item (e.g., a string) in its own card, can be made collapsible too
       return _buildDamageCard(
-        title: "DAMAGE ${index + 1}",
-        content: _buildDamageItem(
-          damage.toString(),
-        ), // Uses the single-argument _buildDamageItem
-        index: index, // Allow collapsing for these too
+        title: "Damage ${index + 1}",
+        content: _buildDamageItem(damage.toString()),
+        index: index,
       );
     }
   }
@@ -1138,7 +1129,6 @@ class ResultsScreenState extends State<ResultsScreen> {
   ) {
     String damagedPart = 'Unknown';
 
-    // Get damaged part name for API lookup
     if (damage.containsKey('damaged_part')) {
       damagedPart = damage['damaged_part']?.toString() ?? 'Unknown';
     } else if (damage.containsKey('part_name')) {
@@ -1148,31 +1138,25 @@ class ResultsScreenState extends State<ResultsScreen> {
     String selectedOption = _selectedRepairOptions[damageIndex] ?? 'none';
     bool showPricing = _showPricing[damageIndex] ?? false;
 
-    // Get separate repair and replace pricing data
     final repairPricing = _repairPricingData[damageIndex];
     final replacePricing = _replacePricingData[damageIndex];
     final isLoadingPricing = _isLoadingPricing[damageIndex] ?? false;
 
     return Container(
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
+      margin: EdgeInsets.only(top: 16.h),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Repair Options:',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
+            style: GoogleFonts.inter(
+              color: Color(0xFF2A2A2A),
+              fontSize: 16.sp,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16.h),
 
           // Repair/Replace Buttons
           Row(
@@ -1187,7 +1171,6 @@ class ResultsScreenState extends State<ResultsScreen> {
                       _selectedRepairOptions[damageIndex] = 'repair';
                       _showPricing[damageIndex] = true;
                     });
-                    // Fetch pricing data if not already loaded
                     if (!_repairPricingData.containsKey(damageIndex) &&
                         !(_isLoadingPricing[damageIndex] ?? false) &&
                         damagedPart != 'Unknown') {
@@ -1211,7 +1194,6 @@ class ResultsScreenState extends State<ResultsScreen> {
                       _selectedRepairOptions[damageIndex] = 'replace';
                       _showPricing[damageIndex] = true;
                     });
-                    // Fetch pricing data if not already loaded
                     if (!_replacePricingData.containsKey(damageIndex) &&
                         !(_isLoadingPricing[damageIndex] ?? false) &&
                         damagedPart != 'Unknown') {
@@ -1227,11 +1209,8 @@ class ResultsScreenState extends State<ResultsScreen> {
             ],
           ),
 
-          // Show pricing information only when a button is pressed
           if (showPricing && selectedOption != 'none') ...[
             const SizedBox(height: 12),
-
-            // Show API pricing data if available
             if (isLoadingPricing)
               const Center(
                 child: CircularProgressIndicator(
@@ -1247,10 +1226,8 @@ class ResultsScreenState extends State<ResultsScreen> {
               _buildApiCostBreakdown(
                 selectedOption,
                 selectedOption == 'repair' ? repairPricing! : replacePricing!,
-                damage, // Pass the damage information
-                selectedOption == 'repair'
-                    ? replacePricing
-                    : null, // Pass body-paint data for repair
+                damage,
+                selectedOption == 'repair' ? replacePricing : null,
               ),
             ] else
               Container(
@@ -1269,7 +1246,7 @@ class ResultsScreenState extends State<ResultsScreen> {
                     Expanded(
                       child: Text(
                         'No price for this part yet.',
-                        style: const TextStyle(
+                        style: GoogleFonts.inter(
                           color: Colors.orange,
                           fontSize: 12,
                         ),
@@ -1285,7 +1262,6 @@ class ResultsScreenState extends State<ResultsScreen> {
   }
 
   Widget _buildDamageInfoSection(Map<String, dynamic> damage) {
-    // Extract damaged part
     String damagedPart = 'Unknown';
     if (damage.containsKey('damaged_part')) {
       damagedPart = damage['damaged_part']?.toString() ?? 'Unknown';
@@ -1293,7 +1269,6 @@ class ResultsScreenState extends State<ResultsScreen> {
       damagedPart = damage['part_name']?.toString() ?? 'Unknown';
     }
 
-    // Extract damage type
     String damageType = 'Unknown';
     if (damage.containsKey('damage_type')) {
       final damageTypeValue = damage['damage_type'];
@@ -1305,30 +1280,26 @@ class ResultsScreenState extends State<ResultsScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
+      padding: EdgeInsets.all(12.r),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Damaged Part
           Row(
             children: [
-              Icon(Icons.directions_car, color: Colors.blue, size: 16),
-              const SizedBox(width: 8),
               Text(
                 'Damaged Part: ',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
+                style: GoogleFonts.inter(
+                  color: Color(0x992A2A2A),
+                  fontSize: 14.sp,
+                ),
               ),
               Expanded(
                 child: Text(
                   damagedPart,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
+                  style: GoogleFonts.inter(
+                    color: Color(0xFF2A2A2A),
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1336,20 +1307,17 @@ class ResultsScreenState extends State<ResultsScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          // Damage Type
           Row(
             children: [
-              Icon(Icons.build, color: Colors.orange, size: 16),
-              const SizedBox(width: 8),
               Text(
                 'Damage Type: ',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
+                style: GoogleFonts.inter(color: Colors.black54, fontSize: 14),
               ),
               Expanded(
                 child: Text(
                   damageType,
-                  style: TextStyle(
-                    color: Colors.white,
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1373,81 +1341,55 @@ class ResultsScreenState extends State<ResultsScreen> {
     double bodyPaintPrice = 0.0;
 
     if (option == 'replace') {
-      // For replace (body-paint data only)
       laborFee =
           (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
       finalPrice = (apiPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
     } else {
-      // For repair (thinsmith data + body-paint data)
       laborFee =
           (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
-
-      // Get thinsmith price
       double thinsmithPrice =
           (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0;
 
-      // Get body-paint price if available
       if (bodyPaintPricing != null) {
         bodyPaintPrice =
             (bodyPaintPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
       }
 
-      // Combine both prices for repair total
       finalPrice = thinsmithPrice + bodyPaintPrice;
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
         color: GlobalStyles.primaryColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
-        ),
+        borderRadius: BorderRadius.circular(8.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                option == 'repair' ? Icons.build : Icons.autorenew,
-                color: GlobalStyles.primaryColor,
-                size: 18,
-              ),
-              const SizedBox(width: 8),
               Text(
                 '${option.toUpperCase()} PRICING',
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   color: GlobalStyles.primaryColor,
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-
-          // Display damaged part and damage type information
-          _buildDamageInfoSection(damage),
-          const SizedBox(height: 12),
-
-          // Labor fee
+          SizedBox(height: 8.h),
           _buildCostItem('Labor Fee (Installation)', laborFee),
-
-          // Show price breakdown for repair
           if (option == 'repair' && bodyPaintPricing != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8.h),
             _buildCostItem(
               'Thinsmith Price',
               (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0,
             ),
             _buildCostItem('Body Paint Price', bodyPaintPrice),
           ],
-
-          const Divider(color: Colors.white30, height: 20),
-
-          // Total (includes part price and paint for replace)
+          Divider(color: Colors.grey.withValues(alpha: 0.3), height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1455,8 +1397,8 @@ class ResultsScreenState extends State<ResultsScreen> {
                 flex: 2,
                 child: Text(
                   option == 'replace' ? 'TOTAL PRICE' : 'TOTAL REPAIR PRICE',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1464,7 +1406,7 @@ class ResultsScreenState extends State<ResultsScreen> {
               ),
               Text(
                 '₱${finalPrice.toStringAsFixed(2)}',
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   color: GlobalStyles.primaryColor,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -1472,14 +1414,12 @@ class ResultsScreenState extends State<ResultsScreen> {
               ),
             ],
           ),
-
-          // Notes for different options
           if (option == 'replace') ...[
             const SizedBox(height: 8),
             Text(
               'Total includes part price and paint/materials',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
+              style: GoogleFonts.inter(
+                color: Colors.black.withValues(alpha: 0.7),
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
               ),
@@ -1488,8 +1428,8 @@ class ResultsScreenState extends State<ResultsScreen> {
             const SizedBox(height: 8),
             Text(
               'Total includes thinsmith work and body paint costs',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
+              style: GoogleFonts.inter(
+                color: Colors.black.withValues(alpha: 0.7),
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
               ),
@@ -1510,36 +1450,28 @@ class ResultsScreenState extends State<ResultsScreen> {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
         decoration: BoxDecoration(
           color:
-              isSelected
-                  ? GlobalStyles.primaryColor.withValues(alpha: 0.2)
-                  : Colors.transparent,
+              isSelected ? Colors.green : Colors.green.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color:
-                isSelected
-                    ? GlobalStyles.primaryColor
-                    : Colors.white.withValues(alpha: 0.3),
-            width: 2,
-          ),
+          border: Border.all(color: Colors.green, width: 2.w),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              color: isSelected ? GlobalStyles.primaryColor : Colors.white70,
-              size: 20,
+              color: isSelected ? Colors.white : Colors.green,
+              size: 20.sp,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8.w),
             Text(
               title,
-              style: TextStyle(
-                color: isSelected ? GlobalStyles.primaryColor : Colors.white70,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+              style: GoogleFonts.inter(
+                color: isSelected ? Colors.white : Colors.green,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -1550,20 +1482,24 @@ class ResultsScreenState extends State<ResultsScreen> {
 
   Widget _buildCostItem(String label, double amount) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: 8.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            style: GoogleFonts.inter(
+              color: Color(0x992A2A2A),
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           Text(
             '₱${amount.toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+            style: GoogleFonts.inter(
+              color: Color(0xFF2A2A2A),
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

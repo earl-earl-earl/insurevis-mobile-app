@@ -134,8 +134,14 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     decimalDigits: 2,
   );
 
-  // Inline error messages to show above the submit button
-  // (removed inline error messages) We'll show validation errors via SnackBar instead.
+  // Helper getter to check for severe damage
+  bool get _isDamageSevere {
+    // Check if any of the API responses indicate severe damage.
+    return widget.apiResponses.values.any((response) {
+      final severity = response['overall_severity']?.toString().toLowerCase();
+      return severity == 'severe';
+    });
+  }
 
   @override
   void initState() {
@@ -362,7 +368,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -370,7 +376,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           style: GoogleFonts.inter(
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF2A2A2A),
+            color: const Color(0xFF2A2A2A),
           ),
         ),
       ),
@@ -404,7 +410,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                           Text(
                             "Document Upload Section",
                             style: GoogleFonts.inter(
-                              color: Color(0xFF2A2A2A),
+                              color: const Color(0xFF2A2A2A),
                               fontWeight: FontWeight.w700,
                               fontSize: 24.sp,
                             ),
@@ -413,7 +419,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                           Text(
                             'Please upload all required documents listed below.',
                             style: GoogleFonts.inter(
-                              color: Color(0x992A2A2A),
+                              color: const Color(0x992A2A2A),
                               fontSize: 14.sp,
                             ),
                           ),
@@ -436,7 +442,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     return Container(
       padding: EdgeInsets.all(20.sp),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
+        color: GlobalStyles.primaryColor.withAlpha(25),
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
@@ -467,7 +473,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             'and in PDF format when possible (photocopies should be scanned as PDF).',
             style: GoogleFonts.inter(
               fontSize: 14.sp,
-              color: Color(0xFF2A2A2A),
+              color: const Color(0xFF2A2A2A),
               height: 1.5,
             ),
           ),
@@ -489,7 +495,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 style: GoogleFonts.inter(
                   fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2A2A2A),
+                  color: const Color(0xFF2A2A2A),
                 ),
               ),
             ],
@@ -497,7 +503,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           SizedBox(height: 8.h),
           Text(
             'Please provide your vehicle details for the insurance claim.',
-            style: GoogleFonts.inter(fontSize: 14.sp, color: Color(0x992A2A2A)),
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              color: const Color(0x992A2A2A),
+            ),
           ),
           SizedBox(height: 30.h),
 
@@ -563,7 +572,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               style: GoogleFonts.inter(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
-                color: Color(0x992A2A2A),
+                color: const Color(0x992A2A2A),
               ),
             ),
             Text(
@@ -581,26 +590,25 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           controller: controller,
           keyboardType: keyboardType,
           maxLength: maxLength,
-          style: GoogleFonts.inter(color: Color(0xFF2A2A2A), fontSize: 14.sp),
+          style: GoogleFonts.inter(
+            color: const Color(0xFF2A2A2A),
+            fontSize: 14.sp,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.inter(
-              color: Color(0x992A2A2A),
+              color: const Color(0x992A2A2A),
               fontSize: 14.sp,
             ),
             filled: true,
             fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
+              borderSide: BorderSide(color: Colors.white.withAlpha(76)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
+              borderSide: BorderSide(color: Colors.white.withAlpha(76)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
@@ -633,7 +641,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 style: GoogleFonts.inter(
                   fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2A2A2A),
+                  color: const Color(0xFF2A2A2A),
                 ),
               ),
             ],
@@ -641,7 +649,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           SizedBox(height: 8.h),
           Text(
             'Please provide details about when and where the incident occurred.',
-            style: GoogleFonts.inter(fontSize: 14.sp, color: Color(0x992A2A2A)),
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              color: const Color(0x992A2A2A),
+            ),
           ),
           SizedBox(height: 30.h),
 
@@ -680,7 +691,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               style: GoogleFonts.inter(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
-                color: Color(0x992A2A2A),
+                color: const Color(0x992A2A2A),
               ),
             ),
             Text(
@@ -697,26 +708,25 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
-          style: GoogleFonts.inter(color: Color(0xFF2A2A2A), fontSize: 14.sp),
+          style: GoogleFonts.inter(
+            color: const Color(0xFF2A2A2A),
+            fontSize: 14.sp,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.inter(
-              color: Color(0x992A2A2A),
+              color: const Color(0x992A2A2A),
               fontSize: 14.sp,
             ),
             filled: true,
             fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
+              borderSide: BorderSide(color: Colors.white.withAlpha(76)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
+              borderSide: BorderSide(color: Colors.white.withAlpha(76)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
@@ -752,7 +762,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               style: GoogleFonts.inter(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
-                color: Color(0x992A2A2A),
+                color: const Color(0x992A2A2A),
               ),
             ),
             Text(
@@ -769,26 +779,25 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         TextFormField(
           controller: _incidentDateController,
           readOnly: true,
-          style: GoogleFonts.inter(color: Color(0xFF2A2A2A), fontSize: 14.sp),
+          style: GoogleFonts.inter(
+            color: const Color(0xFF2A2A2A),
+            fontSize: 14.sp,
+          ),
           decoration: InputDecoration(
             hintText: 'Select incident date',
             hintStyle: GoogleFonts.inter(
-              color: Color(0x992A2A2A),
+              color: const Color(0x992A2A2A),
               fontSize: 14.sp,
             ),
             filled: true,
             fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
+              borderSide: BorderSide(color: Colors.white.withAlpha(76)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
+              borderSide: BorderSide(color: Colors.white.withAlpha(76)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
@@ -803,7 +812,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             ),
             suffixIcon: Icon(
               Icons.calendar_today_rounded,
-              color: Color(0x992A2A2A),
+              color: const Color(0x992A2A2A),
               size: 16.sp,
             ),
           ),
@@ -811,7 +820,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             final DateTime? picked = await showDatePicker(
               context: context,
               initialDate: DateTime.now(),
-              firstDate: DateTime.now().subtract(Duration(days: 365)),
+              firstDate: DateTime.now().subtract(const Duration(days: 365)),
               lastDate: DateTime.now(),
               builder: (context, child) {
                 return Theme(
@@ -852,7 +861,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 style: GoogleFonts.inter(
                   fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2A2A2A),
+                  color: const Color(0xFF2A2A2A),
                 ),
               ),
             ],
@@ -860,7 +869,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           SizedBox(height: 8.h),
           Text(
             'This is the estimated cost based on the damage assessment from your photos.',
-            style: GoogleFonts.inter(fontSize: 14.sp, color: Color(0x992A2A2A)),
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              color: const Color(0x992A2A2A),
+            ),
           ),
           SizedBox(height: 30.h),
           Container(
@@ -868,7 +880,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12.r),
-              color: GlobalStyles.primaryColor.withValues(alpha: 0.15),
+              color: GlobalStyles.primaryColor.withAlpha(38),
             ),
             child: Column(
               children: [
@@ -876,58 +888,70 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                   'Total Estimated Cost',
                   style: GoogleFonts.inter(
                     fontSize: 16.sp,
-                    color: Color(0x992A2A2A),
+                    color: const Color(0x992A2A2A),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 SizedBox(height: 8.h),
-                if (_isLoadingPricing.values.any((loading) => loading)) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 16.w,
-                        height: 16.h,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: GlobalStyles.primaryColor,
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        'Calculating pricing...',
-                        style: GoogleFonts.inter(
-                          fontSize: 12.sp,
-                          color: GlobalStyles.primaryColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                if (_isDamageSevere) ...[
+                  Text(
+                    'Severe damage. Final cost will be provided by the mechanic.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 18.sp,
+                      color: Colors.red,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ] else ...[
-                  Text(
-                    _currencyFormat.format(_estimatedDamageCost),
-                    style: GoogleFonts.inter(
-                      fontSize: 28.sp,
-                      color: GlobalStyles.primaryColor,
-                      fontWeight: FontWeight.bold,
+                  if (_isLoadingPricing.values.any((loading) => loading)) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 16.w,
+                          height: 16.h,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: GlobalStyles.primaryColor,
+                          ),
+                        ),
+                        SizedBox(width: 8.w),
+                        Text(
+                          'Calculating pricing...',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: GlobalStyles.primaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-                if (_estimatedDamageCost == 0 &&
-                    !_isLoadingPricing.values.any((loading) => loading)) ...[
-                  SizedBox(height: 8.h),
-                  Text(
-                    _selectedRepairOptions.isEmpty
-                        ? 'Select repair/replace options to calculate cost'
-                        : 'Cost will be calculated based on repair options',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: Color(0x992A2A2A),
-                      fontStyle: FontStyle.italic,
+                  ] else ...[
+                    Text(
+                      _currencyFormat.format(_estimatedDamageCost),
+                      style: GoogleFonts.inter(
+                        fontSize: 28.sp,
+                        color: GlobalStyles.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
+                  ],
+                  if (_estimatedDamageCost == 0 &&
+                      !_isLoadingPricing.values.any((loading) => loading)) ...[
+                    SizedBox(height: 8.h),
+                    Text(
+                      _selectedRepairOptions.isEmpty
+                          ? 'Select repair/replace options to calculate cost'
+                          : 'Cost will be calculated based on repair options',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        color: const Color(0x992A2A2A),
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ],
               ],
             ),
@@ -944,7 +968,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
     return Container(
       padding: EdgeInsets.all(20.w),
-
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -956,14 +979,14 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 style: GoogleFonts.inter(
                   fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2A2A2A),
+                  color: const Color(0xFF2A2A2A),
                 ),
               ),
               SizedBox(width: 8.w),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 decoration: BoxDecoration(
-                  color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
+                  color: GlobalStyles.primaryColor.withAlpha(51),
                   borderRadius: BorderRadius.circular(6.r),
                 ),
                 child: Text(
@@ -982,7 +1005,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             'These are the images you took for damage assessment. They have been automatically included as damage proof for your claim.',
             style: GoogleFonts.inter(
               fontSize: 14.sp,
-              color: Color(0x992A2A2A),
+              color: const Color(0x992A2A2A),
               height: 1.5,
             ),
           ),
@@ -998,7 +1021,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   Widget _buildAssessmentImagesGrid() {
     return GridView.builder(
       shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
+      physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 12.w,
@@ -1017,10 +1040,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(
-          color: Colors.green.withValues(alpha: 0.3),
-          width: 2,
-        ),
+        border: Border.all(color: Colors.green.withAlpha(76), width: 2),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6.r),
@@ -1087,7 +1107,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                 decoration: BoxDecoration(
-                  color: GlobalStyles.primaryColor.withValues(alpha: 0.7),
+                  color: GlobalStyles.primaryColor.withAlpha(178),
                   borderRadius: BorderRadius.circular(4.r),
                 ),
                 child: Text(
@@ -1107,6 +1127,11 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   }
 
   Widget _buildRepairOptionsSection() {
+    // If damage is severe, hide this entire section.
+    if (_isDamageSevere) {
+      return const SizedBox.shrink();
+    }
+
     // Extract damage information from API responses
     List<Map<String, dynamic>> damagesList = [];
 
@@ -1139,7 +1164,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 style: GoogleFonts.inter(
                   fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2A2A2A),
+                  color: const Color(0xFF2A2A2A),
                 ),
               ),
             ],
@@ -1147,7 +1172,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           SizedBox(height: 8.h),
           Text(
             'Please select your preferred option for each damaged part.',
-            style: GoogleFonts.inter(fontSize: 14.sp, color: Color(0x992A2A2A)),
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              color: const Color(0x992A2A2A),
+            ),
           ),
           SizedBox(height: 30.h),
 
@@ -1156,7 +1184,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             Container(
               padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
-                color: GlobalStyles.primaryColor.withValues(alpha: 0.15),
+                color: GlobalStyles.primaryColor.withAlpha(38),
                 borderRadius: BorderRadius.circular(8.r),
               ),
               child: Row(
@@ -1171,7 +1199,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                     child: Text(
                       'No damages were automatically detected. You can add damages manually.',
                       style: GoogleFonts.inter(
-                        color: Color(0x992A2A2A),
+                        color: const Color(0x992A2A2A),
                         fontSize: 12.sp,
                       ),
                     ),
@@ -1209,7 +1237,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 ),
                 backgroundColor:
                     _showAddDamageForm
-                        ? GlobalStyles.primaryColor.withValues(alpha: 0.3)
+                        ? GlobalStyles.primaryColor.withAlpha(76)
                         : GlobalStyles.primaryColor,
               ),
               onPressed: () {
@@ -1243,7 +1271,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         Text(
           'Detected Damage (Car Part)',
           style: GoogleFonts.inter(
-            color: Color(0x992A2A2A),
+            color: const Color(0x992A2A2A),
             fontSize: 12.sp,
             fontWeight: FontWeight.w600,
           ),
@@ -1260,14 +1288,17 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             hint: Text(
               'Select part',
               style: GoogleFonts.inter(
-                color: Color(0x992A2A2A),
+                color: const Color(0x992A2A2A),
                 fontSize: 12.sp,
               ),
             ),
-            style: GoogleFonts.inter(color: Color(0xFF2A2A2A), fontSize: 14.sp),
+            style: GoogleFonts.inter(
+              color: const Color(0xFF2A2A2A),
+              fontSize: 14.sp,
+            ),
             isExpanded: true,
             dropdownColor: Colors.white,
-            underline: SizedBox.shrink(),
+            underline: const SizedBox.shrink(),
             items:
                 _carParts
                     .map(
@@ -1276,7 +1307,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                         child: Text(
                           _formatLabel(p),
                           style: GoogleFonts.inter(
-                            color: Color(0xFF2A2A2A),
+                            color: const Color(0xFF2A2A2A),
                             fontSize: 14.sp,
                           ),
                         ),
@@ -1292,7 +1323,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         Text(
           'Damage Type',
           style: GoogleFonts.inter(
-            color: Color(0x992A2A2A),
+            color: const Color(0x992A2A2A),
             fontSize: 12.sp,
             fontWeight: FontWeight.w600,
           ),
@@ -1308,12 +1339,15 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             value: _newDamageType,
             hint: Text(
               'Select damage type',
-              style: GoogleFonts.inter(color: Color(0x992A2A2A)),
+              style: GoogleFonts.inter(color: const Color(0x992A2A2A)),
             ),
             isExpanded: true,
-            style: GoogleFonts.inter(color: Color(0xFF2A2A2A), fontSize: 14.sp),
+            style: GoogleFonts.inter(
+              color: const Color(0xFF2A2A2A),
+              fontSize: 14.sp,
+            ),
             dropdownColor: Colors.white,
-            underline: SizedBox.shrink(),
+            underline: const SizedBox.shrink(),
             items:
                 _carDamageTypes
                     .map(
@@ -1322,7 +1356,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                         child: Text(
                           _formatLabel(d),
                           style: GoogleFonts.inter(
-                            color: Color(0xFF2A2A2A),
+                            color: const Color(0xFF2A2A2A),
                             fontSize: 14.sp,
                           ),
                         ),
@@ -1378,7 +1412,9 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               }),
               side: WidgetStateBorderSide.resolveWith((states) {
                 if (states.contains(WidgetState.disabled)) {
-                  return BorderSide(color: Colors.grey); // Disabled border
+                  return const BorderSide(
+                    color: Colors.grey,
+                  ); // Disabled border
                 }
                 return BorderSide(
                   color: GlobalStyles.primaryColor,
@@ -1450,7 +1486,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 8.h, bottom: 16.h),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
+        color: GlobalStyles.primaryColor.withAlpha(25),
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
@@ -1550,7 +1586,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
+        color: GlobalStyles.primaryColor.withAlpha(25),
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
@@ -1638,7 +1674,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               Text(
                 'Damaged Part: ',
                 style: GoogleFonts.inter(
-                  color: Color(0x992A2A2A),
+                  color: const Color(0x992A2A2A),
                   fontSize: 14.sp,
                 ),
               ),
@@ -1646,7 +1682,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 child: Text(
                   _formatLabel(damagedPart),
                   style: GoogleFonts.inter(
-                    color: Color(0xFF2A2A2A),
+                    color: const Color(0xFF2A2A2A),
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1666,7 +1702,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               Text(
                 'Damage Type: ',
                 style: GoogleFonts.inter(
-                  color: Color(0x992A2A2A),
+                  color: const Color(0x992A2A2A),
                   fontSize: 14.sp,
                 ),
               ),
@@ -1674,7 +1710,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 child: Text(
                   _formatLabel(damageType),
                   style: GoogleFonts.inter(
-                    color: Color(0xFF2A2A2A),
+                    color: const Color(0xFF2A2A2A),
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1696,11 +1732,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
         decoration: BoxDecoration(
-          color:
-              isSelected ? Colors.green : Colors.green.withValues(alpha: 0.15),
+          color: isSelected ? Colors.green : Colors.green.withAlpha(38),
           borderRadius: BorderRadius.circular(8.r),
           border: Border.all(color: Colors.green, width: 2),
         ),
@@ -1739,7 +1774,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           height: 16.h,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Divider(color: Color(0x442A2A2A)),
+            child: const Divider(color: Color(0x442A2A2A)),
           ),
         ),
         _buildDocumentCategory(
@@ -1751,7 +1786,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           height: 16.h,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Divider(color: Color(0x442A2A2A)),
+            child: const Divider(color: Color(0x442A2A2A)),
           ),
         ),
         _buildDocumentCategory(
@@ -1763,7 +1798,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           height: 16.h,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Divider(color: Color(0x442A2A2A)),
+            child: const Divider(color: Color(0x442A2A2A)),
           ),
         ),
         _buildDocumentCategory(
@@ -1775,7 +1810,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           height: 16.h,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Divider(color: Color(0x442A2A2A)),
+            child: const Divider(color: Color(0x442A2A2A)),
           ),
         ),
         _buildDocumentCategory(
@@ -1787,7 +1822,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           height: 16.h,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Divider(color: Color(0x442A2A2A)),
+            child: const Divider(color: Color(0x442A2A2A)),
           ),
         ),
         _buildDocumentCategory(
@@ -1799,7 +1834,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           height: 16.h,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Divider(color: Color(0x442A2A2A)),
+            child: const Divider(color: Color(0x442A2A2A)),
           ),
         ),
         _buildDocumentCategory(
@@ -1811,7 +1846,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           height: 16.h,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Divider(color: Color(0x442A2A2A)),
+            child: const Divider(color: Color(0x442A2A2A)),
           ),
         ),
         _buildDocumentCategory(
@@ -1823,7 +1858,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           height: 16.h,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Divider(color: Color(0x442A2A2A)),
+            child: const Divider(color: Color(0x442A2A2A)),
           ),
         ),
         _buildDocumentCategory(
@@ -1835,7 +1870,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           height: 16.h,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Divider(color: Color(0x442A2A2A)),
+            child: const Divider(color: Color(0x442A2A2A)),
           ),
         ),
         _buildDocumentCategory(
@@ -1876,7 +1911,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                           style: GoogleFonts.inter(
                             fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2A2A2A),
+                            color: const Color(0xFF2A2A2A),
                           ),
                         ),
                         if (isRequired) ...[
@@ -1897,7 +1932,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                       description,
                       style: GoogleFonts.inter(
                         fontSize: 12.sp,
-                        color: Color(0x992A2A2A),
+                        color: const Color(0x992A2A2A),
                       ),
                     ),
                   ],
@@ -1907,7 +1942,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
+                    color: GlobalStyles.primaryColor.withAlpha(51),
                     borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: Text(
@@ -2017,7 +2052,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       margin: EdgeInsets.only(bottom: 8.h),
       padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
+        color: GlobalStyles.primaryColor.withAlpha(51),
         borderRadius: BorderRadius.circular(6.r),
       ),
       child: Row(
@@ -2076,7 +2111,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             Container(
               height: 30.h,
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.2),
+                color: Colors.red.withAlpha(51),
                 shape: BoxShape.circle,
               ),
               child: IconButton(
@@ -2112,7 +2147,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                       ? SizedBox(
                         height: 20.h,
                         width: 20.w,
-                        child: CircularProgressIndicator(
+                        child: const CircularProgressIndicator(
                           color: Colors.white,
                           strokeWidth: 2,
                         ),
@@ -2178,7 +2213,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         SnackBar(
           content: Text(snackText),
           backgroundColor: Colors.redAccent,
-          duration: Duration(seconds: 4),
+          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -2358,7 +2393,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       incidentDescription = descriptionParts.join('. ');
 
       // Parse incident date from the form
-      DateTime incidentDate = DateTime.now().subtract(Duration(days: 1));
+      DateTime incidentDate = DateTime.now().subtract(const Duration(days: 1));
       try {
         if (_incidentDateController.text.trim().isNotEmpty) {
           final dateParts = _incidentDateController.text.split('/');
@@ -2372,7 +2407,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         }
       } catch (e) {
         // If parsing fails, use default date
-        print('Error parsing incident date: $e');
+        debugPrint('Error parsing incident date: $e');
       }
 
       // Use estimated damage cost from calculation, or from API if available
@@ -2382,16 +2417,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               : (estimatedCost ?? 0.0);
 
       // Build damages payload combining API-detected damages and manual damages
-      // Shape for each damage entry:
-      // {
-      //   'damaged_part': 'Back bumper',            // formatted for API
-      //   'damage_type': 'Dent',                    // human-readable
-      //   'selected_option': 'repair'|'replace',
-      //   'pricing': {
-      //     'repair_insurance': 1234.56,            // nullable
-      //     'replace_insurance': 2345.67            // nullable
-      //   }
-      // }
       List<Map<String, dynamic>> damagesPayload = [];
 
       // Extract API-detected damages first
@@ -2484,18 +2509,16 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         });
       }
 
-      // Debug: print the payload shape being sent
-      print('=== DAMAGES PAYLOAD ===');
-      print(damagesPayload);
-      print('=======================');
+      debugPrint('=== DAMAGES PAYLOAD ===');
+      debugPrint(damagesPayload.toString());
+      debugPrint('=======================');
 
-      // Debug: Print vehicle information being sent
-      print('=== VEHICLE DATA DEBUG ===');
-      print('Vehicle Make: "${_vehicleMakeController.text.trim()}"');
-      print('Vehicle Model: "${_vehicleModelController.text.trim()}"');
-      print('Vehicle Year: "${_vehicleYearController.text.trim()}"');
-      print('Plate Number: "${_plateNumberController.text.trim()}"');
-      print('========================');
+      debugPrint('=== VEHICLE DATA DEBUG ===');
+      debugPrint('Vehicle Make: "${_vehicleMakeController.text.trim()}"');
+      debugPrint('Vehicle Model: "${_vehicleModelController.text.trim()}"');
+      debugPrint('Vehicle Year: "${_vehicleYearController.text.trim()}"');
+      debugPrint('Plate Number: "${_plateNumberController.text.trim()}"');
+      debugPrint('========================');
 
       // Create claim using ClaimsService
       final claim = await ClaimsService.createClaim(
@@ -2529,15 +2552,14 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         damages: damagesPayload,
       );
 
-      // Debug: Print claim result
       if (claim != null) {
-        print('=== CLAIM CREATED ===');
-        print('Claim ID: ${claim.id}');
-        print('Vehicle Make in claim: ${claim.vehicleMake}');
-        print('Vehicle Model in claim: ${claim.vehicleModel}');
-        print('Vehicle Year in claim: ${claim.vehicleYear}');
-        print('Plate Number in claim: ${claim.vehiclePlateNumber}');
-        print('==================');
+        debugPrint('=== CLAIM CREATED ===');
+        debugPrint('Claim ID: ${claim.id}');
+        debugPrint('Vehicle Make in claim: ${claim.vehicleMake}');
+        debugPrint('Vehicle Model in claim: ${claim.vehicleModel}');
+        debugPrint('Vehicle Year in claim: ${claim.vehicleYear}');
+        debugPrint('Plate Number in claim: ${claim.vehiclePlateNumber}');
+        debugPrint('==================');
       }
 
       if (claim == null) {
@@ -2545,15 +2567,14 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         return;
       }
 
-      // Upload documents to storage and link to claim
-      print('Starting document upload for claim: ${claim.id}');
+      debugPrint('Starting document upload for claim: ${claim.id}');
       bool allUploadsSuccessful = true;
       int totalUploaded = 0;
 
       for (String docTypeKey in uploadedDocuments.keys) {
         final files = uploadedDocuments[docTypeKey] ?? [];
         if (files.isNotEmpty) {
-          print(
+          debugPrint(
             'Uploading ${files.length} files for document type: $docTypeKey',
           );
 
@@ -2574,21 +2595,23 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               );
 
               if (uploadedDocument != null) {
-                print('Successfully uploaded: ${uploadedDocument.fileName}');
+                debugPrint(
+                  'Successfully uploaded: ${uploadedDocument.fileName}',
+                );
                 totalUploaded++;
               } else {
-                print('Failed to upload file: ${file.path}');
+                debugPrint('Failed to upload file: ${file.path}');
                 allUploadsSuccessful = false;
               }
             } catch (e) {
-              print('Error uploading file ${file.path}: $e');
+              debugPrint('Error uploading file ${file.path}: $e');
               allUploadsSuccessful = false;
             }
           }
         }
       }
 
-      print('Total files uploaded: $totalUploaded');
+      debugPrint('Total files uploaded: $totalUploaded');
 
       if (!allUploadsSuccessful) {
         _showErrorMessage('Some documents failed to upload. Please try again.');
@@ -2609,7 +2632,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         _showSuccessDialog(claimNumber: claim.claimNumber);
       }
     } catch (e) {
-      print('Error submitting claim: $e');
+      debugPrint('Error submitting claim: $e');
       _showErrorMessage('Error submitting claim: ${e.toString()}');
     } finally {
       if (mounted) {
@@ -2715,7 +2738,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         SnackBar(
           content: Text(message),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -2727,7 +2750,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         SnackBar(
           content: Text(message),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
         ),
       );
     }

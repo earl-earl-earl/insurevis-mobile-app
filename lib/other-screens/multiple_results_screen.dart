@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/other-screens/result_screen.dart';
@@ -40,37 +41,27 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GlobalStyles.backgroundColorStart,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: GlobalStyles.backgroundColorStart,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Results',
-          style: TextStyle(
+          style: GoogleFonts.inter(
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: const Color(0xFF2A2A2A),
           ),
         ),
       ),
       // Download PDF button removed
       bottomNavigationBar: null,
-      body: Container(
+      body: SizedBox(
         height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.backgroundColorStart,
-              GlobalStyles.backgroundColorEnd,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
         child: SafeArea(
           child:
               _isUploading
@@ -97,8 +88,8 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
           SizedBox(height: 20.h),
           Text(
             'Analyzing images...',
-            style: TextStyle(
-              color: Colors.white,
+            style: GoogleFonts.inter(
+              color: const Color(0xFF2A2A2A),
               fontSize: 18.sp,
               fontWeight: FontWeight.w600,
             ),
@@ -106,7 +97,10 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
           SizedBox(height: 10.h),
           Text(
             '$completedCount of $totalCount completed',
-            style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+            style: GoogleFonts.inter(
+              color: const Color(0x992A2A2A),
+              fontSize: 14.sp,
+            ),
           ),
         ],
       ),
@@ -125,23 +119,26 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
               children: [
                 Text(
                   'Analysis Complete',
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                     fontSize: 24.sp,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: const Color(0xFF2A2A2A),
                   ),
                 ),
                 SizedBox(height: 8.h),
                 Text(
                   '${widget.imagePaths.length} images analyzed',
-                  style: TextStyle(fontSize: 14.sp, color: Colors.white70),
+                  style: GoogleFonts.inter(
+                    fontSize: 14.sp,
+                    color: const Color(0x992A2A2A),
+                  ),
                 ),
                 SizedBox(height: 24.h),
 
                 // Results list
                 ListView.builder(
                   shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
+                  physics: const NeverScrollableScrollPhysics(),
                   itemCount: widget.imagePaths.length,
                   itemBuilder: (context, index) {
                     final imagePath = widget.imagePaths[index];
@@ -165,12 +162,8 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
         Container(
           padding: EdgeInsets.all(16.w),
           decoration: BoxDecoration(
-            color: GlobalStyles.backgroundColorStart.withValues(alpha: 0.95),
             border: Border(
-              top: BorderSide(
-                color: Colors.white.withValues(alpha: 0.1),
-                width: 1,
-              ),
+              top: BorderSide(color: Colors.white.withAlpha(25), width: 1),
             ),
           ),
           child: _buildActionButtons(),
@@ -210,7 +203,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             ),
             child: Text(
               "View Assessment",
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: Colors.white,
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w600,
@@ -250,7 +243,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             ),
             child: Text(
               "Proceed to Claim Insurance",
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: Colors.white,
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w600,
@@ -269,30 +262,34 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     String? assessmentId,
     Map<String, dynamic>? apiResponse,
   ) {
-    Color borderColor = Colors.white.withValues(alpha: 0.3);
+    Color borderColor = Colors.white.withAlpha(76);
     Widget statusWidget = Container();
     bool canTap = false;
     bool isExpanded = _expandedCards[imagePath] ?? false;
 
     if (status == 'success' && assessmentId != null) {
-      borderColor = Colors.green;
+      borderColor = GlobalStyles.primaryColor.withAlpha(127);
       canTap = true;
       statusWidget = Container(
         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
         decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.2),
+          color: GlobalStyles.primaryColor.withAlpha(51),
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+          border: Border.all(color: GlobalStyles.primaryColor.withAlpha(76)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 14.sp),
+            Icon(
+              Icons.check_circle,
+              color: GlobalStyles.primaryColor,
+              size: 14.sp,
+            ),
             SizedBox(width: 4.w),
             Text(
               'Analysis Complete',
-              style: TextStyle(
-                color: Colors.green,
+              style: GoogleFonts.inter(
+                color: GlobalStyles.primaryColor,
                 fontSize: 12.sp,
                 fontWeight: FontWeight.w500,
               ),
@@ -305,9 +302,9 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       statusWidget = Container(
         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
         decoration: BoxDecoration(
-          color: Colors.red.withValues(alpha: 0.2),
+          color: Colors.red.withAlpha(51),
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+          border: Border.all(color: Colors.red.withAlpha(76)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -316,7 +313,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             SizedBox(width: 4.w),
             Text(
               'Analysis Failed',
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: Colors.red,
                 fontSize: 12.sp,
                 fontWeight: FontWeight.w500,
@@ -330,78 +327,85 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
+        color:
+            status == 'error'
+                ? Colors.red.withAlpha(25)
+                : GlobalStyles.primaryColor.withAlpha(25),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: borderColor, width: 2),
       ),
       child: Column(
         children: [
           // Main card content - tappable for navigation
-          GestureDetector(
-            onTap:
-                canTap
-                    ? () => _viewResult(imagePath, assessmentId!, apiResponse)
-                    : null,
-            child: Padding(
-              padding: EdgeInsets.all(12.w),
-              child: Row(
-                children: [
-                  // Image thumbnail - using cached image
-                  _cachedImages[imagePath] ??
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12.r),
-                        child: SizedBox(
-                          width: 80.w,
-                          height: 80.w,
-                          child: Image.file(File(imagePath), fit: BoxFit.cover),
-                        ),
-                      ),
-
-                  SizedBox(width: 12.w),
-
-                  // Content
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Image $imageNumber',
-                              style: TextStyle(
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                            if (canTap)
-                              Icon(
-                                Icons.arrow_forward_ios,
-                                color: Colors.white54,
-                                size: 16.sp,
-                              ),
-                          ],
-                        ),
-
-                        SizedBox(height: 8.h),
-
-                        statusWidget,
-
-                        if (canTap) ...[
-                          SizedBox(height: 8.h),
-                          Text(
-                            'Tap to view full report',
-                            style: TextStyle(
-                              fontSize: 11.sp,
-                              color: Colors.white54,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap:
+                  canTap
+                      ? () => _viewResult(imagePath, assessmentId!, apiResponse)
+                      : null,
+              borderRadius: BorderRadius.circular(16.r),
+              child: Padding(
+                padding: EdgeInsets.all(12.w),
+                child: Row(
+                  children: [
+                    // Image thumbnail - using cached image
+                    _cachedImages[imagePath] ??
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12.r),
+                          child: SizedBox(
+                            width: 80.w,
+                            height: 80.w,
+                            child: Image.file(
+                              File(imagePath),
+                              fit: BoxFit.cover,
                             ),
                           ),
+                        ),
+
+                    SizedBox(width: 12.w),
+
+                    // Content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Image $imageNumber',
+                                style: GoogleFonts.inter(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      status == 'error'
+                                          ? Colors.red
+                                          : GlobalStyles.primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: 8.h),
+
+                          statusWidget,
+
+                          if (canTap) ...[
+                            SizedBox(height: 8.h),
+                            Text(
+                              'Tap to view full report',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                color: const Color(0xFF2A2A2A),
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -414,7 +418,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                  top: BorderSide(color: Colors.white.withAlpha(25)),
                 ),
               ),
               child: Material(
@@ -439,7 +443,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                       children: [
                         Text(
                           isExpanded ? 'Hide Details' : 'Show Details',
-                          style: TextStyle(
+                          style: GoogleFonts.inter(
                             color: GlobalStyles.primaryColor,
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w600,
@@ -493,10 +497,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-        ),
+        border: Border(top: BorderSide(color: Colors.white.withAlpha(25))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,12 +526,13 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             ],
           ),
 
-          if (damages.isNotEmpty) ...[
+          if (damages.isNotEmpty &&
+              overallSeverity.toLowerCase() != 'severe') ...[
             SizedBox(height: 16.h),
             Text(
               'Detected Damages (${damages.length})',
-              style: TextStyle(
-                color: Colors.white,
+              style: GoogleFonts.inter(
+                color: const Color(0xFF2A2A2A),
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
               ),
@@ -542,8 +544,8 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                 padding: EdgeInsets.only(top: 4.h),
                 child: Text(
                   '+ ${damages.length - 3} more damages',
-                  style: TextStyle(
-                    color: Colors.white54,
+                  style: GoogleFonts.inter(
+                    color: const Color(0x992A2A2A),
                     fontSize: 12.sp,
                     fontStyle: FontStyle.italic,
                   ),
@@ -559,18 +561,25 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withAlpha(25),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withAlpha(76)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              color: const Color(0xFF2A2A2A),
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           SizedBox(height: 4.h),
           Text(
             value,
-            style: TextStyle(
+            style: GoogleFonts.inter(
               color: color,
               fontSize: 14.sp,
               fontWeight: FontWeight.w600,
@@ -598,34 +607,30 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 6.h),
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8.r),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
       child: Row(
         children: [
-          Icon(
-            Icons.report_problem_outlined,
-            color: Colors.orange,
-            size: 16.sp,
-          ),
+          Icon(Icons.report_problem_rounded, color: Colors.orange, size: 16.sp),
           SizedBox(width: 8.w),
           Expanded(
             child: Text(
               _capitalizeFirst(damageType),
-              style: TextStyle(color: Colors.white, fontSize: 13.sp),
+              style: GoogleFonts.inter(
+                color: const Color(0xFF2A2A2A),
+                fontSize: 13.sp,
+              ),
             ),
           ),
           if (severity.isNotEmpty)
             Container(
               padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
               decoration: BoxDecoration(
-                color: _getSeverityColor(severity).withValues(alpha: 0.2),
+                color: _getSeverityColor(severity).withAlpha(51),
                 borderRadius: BorderRadius.circular(4.r),
               ),
               child: Text(
                 _capitalizeFirst(severity),
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   color: _getSeverityColor(severity),
                   fontSize: 10.sp,
                   fontWeight: FontWeight.w500,
@@ -706,7 +711,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   }
 
   Future<Map<String, dynamic>?> _sendImageToAPI(String imagePath) async {
-    final url = 'https://rooster-faithful-terminally.ngrok-free.app/predict';
+    const url = 'https://rooster-faithful-terminally.ngrok-free.app/predict';
 
     try {
       // DEBUG: print("Uploading image: $imagePath");

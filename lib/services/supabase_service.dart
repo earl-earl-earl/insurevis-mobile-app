@@ -840,6 +840,14 @@ class SupabaseService {
   /// Get current authenticated user
   static User? get currentUser => _supabase.auth.currentUser;
 
+  /// Public accessor for the underlying Supabase client.
+  ///
+  /// Some callers need to perform direct DB operations or subscribe to
+  /// realtime channels. The internal client is private (`_supabase`) so
+  /// expose a read-only getter here instead of referencing the private
+  /// field from other files.
+  static SupabaseClient get client => _supabase;
+
   /// Listen to authentication state changes
   static Stream<AuthState> get authStateChanges =>
       _supabase.auth.onAuthStateChange;

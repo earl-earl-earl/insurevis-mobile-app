@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:insurevis/global_ui_variables.dart';
@@ -40,17 +41,17 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GlobalStyles.backgroundColorStart,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: GlobalStyles.backgroundColorStart,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Results',
-          style: TextStyle(
+          style: GoogleFonts.inter(
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -94,7 +95,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
           SizedBox(height: 20.h),
           Text(
             'Analyzing images...',
-            style: TextStyle(
+            style: GoogleFonts.inter(
               color: Colors.white,
               fontSize: 18.sp,
               fontWeight: FontWeight.w600,
@@ -103,7 +104,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
           SizedBox(height: 10.h),
           Text(
             '$completedCount of $totalCount completed',
-            style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+            style: GoogleFonts.inter(color: Colors.white70, fontSize: 14.sp),
           ),
         ],
       ),
@@ -118,7 +119,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
         children: [
           Text(
             'Analysis Complete',
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 24.sp,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -127,7 +128,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
           SizedBox(height: 8.h),
           Text(
             '${widget.imagePaths.length} images analyzed',
-            style: TextStyle(fontSize: 14.sp, color: Colors.white70),
+            style: GoogleFonts.inter(fontSize: 14.sp, color: Colors.white70),
           ),
           SizedBox(height: 24.h),
 
@@ -191,7 +192,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             ),
             child: Text(
               "View Assessment",
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: Colors.white,
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w600,
@@ -231,7 +232,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             ),
             child: Text(
               "Proceed to Claim Insurance",
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: Colors.white,
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w600,
@@ -272,7 +273,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             SizedBox(width: 4.w),
             Text(
               'Analysis Complete',
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: Colors.green,
                 fontSize: 12.sp,
                 fontWeight: FontWeight.w500,
@@ -297,7 +298,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             SizedBox(width: 4.w),
             Text(
               'Analysis Failed',
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: Colors.red,
                 fontSize: 12.sp,
                 fontWeight: FontWeight.w500,
@@ -350,7 +351,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                           children: [
                             Text(
                               'Image $imageNumber',
-                              style: TextStyle(
+                              style: GoogleFonts.inter(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
@@ -373,7 +374,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                           SizedBox(height: 8.h),
                           Text(
                             'Tap to view full report',
-                            style: TextStyle(
+                            style: GoogleFonts.inter(
                               fontSize: 11.sp,
                               color: Colors.white54,
                             ),
@@ -420,7 +421,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                       children: [
                         Text(
                           isExpanded ? 'Hide Details' : 'Show Details',
-                          style: TextStyle(
+                          style: GoogleFonts.inter(
                             color: GlobalStyles.primaryColor,
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w600,
@@ -510,7 +511,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             SizedBox(height: 16.h),
             Text(
               'Detected Damages (${damages.length})',
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: Colors.white,
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
@@ -523,7 +524,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                 padding: EdgeInsets.only(top: 4.h),
                 child: Text(
                   '+ ${damages.length - 3} more damages',
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                     color: Colors.white54,
                     fontSize: 12.sp,
                     fontStyle: FontStyle.italic,
@@ -547,11 +548,14 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
+          Text(
+            label,
+            style: GoogleFonts.inter(color: Colors.white70, fontSize: 12.sp),
+          ),
           SizedBox(height: 4.h),
           Text(
             value,
-            style: TextStyle(
+            style: GoogleFonts.inter(
               color: color,
               fontSize: 14.sp,
               fontWeight: FontWeight.w600,
@@ -594,7 +598,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
           Expanded(
             child: Text(
               _capitalizeFirst(damageType),
-              style: TextStyle(color: Colors.white, fontSize: 13.sp),
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 13.sp),
             ),
           ),
           if (severity.isNotEmpty)
@@ -606,7 +610,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
               ),
               child: Text(
                 _capitalizeFirst(severity),
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   color: _getSeverityColor(severity),
                   fontSize: 10.sp,
                   fontWeight: FontWeight.w500,

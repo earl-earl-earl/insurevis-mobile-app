@@ -29,7 +29,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   bool _isSaving = false;
 
   // Repair/Replace options for each damage
-  Map<int, String> _selectedRepairOptions = {};
+  final Map<int, String> _selectedRepairOptions = {};
 
   // Pricing data for repair/replace options
   final Map<int, Map<String, dynamic>?> _repairPricingData = {};
@@ -38,6 +38,14 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
 
   // Estimated damage cost
   double _estimatedDamageCost = 0.0;
+
+  // Helper getter to check for severe damage
+  bool get _isDamageSevere {
+    return widget.apiResponses.values.any((response) {
+      final severity = response['overall_severity']?.toString().toLowerCase();
+      return severity == 'severe';
+    });
+  }
 
   @override
   void initState() {
@@ -82,7 +90,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         backgroundColor: GlobalStyles.backgroundColorStart,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -129,9 +137,11 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
           _buildIndividualResults(),
           SizedBox(height: 24.h),
 
-          // Repair Options Section
-          _buildRepairOptionsSection(),
-          SizedBox(height: 24.h),
+          // Conditionally build the entire repair options section
+          if (!_isDamageSevere) ...[
+            _buildRepairOptionsSection(),
+            SizedBox(height: 24.h),
+          ],
 
           // Save PDF Button
           _buildSavePDFButton(),
@@ -148,9 +158,9 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
+        color: Colors.black.withAlpha(51),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.white.withAlpha(51)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,21 +216,23 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       }
       if (response.containsKey('overall_severity')) {
         String severity = response['overall_severity'].toString();
-        if (severity.toLowerCase().contains('high'))
+        if (severity.toLowerCase().contains('high') ||
+            severity.toLowerCase().contains('severe')) {
           severityCount['High'] = (severityCount['High'] ?? 0) + 1;
-        else if (severity.toLowerCase().contains('medium'))
+        } else if (severity.toLowerCase().contains('medium')) {
           severityCount['Medium'] = (severityCount['Medium'] ?? 0) + 1;
-        else
+        } else {
           severityCount['Low'] = (severityCount['Low'] ?? 0) + 1;
+        }
       }
     });
 
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
+        color: Colors.black.withAlpha(51),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.white.withAlpha(51)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,9 +260,11 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               Expanded(
                 child: _buildSummaryCard(
                   'Estimated Cost',
-                  '₱${totalCost.toStringAsFixed(2)}',
+                  _isDamageSevere
+                      ? 'To be given by the mechanic'
+                      : '₱${totalCost.toStringAsFixed(2)}',
                   Icons.attach_money,
-                  Colors.green,
+                  _isDamageSevere ? Colors.orange : Colors.green,
                 ),
               ),
             ],
@@ -291,9 +305,9 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withAlpha(25),
         borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withAlpha(76)),
       ),
       child: Column(
         children: [
@@ -306,6 +320,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
+            textAlign: TextAlign.center,
           ),
           SizedBox(height: 4.h),
           Text(
@@ -350,9 +365,9 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
+        color: Colors.black.withAlpha(51),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.white.withAlpha(51)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,10 +410,13 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                         ),
                       if (response.containsKey('total_cost'))
                         Text(
-                          'Cost: ₱${response['total_cost']}',
+                          _isDamageSevere
+                              ? 'Cost: To be given by the mechanic'
+                              : 'Cost: ₱${response['total_cost']}',
                           style: TextStyle(
                             fontSize: 14.sp,
-                            color: Colors.green,
+                            color:
+                                _isDamageSevere ? Colors.orange : Colors.green,
                           ),
                         ),
                     ],
@@ -407,7 +425,9 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               ),
             ],
           ),
-          if (response != null && response.containsKey('damages')) ...[
+          if (!_isDamageSevere &&
+              response != null &&
+              response.containsKey('damages')) ...[
             SizedBox(height: 12.h),
             Text(
               'Detected Damages:',
@@ -469,11 +489,9 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
+        color: GlobalStyles.primaryColor.withAlpha(25),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(
-          color: GlobalStyles.primaryColor.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: GlobalStyles.primaryColor.withAlpha(76)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,9 +551,9 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
+        color: Colors.black.withAlpha(51),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.white.withAlpha(51)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -599,9 +617,9 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
+        color: Colors.black.withAlpha(76),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.white.withAlpha(51)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,7 +630,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               Container(
                 padding: EdgeInsets.all(4.w),
                 decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.2),
+                  color: Colors.green.withAlpha(51),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.check, color: Colors.green, size: 12.sp),
@@ -689,9 +707,9 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
+        color: Colors.black.withAlpha(51),
         borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.white.withAlpha(51)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -751,19 +769,19 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
         decoration: BoxDecoration(
           color:
               isSelected
-                  ? GlobalStyles.primaryColor.withValues(alpha: 0.2)
+                  ? GlobalStyles.primaryColor.withAlpha(51)
                   : Colors.transparent,
           borderRadius: BorderRadius.circular(8.r),
           border: Border.all(
             color:
                 isSelected
                     ? GlobalStyles.primaryColor
-                    : Colors.white.withValues(alpha: 0.3),
+                    : Colors.white.withAlpha(76),
             width: 2,
           ),
         ),
@@ -795,11 +813,9 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       width: double.infinity,
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
+        color: GlobalStyles.primaryColor.withAlpha(25),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(
-          color: GlobalStyles.primaryColor.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: GlobalStyles.primaryColor.withAlpha(76)),
       ),
       child: Column(
         children: [
@@ -845,12 +861,12 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                       ? SizedBox(
                         width: 20.w,
                         height: 20.h,
-                        child: CircularProgressIndicator(
+                        child: const CircularProgressIndicator(
                           color: Colors.white,
                           strokeWidth: 2,
                         ),
                       )
-                      : Icon(Icons.save, color: Colors.white),
+                      : const Icon(Icons.save, color: Colors.white),
               label: Text(
                 _isSaving ? 'Generating PDF...' : 'Save PDF Report',
                 style: TextStyle(
@@ -1012,31 +1028,48 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         throw Exception('Storage permission not granted');
       }
 
+      // Prepare responses for PDF generation, modifying cost if severe
+      final Map<String, Map<String, dynamic>> pdfResponses = {};
+      widget.apiResponses.forEach((key, value) {
+        pdfResponses[key] = Map<String, dynamic>.from(value);
+      });
+
+      if (_isDamageSevere) {
+        pdfResponses.forEach((key, value) {
+          value['total_cost'] = 'To be given by the mechanic';
+        });
+      }
+
       // Ask user whether to auto-save to InsureVis/documents or choose folder
       final choice = await showDialog<String?>(
         context: context,
         builder:
             (context) => AlertDialog(
-              title: Text('Save Assessment Report'),
-              content: Text('Where do you want to save the generated PDF?'),
+              title: const Text('Save Assessment Report'),
+              content: const Text(
+                'Where do you want to save the generated PDF?',
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop('auto'),
-                  child: Text('Save to InsureVis/documents'),
+                  child: const Text('Save to InsureVis/documents'),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop('choose'),
-                  child: Text('Choose folder'),
+                  child: const Text('Choose folder'),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(null),
-                  child: Text('Cancel'),
+                  child: const Text('Cancel'),
                 ),
               ],
             ),
       );
 
-      if (choice == null) return; // user cancelled
+      if (choice == null) {
+        setState(() => _isSaving = false);
+        return;
+      }
 
       String? savedPath;
 
@@ -1044,13 +1077,13 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         // Auto-save via existing helper which creates InsureVis/documents
         savedPath = await PDFService.generateMultipleResultsPDF(
           imagePaths: widget.imagePaths,
-          apiResponses: widget.apiResponses,
+          apiResponses: pdfResponses,
         );
       } else if (choice == 'choose') {
         // Generate PDF bytes and ask user for a folder or filepath
         final bytes = await PDFService.generateMultipleResultsPDFBytes(
           imagePaths: widget.imagePaths,
-          apiResponses: widget.apiResponses,
+          apiResponses: pdfResponses,
         );
 
         if (bytes == null) throw Exception('Failed to generate PDF bytes');
@@ -1091,8 +1124,6 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
 
       if (savedPath != null) {
         if (mounted) {
-          // Clear any existing snackbars (for example a prior error) so the
-          // success message is visible and no stale error text remains.
           ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1102,23 +1133,18 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                 label: 'Share',
                 textColor: Colors.white,
                 onPressed: () {
-                  if (savedPath != null) _sharePDF(savedPath);
+                  _sharePDF(savedPath!);
                 },
               ),
             ),
           );
         }
-
-        // Once we've confirmed a successful save and shown feedback, return
-        // early to avoid any further error-prone work in this try block.
         return;
       } else {
         throw Exception('Failed to generate and save PDF');
       }
     } catch (e) {
       if (mounted) {
-        // Clear any existing snackbars so the error is visible and not
-        // obscured by older messages.
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

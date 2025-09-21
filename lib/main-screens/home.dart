@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:insurevis/main-screens/profile_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
@@ -14,6 +15,7 @@ import 'package:insurevis/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
+import 'dart:convert';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -23,114 +25,214 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  late Future<List<ClaimModel>> _recentClaimsFuture = Future.value([]);
+  List<ClaimModel> _recentClaims = [];
+  bool _isLoading = false;
   Timer? _refreshTimer;
+  StreamSubscription<AuthState>? _authStreamSub;
   StreamSubscription<dynamic>? _claimsStreamSub;
+
+  // Cache keys - same as in ClaimsScreen
+  static const String _claimsStorageKey = 'cached_claims';
+  static const String _lastSyncKey = 'claims_last_sync';
+
   @override
   void initState() {
     super.initState();
-    // Initialize UserProvider with demo data if no user is logged in
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initAndFetchClaims();
+      _initializeHomeClaims();
     });
-  }
-
-  Future<void> _initAndFetchClaims() async {
-    // Do not initialize demo users here. Prefer the authenticated supabase
-    // user when present; otherwise rely on whatever userProvider currently has.
-
-    if (!mounted) return;
-
-    final claims = await _loadRecentClaims();
-    if (!mounted) return;
-    setState(() {
-      _recentClaimsFuture = Future.value(claims);
-    });
-
-    // Setup Supabase realtime subscription for claims belonging to this user
-    // Cancel any existing subscription first
-    try {
-      await _claimsStreamSub?.cancel();
-    } catch (e) {
-      // ignore
-    }
-    _claimsStreamSub = null;
-
-    // Only set up realtime subscription when there's an authenticated
-    // Supabase user. Demo/local users (stored in UserProvider) use a
-    // placeholder id (e.g. 'user_001') which is not a UUID and will
-    // cause the Supabase query to fail. Require an authenticated
-    // Supabase user here to avoid unnecessary queries.
-    final supabaseUser = SupabaseService.currentUser;
-    if (supabaseUser != null) {
-      final userId = supabaseUser.id;
-      try {
-        // Use the streaming API which yields list updates for the table rows
-        _claimsStreamSub = Supabase.instance.client
-            .from('claims')
-            .stream(primaryKey: ['id'])
-            .eq('user_id', userId)
-            .order('created_at', ascending: false)
-            .listen((event) async {
-              // event will be the updated list of rows for this query
-              if (!mounted) return;
-              final refreshed = await _loadRecentClaims();
-              if (!mounted) return;
-              setState(() {
-                _recentClaimsFuture = Future.value(refreshed);
-              });
-            });
-      } catch (e) {
-        debugPrint('Error setting up claims realtime stream: $e');
-      }
-    }
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
-    // Clean up realtime stream subscription
-    try {
-      _claimsStreamSub?.cancel();
-    } catch (e) {
-      // ignore
-    }
+    _authStreamSub?.cancel();
+    _claimsStreamSub?.cancel();
     super.dispose();
   }
 
-  Future<List<ClaimModel>> _loadRecentClaims() async {
+  /// Initialize home claims by loading from cache first, then syncing
+  Future<void> _initializeHomeClaims() async {
+    // Load from cache immediately for fast UI
+    await _loadFromCache();
+
+    // Setup auth monitoring
+    _setupAuthMonitoring();
+
+    // Sync with server if user is authenticated
+    if (SupabaseService.isSignedIn) {
+      _syncWithServer();
+      _setupRealtimeUpdates();
+    } else {
+      // Show demo claims for non-authenticated users
+      _loadDemoClaimsIfNeeded();
+    }
+  }
+
+  /// Load claims from local cache
+  Future<void> _loadFromCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedData = prefs.getString(_claimsStorageKey);
+
+      if (cachedData != null && SupabaseService.isSignedIn) {
+        final List<dynamic> jsonList = json.decode(cachedData);
+        final allClaims =
+            jsonList.map((json) => ClaimModel.fromJson(json)).toList();
+
+        setState(() {
+          _recentClaims =
+              allClaims.take(3).toList(); // Only show 3 recent claims on home
+        });
+
+        debugPrint('Loaded ${_recentClaims.length} recent claims from cache');
+      }
+    } catch (e) {
+      debugPrint('Error loading claims from cache: $e');
+    }
+  }
+
+  /// Setup authentication state monitoring
+  void _setupAuthMonitoring() {
+    _authStreamSub = SupabaseService.authStateChanges.listen((state) {
+      if (!mounted) return;
+
+      if (state.event == AuthChangeEvent.signedIn) {
+        // User signed in - load their real claims
+        _syncWithServer();
+        _setupRealtimeUpdates();
+      } else if (state.event == AuthChangeEvent.signedOut) {
+        // User signed out - clear real claims and show demo
+        _clearAuthenticatedClaims();
+        _loadDemoClaimsIfNeeded();
+      }
+    });
+  }
+
+  /// Clear authenticated user claims and cache
+  Future<void> _clearAuthenticatedClaims() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_claimsStorageKey);
+      await prefs.remove(_lastSyncKey);
+
+      setState(() {
+        _recentClaims = [];
+      });
+
+      // Cancel realtime subscription
+      await _claimsStreamSub?.cancel();
+      _claimsStreamSub = null;
+    } catch (e) {
+      debugPrint('Error clearing authenticated claims: $e');
+    }
+  }
+
+  /// Sync with server and update cache
+  Future<void> _syncWithServer() async {
+    if (!SupabaseService.isSignedIn) return;
+
+    try {
+      setState(() => _isLoading = true);
+
+      final user = SupabaseService.currentUser!;
+      final allClaims = await ClaimsService.getUserClaims(user.id);
+
+      // Save to cache
+      await _saveToCache(allClaims);
+
+      setState(() {
+        _recentClaims = allClaims.take(3).toList();
+        _isLoading = false;
+      });
+
+      debugPrint(
+        'Synced ${allClaims.length} claims, showing ${_recentClaims.length} recent',
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      debugPrint('Error syncing claims: $e');
+    }
+  }
+
+  /// Save claims to local cache
+  Future<void> _saveToCache(List<ClaimModel> claims) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = claims.map((claim) => claim.toJson()).toList();
+      await prefs.setString(_claimsStorageKey, json.encode(jsonList));
+      await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
+    } catch (e) {
+      debugPrint('Error saving claims to cache: $e');
+    }
+  }
+
+  /// Setup real-time updates for authenticated users
+  void _setupRealtimeUpdates() {
+    final user = SupabaseService.currentUser;
+    if (user == null) return;
+
+    try {
+      // Cancel existing subscription
+      _claimsStreamSub?.cancel();
+
+      // Setup new subscription
+      _claimsStreamSub = Supabase.instance.client
+          .from('claims')
+          .stream(primaryKey: ['id'])
+          .eq('user_id', user.id)
+          .order('created_at', ascending: false)
+          .listen((event) {
+            if (!mounted) return;
+            _handleRealtimeUpdate(event);
+          });
+
+      debugPrint('Real-time updates enabled for home claims');
+    } catch (e) {
+      debugPrint('Error setting up realtime updates: $e');
+    }
+  }
+
+  /// Handle real-time updates
+  void _handleRealtimeUpdate(List<Map<String, dynamic>> data) {
+    try {
+      final updatedClaims =
+          data.map((json) => ClaimModel.fromJson(json)).toList();
+
+      // Save to cache
+      _saveToCache(updatedClaims);
+
+      setState(() {
+        _recentClaims = updatedClaims.take(3).toList();
+      });
+
+      debugPrint('Real-time update: ${_recentClaims.length} recent claims');
+    } catch (e) {
+      debugPrint('Error handling real-time update: $e');
+    }
+  }
+
+  /// Load demo claims for non-authenticated users
+  void _loadDemoClaimsIfNeeded() {
+    if (SupabaseService.isSignedIn) return;
+
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final demoUser = userProvider.currentUser;
 
-      // If we have an authenticated Supabase user, fetch from Supabase.
-      final supabaseUser = SupabaseService.currentUser;
-      if (supabaseUser != null) {
-        final userId = supabaseUser.id;
-        final claims = await ClaimsService.getUserClaims(userId);
-        return claims.take(5).toList();
-      }
-
-      // No authenticated Supabase user -> fall back to demo/local store.
-      // Map demo user id to a demo-only local set of claims so the UI isn't
-      // empty for local/demo users. If there's no demo user available, return
-      // an empty list which will show a Sign-in CTA in the UI.
       if (demoUser != null) {
         final demoClaims = _generateDemoClaims(demoUser);
-        return demoClaims.take(3).toList();
+        setState(() {
+          _recentClaims = demoClaims.take(3).toList();
+        });
       }
-
-      return [];
     } catch (e) {
-      debugPrint('Error loading recent claims: $e');
-      return [];
+      debugPrint('Error loading demo claims: $e');
     }
   }
 
   // Generate a small set of demo ClaimModel instances for a local/demo user
   List<ClaimModel> _generateDemoClaims(dynamic demoUser) {
-    // demoUser is expected to be UserProfile from UserProvider, but we keep
-    // the signature dynamic to avoid tight coupling in this file.
     final now = DateTime.now();
 
     return [
@@ -341,78 +443,168 @@ class _HomeState extends State<Home> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      "Recent",
+                      "Recent Claims",
                       style: GoogleFonts.inter(
                         fontSize: 22.sp,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    // Add a "View All" button that navigates to the claims screen
                   ],
                 ),
                 SizedBox(height: 12.h),
-                FutureBuilder<List<ClaimModel>>(
-                  future: _recentClaimsFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return SizedBox(
-                        height: 60.h,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: GlobalStyles.primaryColor,
+
+                // Claims loading and display
+                if (_isLoading && _recentClaims.isEmpty) ...[
+                  SizedBox(
+                    height: 60.h,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: GlobalStyles.primaryColor,
+                        strokeWidth: 2.0,
+                      ),
+                    ),
+                  ),
+                ] else if (_recentClaims.isEmpty) ...[
+                  // Empty state
+                  if (!SupabaseService.isSignedIn) ...[
+                    // Sign-in CTA for non-authenticated users
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(16.w),
+                      decoration: BoxDecoration(
+                        color: GlobalStyles.primaryColor.withValues(
+                          alpha: 0.05,
+                        ),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(
+                          color: GlobalStyles.primaryColor.withValues(
+                            alpha: 0.1,
                           ),
                         ),
-                      );
-                    }
-
-                    final claims = snapshot.data ?? [];
-                    if (claims.isEmpty) {
-                      // If the user isn't signed in, offer a sign-in CTA so
-                      // they can view their real claims from Supabase.
-                      final supabaseUser = SupabaseService.currentUser;
-                      if (supabaseUser == null) {
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: TextButton(
-                                onPressed: () {
-                                  Navigator.pushNamed(context, '/signin');
-                                },
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    'No recent claims — Sign in to view your claims',
-                                    style: GoogleFonts.inter(
-                                      color: GlobalStyles.primaryColor,
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.login_rounded,
+                            size: 48.sp,
+                            color: GlobalStyles.primaryColor,
+                          ),
+                          SizedBox(height: 12.h),
+                          Text(
+                            'Sign in to view your claims',
+                            style: GoogleFonts.inter(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            'Access your insurance claims and track their status',
+                            style: GoogleFonts.inter(
+                              fontSize: 14.sp,
+                              color: Colors.grey[600],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 16.h),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/signin');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: GlobalStyles.primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 24.w,
+                                vertical: 12.h,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
                               ),
                             ),
-                          ],
-                        );
-                      }
-
-                      return Text(
-                        'No recent claims',
-                        style: GoogleFonts.inter(
-                          color: Colors.grey,
-                          fontSize: 14.sp,
-                        ),
-                      );
-                    }
-
-                    return Column(
-                      children: [
-                        for (var i = 0; i < claims.length; i++) ...[
-                          _buildClaimTile(claims[i]),
+                            child: Text(
+                              'Sign In',
+                              style: GoogleFonts.inter(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ],
+                      ),
+                    ),
+                  ] else ...[
+                    // No claims for authenticated user
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(16.w),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.description_outlined,
+                            size: 48.sp,
+                            color: Colors.grey[400],
+                          ),
+                          SizedBox(height: 12.h),
+                          Text(
+                            'No claims yet',
+                            style: GoogleFonts.inter(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            'Your insurance claims will appear here',
+                            style: GoogleFonts.inter(
+                              fontSize: 14.sp,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ] else ...[
+                  // Display recent claims
+                  Column(
+                    children: [
+                      for (var i = 0; i < _recentClaims.length; i++) ...[
+                        _buildClaimTile(_recentClaims[i]),
+                        if (i < _recentClaims.length - 1) SizedBox(height: 4.h),
                       ],
-                    );
-                  },
-                ),
+                    ],
+                  ),
+                ],
+
+                // Cache indicator for authenticated users (optional)
+                if (SupabaseService.isSignedIn &&
+                    _recentClaims.isNotEmpty &&
+                    !_isLoading) ...[
+                  SizedBox(height: 12.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.offline_bolt,
+                        size: 12.sp,
+                        color: Colors.green[600],
+                      ),
+                      SizedBox(width: 4.w),
+                      Text(
+                        'Synced with cache',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -471,94 +663,101 @@ class _HomeState extends State<Home> {
       );
       return f.format(amount);
     } catch (_) {
-      // Fallback: use simple formatting
-      return '₱' + (amount.toStringAsFixed(2));
+      return '₱${amount.toStringAsFixed(2)}';
     }
   }
 
   Widget _buildClaimIcon(String status, Color color) {
     return Container(
-      height: 50.sp,
-      width: 50.sp,
+      height: 45.sp,
+      width: 45.sp,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         shape: BoxShape.circle,
       ),
-      child: Icon(_statusIcon(status), color: color, size: 25.sp),
+      child: Icon(_statusIcon(status), color: color, size: 22.sp),
     );
   }
 
   Widget _buildClaimTile(ClaimModel claim) {
-    // Non-clickable claim tile — preserve appearance but remove InkWell
-    return Container(
-      // margin: EdgeInsets.symmetric(vertical: 6.h, horizontal: 4.w),
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 15.h),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Icon
-          _buildClaimIcon(claim.status, _statusColor(claim.status)),
-          SizedBox(width: 12.w),
-          // Details column takes remaining width
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    // Constrain the claim number so it can ellipsize instead of
-                    // pushing the amount offscreen and causing flex errors.
-                    Expanded(
-                      child: Text(
-                        claim.claimNumber,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w600,
+    // Clickable claim tile that navigates to claims screen
+    return InkWell(
+      onTap: () {
+        Navigator.pushNamed(context, '/claims');
+      },
+      borderRadius: BorderRadius.circular(12.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Icon
+            _buildClaimIcon(claim.status, _statusColor(claim.status)),
+            SizedBox(width: 12.w),
+            // Details column takes remaining width
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          claim.claimNumber,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
-                    // Small fixed gap between number and amount
-                    SizedBox(width: 8.w),
-                    // Amount should take only the space it needs.
-                    Text(
-                      _formatCurrency(claim.estimatedDamageCost),
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14.sp,
-                        color: GlobalStyles.primaryColor,
+                      SizedBox(width: 8.w),
+                      Text(
+                        _formatCurrency(claim.estimatedDamageCost),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.sp,
+                          color: GlobalStyles.primaryColor,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 6.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatStatus(claim.status),
-                      style: GoogleFonts.inter(
-                        color: _statusColor(claim.status),
-                        fontSize: 12.sp,
+                    ],
+                  ),
+                  SizedBox(height: 4.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatStatus(claim.status),
+                        style: GoogleFonts.inter(
+                          color: _statusColor(claim.status),
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    Text(
-                      DateFormat.yMMMd().format(claim.incidentDate),
-                      style: GoogleFonts.inter(
-                        color: Colors.grey,
-                        fontSize: 12.sp,
+                      Text(
+                        DateFormat.yMMMd().format(claim.incidentDate),
+                        style: GoogleFonts.inter(
+                          color: Colors.grey[600],
+                          fontSize: 11.sp,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            // Subtle chevron indicator
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.grey[400],
+              size: 20.sp,
+            ),
+          ],
+        ),
       ),
     );
   }

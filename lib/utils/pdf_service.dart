@@ -82,19 +82,25 @@ class PDFService {
       // Extract data from API response
       final overallSeverity =
           apiResponse['overall_severity']?.toString() ?? 'Unknown';
+      final isSevere = overallSeverity.toLowerCase() == 'severe';
       final totalCost =
           apiResponse['total_cost']?.toString() ?? 'Not available';
       final damages = apiResponse['damages'] ?? apiResponse['prediction'] ?? [];
 
       // Format cost
-      String formattedCost = 'Not available';
-      if (totalCost != 'Not available') {
-        try {
-          final cost = double.parse(totalCost);
-          formattedCost =
-              'PHP ${cost.toStringAsFixed(2)}'; // Use PHP instead of ₱ symbol
-        } catch (e) {
-          formattedCost = 'PHP $totalCost';
+      String formattedCost;
+      if (isSevere) {
+        formattedCost = 'Not available';
+      } else {
+        formattedCost = 'Not available';
+        if (totalCost != 'Not available') {
+          try {
+            final cost = double.parse(totalCost);
+            formattedCost =
+                'PHP ${cost.toStringAsFixed(2)}'; // Use PHP instead of ₱ symbol
+          } catch (e) {
+            formattedCost = 'PHP $totalCost';
+          }
         }
       }
 
@@ -258,7 +264,7 @@ class PDFService {
               pw.SizedBox(height: 20),
 
               // Damages section
-              if (damages.isNotEmpty) ...[
+              if (damages.isNotEmpty && !isSevere) ...[
                 pw.Text(
                   'Detected Damages',
                   style: pw.TextStyle(
@@ -573,16 +579,23 @@ class PDFService {
   ) {
     final overallSeverity =
         apiResponse['overall_severity']?.toString() ?? 'Unknown';
+    final isSevere = overallSeverity.toLowerCase() == 'severe';
     final totalCost = apiResponse['total_cost']?.toString() ?? 'Not available';
     final damages = apiResponse['damages'] ?? apiResponse['prediction'] ?? [];
 
-    String formattedCost = 'Not available';
-    if (totalCost != 'Not available') {
-      try {
-        final cost = double.parse(totalCost);
-        formattedCost = '₱${cost.toStringAsFixed(2)}';
-      } catch (e) {
-        formattedCost = '₱$totalCost';
+    String formattedCost;
+    if (isSevere) {
+      formattedCost = 'Not available';
+    } else {
+      formattedCost = 'Not available';
+      if (totalCost != 'Not available') {
+        try {
+          final cost = double.parse(totalCost);
+          formattedCost = '₱${cost.toStringAsFixed(2)}';
+        } catch (e) {
+          // This will catch cases where the cost is already a string like "To be given..."
+          formattedCost = totalCost;
+        }
       }
     }
 
@@ -629,7 +642,7 @@ class PDFService {
             ],
           ),
 
-          if (damages.isNotEmpty) ...[
+          if (damages.isNotEmpty && !isSevere) ...[
             pw.SizedBox(height: 10),
             pw.Text(
               'Detected Damages:',
