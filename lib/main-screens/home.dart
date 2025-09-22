@@ -82,7 +82,7 @@ class _HomeState extends State<Home> {
 
         setState(() {
           _recentClaims =
-              allClaims.take(3).toList(); // Only show 3 recent claims on home
+              allClaims.take(5).toList(); // Only show 5 recent claims on home
         });
 
         debugPrint('Loaded ${_recentClaims.length} recent claims from cache');
@@ -142,7 +142,7 @@ class _HomeState extends State<Home> {
       await _saveToCache(allClaims);
 
       setState(() {
-        _recentClaims = allClaims.take(3).toList();
+        _recentClaims = allClaims.take(5).toList();
         _isLoading = false;
       });
 
@@ -203,7 +203,7 @@ class _HomeState extends State<Home> {
       _saveToCache(updatedClaims);
 
       setState(() {
-        _recentClaims = updatedClaims.take(3).toList();
+        _recentClaims = updatedClaims.take(5).toList();
       });
 
       debugPrint('Real-time update: ${_recentClaims.length} recent claims');
@@ -223,7 +223,7 @@ class _HomeState extends State<Home> {
       if (demoUser != null) {
         final demoClaims = _generateDemoClaims(demoUser);
         setState(() {
-          _recentClaims = demoClaims.take(3).toList();
+          _recentClaims = demoClaims.take(5).toList();
         });
       }
     } catch (e) {
@@ -411,20 +411,20 @@ class _HomeState extends State<Home> {
                 ),
                 SizedBox(width: 15.w),
                 _buildActionButton(
+                  icon: Icons.picture_as_pdf_rounded,
+                  label: "Make PDF",
+                  iconColor: Colors.purple,
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/assessment_report');
+                  },
+                ),
+                SizedBox(width: 15.w),
+                _buildActionButton(
                   icon: Icons.question_answer_rounded,
                   label: "View FAQs",
                   iconColor: Colors.orange,
                   onPressed: () {
                     Navigator.pushNamed(context, '/faq');
-                  },
-                ),
-                SizedBox(width: 15.w),
-                _buildActionButton(
-                  icon: Icons.shield_rounded,
-                  label: "View Policy",
-                  iconColor: Colors.purple,
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/policy');
                   },
                 ),
               ],
@@ -680,84 +680,72 @@ class _HomeState extends State<Home> {
   }
 
   Widget _buildClaimTile(ClaimModel claim) {
-    // Clickable claim tile that navigates to claims screen
-    return InkWell(
-      onTap: () {
-        Navigator.pushNamed(context, '/claims');
-      },
-      borderRadius: BorderRadius.circular(12.r),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Icon
-            _buildClaimIcon(claim.status, _statusColor(claim.status)),
-            SizedBox(width: 12.w),
-            // Details column takes remaining width
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          claim.claimNumber,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        _formatCurrency(claim.estimatedDamageCost),
+    // Static claim tile without gesture detector
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Icon
+          _buildClaimIcon(claim.status, _statusColor(claim.status)),
+          SizedBox(width: 12.w),
+          // Details column takes remaining width
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        claim.claimNumber,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13.sp,
-                          color: GlobalStyles.primaryColor,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
-                  ),
-                  SizedBox(height: 4.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _formatStatus(claim.status),
-                        style: GoogleFonts.inter(
-                          color: _statusColor(claim.status),
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      _formatCurrency(claim.estimatedDamageCost),
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.sp,
+                        color: GlobalStyles.primaryColor,
                       ),
-                      Text(
-                        DateFormat.yMMMd().format(claim.incidentDate),
-                        style: GoogleFonts.inter(
-                          color: Colors.grey[600],
-                          fontSize: 11.sp,
-                        ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 4.h),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _formatStatus(claim.status),
+                      style: GoogleFonts.inter(
+                        color: _statusColor(claim.status),
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w500,
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                    Text(
+                      DateFormat.yMMMd().format(claim.incidentDate),
+                      style: GoogleFonts.inter(
+                        color: Colors.grey[600],
+                        fontSize: 11.sp,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            // Subtle chevron indicator
-            Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.grey[400],
-              size: 20.sp,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

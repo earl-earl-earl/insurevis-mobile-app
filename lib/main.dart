@@ -7,6 +7,7 @@ import 'package:insurevis/models/firebase_msg.dart';
 import 'package:insurevis/other-screens/faq_screen.dart';
 import 'package:insurevis/other-screens/gallery_view.dart';
 import 'package:insurevis/other-screens/insurance_document_upload.dart';
+import 'package:insurevis/other-screens/pdf_assessment_view.dart';
 import 'package:insurevis/other-screens/privacy_policy_screen.dart';
 import 'package:insurevis/other-screens/terms_of_service_screen.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +16,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:insurevis/services/user_device_service.dart';
 import 'package:insurevis/config/supabase_config.dart';
+import 'package:insurevis/services/prices_repository.dart';
 import 'package:insurevis/login-signup/signin.dart';
 import 'package:insurevis/login-signup/signup.dart';
 import 'package:insurevis/login-signup/app_initializer.dart';
@@ -47,6 +49,14 @@ void main() async {
   // Start user device service to manage FCM tokens
   final _deviceService = UserDeviceService(Supabase.instance.client);
   await _deviceService.init();
+
+  // Initialize prices cache so UI can read cached lists without hitting the API repeatedly
+  try {
+    await PricesRepository.instance.init();
+  } catch (e) {
+    // Don't block app start on pricing init failures; UI will fallback to live fetches
+    debugPrint('PricesRepository init failed: $e');
+  }
 
   // Force portrait orientation
   // For Vulkan/OpenGL settings, configure in Android manifest instead
@@ -166,6 +176,7 @@ class MainApp extends StatelessWidget {
                   '/faq': (context) => const FAQScreen(),
                   '/policy': (context) => const PrivacyPolicyScreen(),
                   '/terms': (context) => const TermsOfServiceScreen(),
+                  '/assessment_report': (context) => const PDFAssessmentView(),
                 },
               );
             },

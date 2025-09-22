@@ -1,24 +1,25 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/utils/pdf_service.dart';
-import 'package:insurevis/services/pricing_service.dart';
+import 'package:insurevis/services/prices_repository.dart';
+import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:insurevis/utils/file_writer.dart';
 
 class PDFAssessmentView extends StatefulWidget {
-  final List<String> imagePaths;
-  final Map<String, Map<String, dynamic>> apiResponses;
-  final Map<String, String> assessmentIds;
+  final List<String>? imagePaths;
+  final Map<String, Map<String, dynamic>>? apiResponses;
+  final Map<String, String>? assessmentIds;
 
   const PDFAssessmentView({
     super.key,
-    required this.imagePaths,
-    required this.apiResponses,
-    required this.assessmentIds,
+    this.imagePaths,
+    this.apiResponses,
+    this.assessmentIds,
   });
 
   @override
@@ -27,21 +28,52 @@ class PDFAssessmentView extends StatefulWidget {
 
 class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   bool _isSaving = false;
-
-  // Repair/Replace options for each damage
-  final Map<int, String> _selectedRepairOptions = {};
-
-  // Pricing data for repair/replace options
+  final Map<int, String?> _selectedRepairOptions = {};
   final Map<int, Map<String, dynamic>?> _repairPricingData = {};
   final Map<int, Map<String, dynamic>?> _replacePricingData = {};
   final Map<int, bool> _isLoadingPricing = {};
-
-  // Estimated damage cost
   double _estimatedDamageCost = 0.0;
+  final List<Map<String, String>> _manualDamages = [];
+  bool _showAddDamageForm = false;
+  String? _newDamagePart;
+  String? _newDamageType;
 
-  // Helper getter to check for severe damage
+  final List<String> _carParts = [
+    "Back-bumper",
+    "Back-door",
+    "Back-wheel",
+    "Back-window",
+    "Back-windshield",
+    "Fender",
+    "Front-bumper",
+    "Front-door",
+    "Front-wheel",
+    "Front-window",
+    "Grille",
+    "Headlight",
+    "Hood",
+    "License-plate",
+    "Mirror",
+    "Quarter-panel",
+    "Rocker-panel",
+    "Roof",
+    "Tail-light",
+    "Trunk",
+    "Windshield",
+  ];
+
+  final List<String> _carDamageTypes = [
+    "Crack",
+    "Dent",
+    "Shattered Glass",
+    "Broken Lamp",
+    "Scratch / Paint Wear",
+    "Flat Tire",
+  ];
+
   bool get _isDamageSevere {
-    return widget.apiResponses.values.any((response) {
+    final responses = widget.apiResponses ?? <String, Map<String, dynamic>>{};
+    return responses.values.any((response) {
       final severity = response['overall_severity']?.toString().toLowerCase();
       return severity == 'severe';
     });
@@ -51,15 +83,30 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   void initState() {
     super.initState();
     _initializeRepairOptions();
+    _calculateEstimatedDamageCost();
   }
 
-  /// Initialize repair options for all detected damages
-  void _initializeRepairOptions() {
-    // Extract damage information from API responses
-    List<Map<String, dynamic>> damagesList = [];
+  final NumberFormat _currencyFormatter = NumberFormat.currency(
+    locale: 'en_PH',
+    symbol: '₱',
+  );
 
-    if (widget.apiResponses.isNotEmpty) {
-      for (var response in widget.apiResponses.values) {
+  String _formatCurrency(double amount) {
+    try {
+      if (amount == 0.0) return 'N/A';
+      return _currencyFormatter.format(amount);
+    } catch (e) {
+      if (amount == 0.0) return 'N/A';
+      return '₱${amount.toStringAsFixed(2)}';
+    }
+  }
+
+  void _initializeRepairOptions() {
+    List<Map<String, dynamic>> damagesList = [];
+    final apiResponses =
+        widget.apiResponses ?? <String, Map<String, dynamic>>{};
+    if (apiResponses.isNotEmpty) {
+      for (var response in apiResponses.values) {
         if (response['damages'] is List) {
           damagesList.addAll(
             (response['damages'] as List).cast<Map<String, dynamic>>(),
@@ -71,50 +118,83 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         }
       }
     }
-
-    // Initialize selected repair options to 'repair' by default
-    for (int i = 0; i < damagesList.length; i++) {
-      if (!_selectedRepairOptions.containsKey(i)) {
-        setState(() {
-          _selectedRepairOptions[i] = 'repair';
-        });
+    // If there are API-detected damages, default each to 'repair' and
+    // start fetching pricing so totals reflect user choices on load.
+    for (var entry in damagesList.asMap().entries) {
+      final idx = entry.key;
+      final dmg = entry.value;
+      String damagedPart = 'Unknown Part';
+      if (dmg.containsKey('damaged_part')) {
+        damagedPart = dmg['damaged_part']?.toString() ?? 'Unknown Part';
+      } else if (dmg.containsKey('part_name')) {
+        damagedPart = dmg['part_name']?.toString() ?? 'Unknown Part';
+      } else if (dmg.containsKey('label')) {
+        damagedPart = dmg['label']?.toString() ?? 'Unknown Part';
       }
+
+      // mark selected option as 'repair' (use API damage index)
+      _selectedRepairOptions[idx] = 'repair';
+
+      // trigger pricing fetch (async) for this damage; don't await here
+      _fetchPricingForDamage(idx, damagedPart, 'repair');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GlobalStyles.backgroundColorStart,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: GlobalStyles.backgroundColorStart,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Assessment Report',
-          style: TextStyle(
+          style: GoogleFonts.inter(
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Color(0xFF2A2A2A),
           ),
         ),
       ),
-      body: Container(
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.backgroundColorStart,
-              GlobalStyles.backgroundColorEnd,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      body: SizedBox(height: double.infinity, child: _buildAssessmentContent()),
+      bottomNavigationBar: SafeArea(
+        minimum: EdgeInsets.all(12.w),
+        child: SizedBox(
+          height: 60.h,
+          child: ElevatedButton.icon(
+            onPressed: _isSaving ? null : _savePDF,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: GlobalStyles.primaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              padding: EdgeInsets.symmetric(vertical: 12.h),
+            ),
+            icon:
+                _isSaving
+                    ? SizedBox(
+                      width: 20.w,
+                      height: 20.h,
+                      child: const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : const Icon(Icons.save, color: Colors.white),
+            label: Text(
+              _isSaving ? 'Generating PDF...' : 'Save PDF Report',
+              style: GoogleFonts.inter(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
           ),
         ),
-        child: _buildAssessmentContent(),
       ),
     );
   }
@@ -125,29 +205,16 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           _buildHeaderSection(),
           SizedBox(height: 24.h),
-
-          // Summary
           _buildSummarySection(),
           SizedBox(height: 24.h),
-
-          // Individual Results
           _buildIndividualResults(),
           SizedBox(height: 24.h),
-
-          // Conditionally build the entire repair options section
           if (!_isDamageSevere) ...[
             _buildRepairOptionsSection(),
             SizedBox(height: 24.h),
           ],
-
-          // Save PDF Button
-          _buildSavePDFButton(),
-          SizedBox(height: 24.h),
-
-          // Overall Assessment
           _buildOverallAssessment(),
         ],
       ),
@@ -156,29 +223,18 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
 
   Widget _buildHeaderSection() {
     return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.black.withAlpha(51),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withAlpha(51)),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.assignment,
-                color: GlobalStyles.primaryColor,
-                size: 24.sp,
-              ),
-              SizedBox(width: 12.w),
               Text(
                 'Vehicle Damage Assessment Report',
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color(0xFF2A2A2A),
                 ),
               ),
             ],
@@ -186,11 +242,19 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
           SizedBox(height: 12.h),
           Text(
             'Generated on: ${DateTime.now().toString().substring(0, 19)}',
-            style: TextStyle(fontSize: 14.sp, color: Colors.white70),
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              color: Color(0x992A2A2A),
+              fontWeight: FontWeight.w600,
+            ),
           ),
           Text(
-            'Total Images Analyzed: ${widget.imagePaths.length}',
-            style: TextStyle(fontSize: 14.sp, color: Colors.white70),
+            'Total Images Analyzed: ${(widget.imagePaths ?? const <String>[]).length}',
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              color: Color(0x992A2A2A),
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -198,21 +262,19 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   }
 
   Widget _buildSummarySection() {
-    // Calculate summary data
     int totalDamages = 0;
     double totalCost = 0.0;
     Map<String, int> severityCount = {'High': 0, 'Medium': 0, 'Low': 0};
-
-    widget.apiResponses.forEach((imagePath, response) {
+    final apiResponsesForSummary =
+        widget.apiResponses ?? <String, Map<String, dynamic>>{};
+    apiResponsesForSummary.forEach((imagePath, response) {
       if (response.containsKey('damages') && response['damages'] is List) {
         totalDamages += (response['damages'] as List).length;
       }
       if (response.containsKey('total_cost')) {
         try {
           totalCost += double.parse(response['total_cost'].toString());
-        } catch (e) {
-          // Handle parsing error
-        }
+        } catch (e) {}
       }
       if (response.containsKey('overall_severity')) {
         String severity = response['overall_severity'].toString();
@@ -228,24 +290,36 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     });
 
     return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.black.withAlpha(51),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withAlpha(51)),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Summary',
-            style: TextStyle(
-              fontSize: 16.sp,
+            style: GoogleFonts.inter(
+              fontSize: 28.sp,
               fontWeight: FontWeight.bold,
-              color: GlobalStyles.primaryColor,
+              color: Color(0xFF2A2A2A),
             ),
           ),
           SizedBox(height: 16.h),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryCard(
+                  'Estimated Cost',
+                  _isDamageSevere
+                      ? 'To be given by the mechanic'
+                      : (_estimatedDamageCost > 0
+                          ? _formatCurrency(_estimatedDamageCost)
+                          : _formatCurrency(totalCost)),
+                  Icons.money_rounded,
+                  _isDamageSevere ? Colors.orange : Colors.green,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
           Row(
             children: [
               Expanded(
@@ -259,32 +333,8 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               SizedBox(width: 12.w),
               Expanded(
                 child: _buildSummaryCard(
-                  'Estimated Cost',
-                  _isDamageSevere
-                      ? 'To be given by the mechanic'
-                      : '₱${totalCost.toStringAsFixed(2)}',
-                  Icons.attach_money,
-                  _isDamageSevere ? Colors.orange : Colors.green,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSummaryCard(
-                  'High Severity',
-                  severityCount['High'].toString(),
-                  Icons.priority_high,
-                  Colors.red,
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: _buildSummaryCard(
                   'Images Analyzed',
-                  widget.imagePaths.length.toString(),
+                  (widget.imagePaths ?? const <String>[]).length.toString(),
                   Icons.image,
                   Colors.blue,
                 ),
@@ -315,17 +365,21 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
           SizedBox(height: 8.h),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+            style: GoogleFonts.inter(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w700,
+              color: color,
             ),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 4.h),
           Text(
             label,
-            style: TextStyle(fontSize: 12.sp, color: Colors.white70),
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              color: color.withValues(alpha: 0.5),
+              fontWeight: FontWeight.w700,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -334,22 +388,27 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   }
 
   Widget _buildIndividualResults() {
+    final images = widget.imagePaths ?? const <String>[];
+    if (images.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Individual Image Results',
-          style: TextStyle(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.bold,
-            color: GlobalStyles.primaryColor,
+          style: GoogleFonts.inter(
+            fontSize: 24.sp,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF2A2A2A),
           ),
         ),
         SizedBox(height: 16.h),
-        ...widget.imagePaths.asMap().entries.map((entry) {
+        ...images.asMap().entries.map((entry) {
           final index = entry.key;
           final imagePath = entry.value;
-          final response = widget.apiResponses[imagePath];
+          final response =
+              (widget.apiResponses ??
+                  <String, Map<String, dynamic>>{})[imagePath];
           return _buildImageResultCard(index + 1, imagePath, response);
         }).toList(),
       ],
@@ -365,16 +424,14 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.black.withAlpha(51),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withAlpha(51)),
+        color: GlobalStyles.primaryColor.withValues(alpha: 0.1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              // Image thumbnail
               ClipRRect(
                 borderRadius: BorderRadius.circular(8.r),
                 child: SizedBox(
@@ -390,10 +447,10 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                   children: [
                     Text(
                       'Image $imageNumber',
-                      style: TextStyle(
+                      style: GoogleFonts.inter(
                         fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF2A2A2A),
                       ),
                     ),
                     if (response != null) ...[
@@ -401,8 +458,9 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                       if (response.containsKey('overall_severity'))
                         Text(
                           'Severity: ${response['overall_severity']}',
-                          style: TextStyle(
+                          style: GoogleFonts.inter(
                             fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
                             color: _getSeverityColor(
                               response['overall_severity'].toString(),
                             ),
@@ -412,8 +470,8 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                         Text(
                           _isDamageSevere
                               ? 'Cost: To be given by the mechanic'
-                              : 'Cost: ₱${response['total_cost']}',
-                          style: TextStyle(
+                              : 'Cost: ${_formatCurrency(_parseToDouble(response['total_cost']))}',
+                          style: GoogleFonts.inter(
                             fontSize: 14.sp,
                             color:
                                 _isDamageSevere ? Colors.orange : Colors.green,
@@ -431,10 +489,10 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
             SizedBox(height: 12.h),
             Text(
               'Detected Damages:',
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: Color(0xFF2A2A2A),
               ),
             ),
             SizedBox(height: 8.h),
@@ -447,7 +505,6 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
 
   List<Widget> _buildDamagesList(dynamic damages) {
     if (damages is! List) return [];
-
     return damages.take(3).map<Widget>((damage) {
       String damageText = '';
       if (damage is Map) {
@@ -466,7 +523,6 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       } else {
         damageText = damage.toString();
       }
-
       return Padding(
         padding: EdgeInsets.only(bottom: 4.h),
         child: Row(
@@ -476,7 +532,10 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
             Expanded(
               child: Text(
                 damageText,
-                style: TextStyle(fontSize: 12.sp, color: Colors.white70),
+                style: GoogleFonts.inter(
+                  fontSize: 12.sp,
+                  color: Color(0x992A2A2A),
+                ),
               ),
             ),
           ],
@@ -489,16 +548,18 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withAlpha(25),
+        color: GlobalStyles.primaryColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: GlobalStyles.primaryColor.withAlpha(76)),
+        border: Border.all(
+          color: GlobalStyles.primaryColor.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Overall Assessment',
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 16.sp,
               fontWeight: FontWeight.bold,
               color: GlobalStyles.primaryColor,
@@ -506,18 +567,22 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
           ),
           SizedBox(height: 12.h),
           Text(
-            'This assessment report contains the analysis of ${widget.imagePaths.length} vehicle images. '
+            'This assessment report contains the analysis of ${(widget.imagePaths ?? const <String>[]).length} vehicle images. '
             'The damage detection was performed using AI-powered analysis to identify potential '
             'vehicle damages and provide cost estimates for repair or replacement.',
-            style: TextStyle(fontSize: 14.sp, color: Colors.white, height: 1.5),
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              color: Color(0xFF2A2A2A),
+              height: 1.5,
+            ),
           ),
           SizedBox(height: 12.h),
           Text(
             'Note: This assessment is for estimation purposes only. Professional inspection '
             'is recommended for final insurance claims and repair decisions.',
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 12.sp,
-              color: Colors.white70,
+              color: Color(0x992A2A2A),
               fontStyle: FontStyle.italic,
             ),
           ),
@@ -527,11 +592,11 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   }
 
   Widget _buildRepairOptionsSection() {
-    // Extract damage information from API responses
     List<Map<String, dynamic>> damagesList = [];
-
-    if (widget.apiResponses.isNotEmpty) {
-      for (var response in widget.apiResponses.values) {
+    final apiResponses =
+        widget.apiResponses ?? <String, Map<String, dynamic>>{};
+    if (apiResponses.isNotEmpty) {
+      for (var response in apiResponses.values) {
         if (response['damages'] is List) {
           damagesList.addAll(
             (response['damages'] as List).cast<Map<String, dynamic>>(),
@@ -545,29 +610,85 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     }
 
     if (damagesList.isEmpty) {
-      return Container();
+      return Container(
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Repair Options (Manual)',
+                  style: GoogleFonts.inter(
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2A2A2A),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 12.h),
+            Text(
+              'No AI-detected damages found. Add manual damages below to estimate costs.',
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                color: Color(0x992A2A2A),
+              ),
+            ),
+            SizedBox(height: 12.h),
+            if (!_showAddDamageForm)
+              SizedBox(
+                width: double.infinity,
+                height: 50.h,
+                child: ElevatedButton.icon(
+                  onPressed: () => setState(() => _showAddDamageForm = true),
+                  icon: Icon(
+                    Icons.add_rounded,
+                    color: Colors.white,
+                    size: 20.sp,
+                  ),
+                  label: Text(
+                    'Add Damage',
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: GlobalStyles.primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+                ),
+              ),
+            if (_showAddDamageForm) _buildAddDamageForm(),
+            // Render manual damages (use negative global indices so they don't clash
+            // with API damage indices which are >= 0)
+            ..._manualDamages.asMap().entries.map((e) {
+              final displayedIndex = e.key;
+              final globalIndex = -(displayedIndex + 1);
+              return _buildManualDamageRepairOption(globalIndex, e.value);
+            }).toList(),
+          ],
+        ),
+      );
     }
 
     return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.black.withAlpha(51),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withAlpha(51)),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.build, color: GlobalStyles.primaryColor, size: 24.sp),
-              SizedBox(width: 12.w),
               Text(
                 'Repair Options',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                style: GoogleFonts.inter(
+                  fontSize: 24.sp,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2A2A2A),
                 ),
               ),
             ],
@@ -575,17 +696,69 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
           SizedBox(height: 16.h),
           Text(
             'Select your preferred option for each damaged part to calculate accurate cost estimates.',
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 14.sp,
-              color: Colors.white70,
+              color: Color(0x992A2A2A),
               height: 1.5,
             ),
           ),
           SizedBox(height: 20.h),
-
-          // Display damage options
           for (int index = 0; index < damagesList.length; index++)
             _buildDamageRepairOption(index, damagesList[index]),
+          SizedBox(height: 16.h),
+          // Always show manual repair options below detected damages so users can
+          // add or remove manual damages in addition to AI-detected ones.
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Manual Damages',
+                style: GoogleFonts.inter(
+                  fontSize: 24.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2A2A2A),
+                ),
+              ),
+              SizedBox(height: 20.h),
+
+              if (!_showAddDamageForm)
+                SizedBox(
+                  width: double.infinity,
+                  height: 50.h,
+                  child: ElevatedButton.icon(
+                    onPressed: () => setState(() => _showAddDamageForm = true),
+                    icon: Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 20.sp,
+                    ),
+                    label: Text(
+                      'Add',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: GlobalStyles.primaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          if (_showAddDamageForm) _buildAddDamageForm(),
+          // Render manual damages with negative indices
+          ..._manualDamages.asMap().entries.map((e) {
+            final displayedIndex = e.key;
+            final globalIndex = -(displayedIndex + 1);
+            return _buildManualDamageRepairOption(globalIndex, e.value);
+          }).toList(),
         ],
       ),
     );
@@ -594,13 +767,9 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   Widget _buildDamageRepairOption(int index, Map<String, dynamic> damage) {
     String damagedPart = 'Unknown Part';
     String damageType = 'Unknown Damage';
-
-    // Extract damaged part
     if (damage.containsKey('damaged_part')) {
       damagedPart = damage['damaged_part']?.toString() ?? 'Unknown Part';
     }
-
-    // Extract damage type
     if (damage.containsKey('damage_type')) {
       final damageTypeValue = damage['damage_type'];
       if (damageTypeValue is Map && damageTypeValue.containsKey('class_name')) {
@@ -610,35 +779,19 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         damageType = damageTypeValue?.toString() ?? 'Unknown Damage';
       }
     }
-
-    String selectedOption = _selectedRepairOptions[index] ?? 'repair';
+    String? selectedOption = _selectedRepairOptions[index];
 
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.black.withAlpha(76),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withAlpha(51)),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Damage info
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(4.w),
-                decoration: BoxDecoration(
-                  color: Colors.green.withAlpha(51),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.check, color: Colors.green, size: 12.sp),
-              ),
-              SizedBox(width: 8.w),
               Text(
-                "DAMAGE ${index + 1}",
-                style: TextStyle(
+                "Damage ${index + 1}",
+                style: GoogleFonts.inter(
                   color: GlobalStyles.secondaryColor,
                   fontSize: 14.sp,
                   fontWeight: FontWeight.bold,
@@ -647,12 +800,8 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
             ],
           ),
           SizedBox(height: 12.h),
-
-          // Part and damage type info
           _buildDamageInfo(damagedPart, damageType),
           SizedBox(height: 16.h),
-
-          // Repair/Replace options
           Row(
             children: [
               Expanded(
@@ -661,15 +810,11 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                   Icons.build,
                   selectedOption == 'repair',
                   () {
-                    setState(() {
-                      _selectedRepairOptions[index] = 'repair';
-                    });
-                    // Fetch pricing data if not already loaded
+                    setState(() => _selectedRepairOptions[index] = 'repair');
                     if (!_repairPricingData.containsKey(index) &&
                         damagedPart != 'Unknown Part') {
                       _fetchPricingForDamage(index, damagedPart, 'repair');
                     } else {
-                      // Recalculate cost with existing data
                       _calculateEstimatedDamageCost();
                     }
                   },
@@ -682,21 +827,131 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                   Icons.autorenew,
                   selectedOption == 'replace',
                   () {
-                    setState(() {
-                      _selectedRepairOptions[index] = 'replace';
-                    });
-                    // Fetch pricing data if not already loaded
+                    setState(() => _selectedRepairOptions[index] = 'replace');
                     if (!_replacePricingData.containsKey(index) &&
                         damagedPart != 'Unknown Part') {
                       _fetchPricingForDamage(index, damagedPart, 'replace');
                     } else {
-                      // Recalculate cost with existing data
                       _calculateEstimatedDamageCost();
                     }
                   },
                 ),
               ),
             ],
+          ),
+          SizedBox(height: 12.h),
+          Container(
+            margin: EdgeInsets.only(bottom: 20.h),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Estimated Total',
+                  style: GoogleFonts.inter(
+                    color: Color(0x992A2A2A),
+                    fontSize: 14.sp,
+                  ),
+                ),
+                Builder(
+                  builder: (context) {
+                    final isLoading = _isLoadingPricing[index] ?? false;
+                    final repairData = _repairPricingData[index];
+                    final replaceData = _replacePricingData[index];
+                    if (isLoading) {
+                      return Row(
+                        children: [
+                          SizedBox(
+                            width: 16.w,
+                            height: 16.h,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: GlobalStyles.primaryColor,
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Text(
+                            'Loading...',
+                            style: GoogleFonts.inter(color: Color(0x992A2A2A)),
+                          ),
+                        ],
+                      );
+                    }
+                    if (selectedOption == 'repair') {
+                      double thinsmith =
+                          (repairData?['insurance'] as num?)?.toDouble() ?? 0.0;
+                      double bodyPaint =
+                          (replaceData?['srp_insurance'] as num?)?.toDouble() ??
+                          0.0;
+                      if (thinsmith == 0.0 && bodyPaint == 0.0) {
+                        return Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              color: Colors.orange,
+                              size: 18,
+                            ),
+                            SizedBox(width: 8.w),
+                            Text(
+                              'Price unavailable',
+                              style: GoogleFonts.inter(
+                                color: Colors.orange,
+                                fontSize: 13.sp,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      final total = thinsmith + bodyPaint;
+                      return Text(
+                        _formatCurrency(total),
+                        style: GoogleFonts.inter(
+                          color: Color(0xFF2A2A2A),
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    }
+                    if (selectedOption == 'replace') {
+                      double replacePrice =
+                          (replaceData?['srp_insurance'] as num?)?.toDouble() ??
+                          0.0;
+                      if (replacePrice == 0.0) {
+                        return Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              color: Colors.orange,
+                              size: 18,
+                            ),
+                            SizedBox(width: 8.w),
+                            Text(
+                              'Price unavailable',
+                              style: GoogleFonts.inter(
+                                color: Colors.orange,
+                                fontSize: 13.sp,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      return Text(
+                        _formatCurrency(replacePrice),
+                        style: GoogleFonts.inter(
+                          color: Color(0xFF2A2A2A),
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    }
+                    return Text(
+                      '—',
+                      style: GoogleFonts.inter(color: Color(0x992A2A2A)),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -707,7 +962,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: Colors.black.withAlpha(51),
+        color: GlobalStyles.primaryColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8.r),
         border: Border.all(color: Colors.white.withAlpha(51)),
       ),
@@ -720,37 +975,492 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               SizedBox(width: 8.w),
               Text(
                 'Damaged Part: ',
-                style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                style: GoogleFonts.inter(
+                  color: Color(0x992A2A2A),
+                  fontSize: 14.sp,
+                ),
               ),
               Expanded(
                 child: Text(
                   damagedPart,
-                  style: TextStyle(
-                    color: Colors.white,
+                  style: GoogleFonts.inter(
+                    color: Color(0xFF2A2A2A),
                     fontSize: 14.sp,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
+          if (damageType.trim().isNotEmpty) ...[
+            SizedBox(height: 8.h),
+            Row(
+              children: [
+                Icon(Icons.build, color: Colors.orange, size: 16.sp),
+                SizedBox(width: 8.w),
+                Text(
+                  'Damage Type: ',
+                  style: GoogleFonts.inter(
+                    color: Color(0x992A2A2A),
+                    fontSize: 14.sp,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    damageType,
+                    style: GoogleFonts.inter(
+                      color: Color(0xFF2A2A2A),
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddDamageForm() {
+    return Container(
+      margin: EdgeInsets.only(top: 12.h, bottom: 12.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Add Damage',
+            style: GoogleFonts.inter(
+              color: Color(0xFF2A2A2A),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12.w),
+            decoration: BoxDecoration(
+              color: Colors.black12.withAlpha((0.04 * 255).toInt()),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: DropdownButton<String>(
+              value: _newDamagePart,
+              hint: Text(
+                'Select part',
+                style: GoogleFonts.inter(
+                  color: const Color(0x992A2A2A),
+                  fontSize: 12.sp,
+                ),
+              ),
+              style: GoogleFonts.inter(
+                color: const Color(0xFF2A2A2A),
+                fontSize: 14.sp,
+              ),
+              isExpanded: true,
+              dropdownColor: Colors.white,
+              underline: const SizedBox.shrink(),
+              items:
+                  _carParts
+                      .map(
+                        (p) => DropdownMenuItem<String>(
+                          value: p,
+                          child: Text(
+                            _formatLabel(p),
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF2A2A2A),
+                              fontSize: 14.sp,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+              onChanged: (val) => setState(() => _newDamagePart = val),
+            ),
+          ),
           SizedBox(height: 8.h),
           Row(
             children: [
-              Icon(Icons.build, color: Colors.orange, size: 16.sp),
-              SizedBox(width: 8.w),
-              Text(
-                'Damage Type: ',
-                style: TextStyle(color: Colors.white70, fontSize: 14.sp),
-              ),
               Expanded(
-                child: Text(
-                  damageType,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w500,
+                child: ElevatedButton(
+                  onPressed:
+                      (_newDamagePart == null)
+                          ? null
+                          : () {
+                            final map = {
+                              'damaged_part': _newDamagePart!,
+                              'damage_type': '',
+                            };
+                            setState(() {
+                              _manualDamages.add(map);
+                              final newIndex = _manualDamages.length - 1;
+                              final globalIndex = -(newIndex + 1);
+                              // default manual damage to 'repair' so it contributes to totals
+                              _selectedRepairOptions[globalIndex] = 'repair';
+                              _fetchPricingForDamage(
+                                globalIndex,
+                                _newDamagePart!,
+                                'repair',
+                              );
+                              _showAddDamageForm = false;
+                              _newDamagePart = null;
+                              _newDamageType = null;
+                            });
+                          },
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStateColor.resolveWith((states) {
+                      if (states.contains(WidgetState.disabled)) {
+                        return Colors.grey;
+                      }
+                      return GlobalStyles.primaryColor;
+                    }),
+                    foregroundColor: WidgetStateProperty.all<Color>(
+                      Colors.white,
+                    ),
+                    shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
                   ),
+                  child: Text(
+                    'Add',
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed:
+                      () => setState(() {
+                        _showAddDamageForm = false;
+                        _newDamagePart = null;
+                        _newDamageType = null;
+                      }),
+                  style: ButtonStyle(
+                    shape: WidgetStatePropertyAll<RoundedRectangleBorder>(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                    side: WidgetStatePropertyAll<BorderSide>(BorderSide.none),
+                    backgroundColor: WidgetStatePropertyAll<Color>(
+                      GlobalStyles.primaryColor.withValues(alpha: 0.15),
+                    ),
+                    foregroundColor: WidgetStatePropertyAll<Color>(
+                      GlobalStyles.primaryColor,
+                    ),
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.inter(
+                      color: GlobalStyles.primaryColor,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManualDamageRepairOption(
+    int globalIndex,
+    Map<String, String> damage,
+  ) {
+    final damagedPart = damage['damaged_part'] ?? 'Unknown Part';
+    final damageType = damage['damage_type'] ?? 'Unknown Damage';
+    String? selectedOption = _selectedRepairOptions[globalIndex];
+
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 16.h),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Manual Damage',
+                style: GoogleFonts.inter(
+                  color: GlobalStyles.secondaryColor,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Spacer(),
+              // Remove (minus) icon for manual damage
+              IconButton(
+                onPressed: () {
+                  // Convert negative globalIndex back to displayed index in _manualDamages
+                  final displayedIndex = -(globalIndex) - 1;
+                  if (displayedIndex >= 0 &&
+                      displayedIndex < _manualDamages.length) {
+                    setState(() {
+                      // remove manual damage
+                      _manualDamages.removeAt(displayedIndex);
+
+                      // Clear any existing manual-related state (negative keys)
+                      _selectedRepairOptions.keys
+                          .where((k) => k < 0)
+                          .toList()
+                          .forEach(_selectedRepairOptions.remove);
+                      _repairPricingData.keys
+                          .where((k) => k < 0)
+                          .toList()
+                          .forEach(_repairPricingData.remove);
+                      _replacePricingData.keys
+                          .where((k) => k < 0)
+                          .toList()
+                          .forEach(_replacePricingData.remove);
+                      _isLoadingPricing.keys
+                          .where((k) => k < 0)
+                          .toList()
+                          .forEach(_isLoadingPricing.remove);
+
+                      // Re-initialize remaining manual damages: default to 'repair' and fetch pricing
+                      for (var entry in _manualDamages.asMap().entries) {
+                        final newDisplayed = entry.key;
+                        final newGlobal = -(newDisplayed + 1);
+                        // set default selection if not present
+                        _selectedRepairOptions[newGlobal] =
+                            _selectedRepairOptions[newGlobal] ?? 'repair';
+                        // fetch pricing for remaining manual damages
+                        _fetchPricingForDamage(
+                          newGlobal,
+                          entry.value['damaged_part'] ?? '',
+                          'repair',
+                        );
+                      }
+
+                      // ensure totals update (will also be updated when async pricing returns)
+                      _calculateEstimatedDamageCost();
+                    });
+                  }
+                },
+                icon: Icon(
+                  Icons.remove_circle_outline,
+                  color: Colors.red,
+                  size: 20.sp,
+                ),
+                tooltip: 'Remove manual damage',
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          _buildDamageInfo(damagedPart, damageType),
+          SizedBox(height: 16.h),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
+            child: Builder(
+              builder: (context) {
+                final isLoading = _isLoadingPricing[globalIndex] ?? false;
+                final repairData = _repairPricingData[globalIndex];
+                final replaceData = _replacePricingData[globalIndex];
+                if (isLoading) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Estimated Total',
+                        style: GoogleFonts.inter(
+                          color: Color(0x992A2A2A),
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 16.w,
+                            height: 16.h,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: GlobalStyles.primaryColor,
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Text(
+                            'Loading...',
+                            style: GoogleFonts.inter(color: Color(0x992A2A2A)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+                double repairCost =
+                    (repairData?['insurance'] as num?)?.toDouble() ?? 0.0;
+                double repairAdd =
+                    (replaceData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+                double totalRepair = repairCost + repairAdd;
+                double replacePrice =
+                    (replaceData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+                if (selectedOption == 'repair') {
+                  if (totalRepair == 0.0) {
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Estimated Total',
+                          style: GoogleFonts.inter(color: Color(0x992A2A2A)),
+                        ),
+                        Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.orange),
+                            SizedBox(width: 8.w),
+                            Text(
+                              'Price unavailable',
+                              style: GoogleFonts.inter(
+                                color: Colors.orange,
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  }
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Estimated Total',
+                        style: GoogleFonts.inter(color: Color(0x992A2A2A)),
+                      ),
+                      Text(
+                        _formatCurrency(totalRepair),
+                        style: GoogleFonts.inter(
+                          color: Color(0xFF2A2A2A),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  );
+                }
+                if (selectedOption == 'replace') {
+                  if (replacePrice == 0.0) {
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Estimated Total',
+                          style: GoogleFonts.inter(color: Color(0x992A2A2A)),
+                        ),
+                        Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.orange),
+                            SizedBox(width: 8.w),
+                            Text(
+                              'Price unavailable',
+                              style: GoogleFonts.inter(
+                                color: Colors.orange,
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  }
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Estimated Total',
+                        style: GoogleFonts.inter(color: Color(0x992A2A2A)),
+                      ),
+                      Text(
+                        _formatCurrency(replacePrice),
+                        style: GoogleFonts.inter(
+                          color: Color(0xFF2A2A2A),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  );
+                }
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Estimated Total',
+                      style: GoogleFonts.inter(
+                        color: Color(0x992A2A2A),
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '—',
+                      style: GoogleFonts.inter(color: Color(0x992A2A2A)),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              Expanded(
+                child: _buildOptionButton(
+                  'Repair',
+                  Icons.build,
+                  selectedOption == 'repair',
+                  () {
+                    setState(
+                      () => _selectedRepairOptions[globalIndex] = 'repair',
+                    );
+                    if (!_repairPricingData.containsKey(globalIndex) &&
+                        damagedPart != 'Unknown Part') {
+                      _fetchPricingForDamage(
+                        globalIndex,
+                        damagedPart,
+                        'repair',
+                      );
+                    } else {
+                      _calculateEstimatedDamageCost();
+                    }
+                  },
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: _buildOptionButton(
+                  'Replace',
+                  Icons.autorenew,
+                  selectedOption == 'replace',
+                  () {
+                    setState(
+                      () => _selectedRepairOptions[globalIndex] = 'replace',
+                    );
+                    if (!_replacePricingData.containsKey(globalIndex) &&
+                        damagedPart != 'Unknown Part') {
+                      _fetchPricingForDamage(
+                        globalIndex,
+                        damagedPart,
+                        'replace',
+                      );
+                    } else {
+                      _calculateEstimatedDamageCost();
+                    }
+                  },
                 ),
               ),
             ],
@@ -773,31 +1483,23 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
         decoration: BoxDecoration(
           color:
-              isSelected
-                  ? GlobalStyles.primaryColor.withAlpha(51)
-                  : Colors.transparent,
+              isSelected ? Colors.green : Colors.green.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(
-            color:
-                isSelected
-                    ? GlobalStyles.primaryColor
-                    : Colors.white.withAlpha(76),
-            width: 2,
-          ),
+          border: Border.all(color: Colors.green, width: 2),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              color: isSelected ? GlobalStyles.primaryColor : Colors.white70,
+              color: isSelected ? Colors.white : Colors.green,
               size: 20.sp,
             ),
             SizedBox(width: 8.w),
             Text(
               title,
-              style: TextStyle(
-                color: isSelected ? GlobalStyles.primaryColor : Colors.white70,
+              style: GoogleFonts.inter(
+                color: isSelected ? Colors.white : Colors.green,
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
               ),
@@ -808,135 +1510,53 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     );
   }
 
-  Widget _buildSavePDFButton() {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withAlpha(25),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: GlobalStyles.primaryColor.withAlpha(76)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.picture_as_pdf,
-                color: GlobalStyles.primaryColor,
-                size: 24.sp,
-              ),
-              SizedBox(width: 12.w),
-              Text(
-                'Save Assessment Report',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          Text(
-            'Generate a comprehensive PDF report with your selected repair options and cost estimates.',
-            style: TextStyle(fontSize: 14.sp, color: Colors.white70),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 20.h),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isSaving ? null : _savePDF,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: GlobalStyles.primaryColor,
-                padding: EdgeInsets.symmetric(vertical: 16.h),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-              ),
-              icon:
-                  _isSaving
-                      ? SizedBox(
-                        width: 20.w,
-                        height: 20.h,
-                        child: const CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                      : const Icon(Icons.save, color: Colors.white),
-              label: Text(
-                _isSaving ? 'Generating PDF...' : 'Save PDF Report',
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper method to format damaged part name to match API
   String _formatDamagedPartForApi(String partName) {
     if (partName.isEmpty) return partName;
-
-    // Replace hyphens with spaces and handle common variations
     String formatted =
         partName.replaceAll('-', ' ').replaceAll('_', ' ').trim();
-
-    // Convert to title case (first letter of each word capitalized)
     List<String> words = formatted.split(' ');
     List<String> capitalizedWords =
         words.map((word) {
           if (word.isEmpty) return word;
           return word[0].toUpperCase() + word.substring(1).toLowerCase();
         }).toList();
-
     return capitalizedWords.join(' ');
   }
 
-  // Method to fetch pricing data for a damaged part
+  // Helper to format labels for UI dropdowns (nicer display)
+  String _formatLabel(String raw) {
+    if (raw.isEmpty) return raw;
+    String formatted = raw.replaceAll('-', ' ').replaceAll('_', ' ').trim();
+    final words = formatted.split(' ');
+    return words
+        .map(
+          (w) =>
+              w.isEmpty
+                  ? w
+                  : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}',
+        )
+        .join(' ');
+  }
+
   Future<void> _fetchPricingForDamage(
     int damageIndex,
     String damagedPart,
     String selectedOption,
   ) async {
-    setState(() {
-      _isLoadingPricing[damageIndex] = true;
-    });
-
+    setState(() => _isLoadingPricing[damageIndex] = true);
     try {
-      // Format the part name to match API format
       final formattedPartName = _formatDamagedPartForApi(damagedPart);
-
-      // Get both repair and replace data at once
-      final bothPricingData =
-          await PricingService.getBothRepairAndReplacePricing(
-            formattedPartName,
-          );
-
+      final bothPricingData = await PricesRepository.instance
+          .getBothRepairAndReplacePricing(formattedPartName);
       if (mounted) {
         setState(() {
-          // Store repair data separately
           _repairPricingData[damageIndex] = bothPricingData['repair_data'];
-
-          // Store replace data separately
           _replacePricingData[damageIndex] = bothPricingData['replace_data'];
-
           _isLoadingPricing[damageIndex] = false;
-
-          // Recalculate total cost
           _calculateEstimatedDamageCost();
         });
       }
     } catch (e) {
-      // Error handling: silently fail and show estimated costs instead
       if (mounted) {
         setState(() {
           _repairPricingData[damageIndex] = null;
@@ -948,37 +1568,48 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   }
 
   void _calculateEstimatedDamageCost() {
-    double totalCost = 0.0;
-
-    // First, try to get cost from API responses
-    for (var response in widget.apiResponses.values) {
+    double apiTotal = 0.0;
+    final apiResponses =
+        widget.apiResponses ?? <String, Map<String, dynamic>>{};
+    for (var response in apiResponses.values) {
       if (response['total_cost'] != null) {
-        totalCost += (response['total_cost'] as num).toDouble();
+        apiTotal += _parseToDouble(response['total_cost']);
       } else if (response['cost_estimate'] != null) {
-        totalCost += (response['cost_estimate'] as num).toDouble();
+        apiTotal += _parseToDouble(response['cost_estimate']);
       }
     }
 
-    // If no API cost available, calculate from pricing data
-    if (totalCost == 0.0) {
-      totalCost = _calculateTotalFromPricingData();
-    }
+    // Pricing total is derived from user-selected options (both API and manual damages)
+    final pricingTotal = _calculateTotalFromPricingData();
 
-    setState(() {
-      _estimatedDamageCost = totalCost;
-    });
+    // If the user has selected repair/replace options (pricingTotal > 0)
+    // prefer the pricing total so the estimate reflects user choices and manual edits.
+    final totalCost = (pricingTotal > 0.0) ? pricingTotal : apiTotal;
+    setState(() => _estimatedDamageCost = totalCost);
+  }
+
+  double _parseToDouble(dynamic val) {
+    if (val == null) return 0.0;
+    if (val is num) return val.toDouble();
+    if (val is String) {
+      final sanitized = val.replaceAll(RegExp(r"[^0-9.\-]"), '');
+      try {
+        return double.parse(sanitized);
+      } catch (e) {
+        return 0.0;
+      }
+    }
+    return 0.0;
   }
 
   double _calculateTotalFromPricingData() {
     double total = 0.0;
-
     _selectedRepairOptions.forEach((damageIndex, selectedOption) {
+      if (selectedOption == null) return;
       if (selectedOption == 'repair' &&
           _repairPricingData[damageIndex] != null) {
         final repairData = _repairPricingData[damageIndex]!;
         final replacePricingForRepair = _replacePricingData[damageIndex];
-
-        // For repair: thinsmith + body paint
         double repairCost =
             (repairData['insurance'] as num?)?.toDouble() ?? 0.0;
         if (replacePricingForRepair != null) {
@@ -990,49 +1621,56 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       } else if (selectedOption == 'replace' &&
           _replacePricingData[damageIndex] != null) {
         final replaceData = _replacePricingData[damageIndex]!;
-
-        // For replace: body-paint data only
         double replaceCost =
             (replaceData['srp_insurance'] as num?)?.toDouble() ?? 0.0;
         total += replaceCost;
       }
     });
-
     return total;
   }
 
   Color _getSeverityColor(String severity) {
     final lowerSeverity = severity.toLowerCase();
-    if (lowerSeverity.contains('high') || lowerSeverity.contains('severe')) {
+    if (lowerSeverity.contains('high') || lowerSeverity.contains('severe'))
       return Colors.red;
-    } else if (lowerSeverity.contains('medium') ||
-        lowerSeverity.contains('moderate')) {
+    if (lowerSeverity.contains('medium') || lowerSeverity.contains('moderate'))
       return Colors.orange;
-    } else if (lowerSeverity.contains('low') ||
-        lowerSeverity.contains('minor')) {
+    if (lowerSeverity.contains('low') || lowerSeverity.contains('minor'))
       return Colors.green;
-    } else {
-      return Colors.blue;
-    }
+    return Colors.blue;
   }
 
   Future<void> _savePDF() async {
-    setState(() {
-      _isSaving = true;
-    });
-
+    setState(() => _isSaving = true);
     try {
-      // Request storage permission
       final status = await Permission.storage.request();
-      if (!status.isGranted) {
-        throw Exception('Storage permission not granted');
-      }
+      if (!status.isGranted) throw Exception('Storage permission not granted');
 
-      // Prepare responses for PDF generation, modifying cost if severe
       final Map<String, Map<String, dynamic>> pdfResponses = {};
-      widget.apiResponses.forEach((key, value) {
+      final apiResponsesForPdf =
+          widget.apiResponses ?? <String, Map<String, dynamic>>{};
+      apiResponsesForPdf.forEach((key, value) {
         pdfResponses[key] = Map<String, dynamic>.from(value);
       });
+
+      // --- FIX: Correctly structure manual damages for the PDF service ---
+      if (apiResponsesForPdf.isEmpty && _manualDamages.isNotEmpty) {
+        // Since there's no single API response to hold all manual damages,
+        // we create one synthetic entry for the whole report.
+        List<Map<String, dynamic>> manualDamagesForPdf = [];
+        for (final m in _manualDamages) {
+          manualDamagesForPdf.add({
+            'type': m['damaged_part'], // Key 'type' is read by the PDF service
+            'severity': '', // No severity for manual damages
+          });
+        }
+
+        pdfResponses['manual_report_1'] = {
+          'overall_severity': 'Manual Assessment',
+          'damages': manualDamagesForPdf,
+          'total_cost': _formatCurrency(_calculateTotalFromPricingData()),
+        };
+      }
 
       if (_isDamageSevere) {
         pdfResponses.forEach((key, value) {
@@ -1040,62 +1678,82 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         });
       }
 
-      // Ask user whether to auto-save to InsureVis/documents or choose folder
       final choice = await showDialog<String?>(
         context: context,
         builder:
             (context) => AlertDialog(
-              title: const Text('Save Assessment Report'),
-              content: const Text(
+              backgroundColor: Colors.white,
+              title: Text(
+                'Save Assessment Report',
+                style: GoogleFonts.inter(
+                  color: Color(0xFF2A2A2A),
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: Text(
                 'Where do you want to save the generated PDF?',
+                style: GoogleFonts.inter(
+                  color: Color(0xFF2A2A2A),
+                  fontSize: 14.sp,
+                ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop('auto'),
-                  child: const Text('Save to InsureVis/documents'),
+                  child: Text(
+                    'Save to InsureVis/documents',
+                    style: GoogleFonts.inter(
+                      color: GlobalStyles.primaryColor,
+                      fontSize: 14.sp,
+                    ),
+                  ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop('choose'),
-                  child: const Text('Choose folder'),
+                  child: Text(
+                    'Choose folder',
+                    style: GoogleFonts.inter(
+                      color: GlobalStyles.primaryColor,
+                      fontSize: 14.sp,
+                    ),
+                  ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(null),
-                  child: const Text('Cancel'),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.inter(
+                      color: GlobalStyles.primaryColor,
+                      fontSize: 14.sp,
+                    ),
+                  ),
                 ),
               ],
             ),
       );
-
       if (choice == null) {
         setState(() => _isSaving = false);
         return;
       }
-
       String? savedPath;
-
       if (choice == 'auto') {
-        // Auto-save via existing helper which creates InsureVis/documents
         savedPath = await PDFService.generateMultipleResultsPDF(
-          imagePaths: widget.imagePaths,
+          imagePaths: widget.imagePaths ?? const <String>[],
           apiResponses: pdfResponses,
         );
       } else if (choice == 'choose') {
-        // Generate PDF bytes and ask user for a folder or filepath
         final bytes = await PDFService.generateMultipleResultsPDFBytes(
-          imagePaths: widget.imagePaths,
+          imagePaths: widget.imagePaths ?? const <String>[],
           apiResponses: pdfResponses,
         );
-
         if (bytes == null) throw Exception('Failed to generate PDF bytes');
-
-        // Try SAF directory picker first (native)
         String? treeUri;
         try {
           treeUri = await FileWriter.pickDirectory();
         } catch (e) {
           treeUri = null;
         }
-
         if (treeUri != null) {
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final defaultFileName = 'InsureVis_Assessment_Report_$timestamp.pdf';
@@ -1105,23 +1763,20 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               defaultFileName,
               bytes,
             );
-            savedPath = newFileUri; // content:// URI
+            savedPath = newFileUri;
           } catch (e) {
-            // If tree save failed, fall back to saveFile picker
             savedPath = await PDFService.savePdfBytesWithPicker(
               bytes,
               'InsureVis_Assessment_Report_${DateTime.now().millisecondsSinceEpoch}.pdf',
             );
           }
         } else {
-          // Fall back to FilePicker.saveFile which may return content:// URI
           savedPath = await PDFService.savePdfBytesWithPicker(
             bytes,
             'InsureVis_Assessment_Report_${DateTime.now().millisecondsSinceEpoch}.pdf',
           );
         }
       }
-
       if (savedPath != null) {
         if (mounted) {
           ScaffoldMessenger.of(context).clearSnackBars();
@@ -1132,9 +1787,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               action: SnackBarAction(
                 label: 'Share',
                 textColor: Colors.white,
-                onPressed: () {
-                  _sharePDF(savedPath!);
-                },
+                onPressed: () => _sharePDF(savedPath!),
               ),
             ),
           );
@@ -1155,9 +1808,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
+        setState(() => _isSaving = false);
       }
     }
   }

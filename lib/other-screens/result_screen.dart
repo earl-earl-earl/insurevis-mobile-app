@@ -8,7 +8,8 @@ import 'package:insurevis/global_ui_variables.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 import 'package:insurevis/utils/network_helper.dart';
-import 'package:insurevis/services/pricing_service.dart';
+import 'package:insurevis/services/prices_repository.dart';
+import 'package:intl/intl.dart';
 
 class ResultsScreen extends StatefulWidget {
   final String imagePath;
@@ -76,6 +77,20 @@ class ResultsScreenState extends State<ResultsScreen> {
     return capitalizedWords.join(' ');
   }
 
+  // Currency formatter using Philippine peso
+  final NumberFormat _currencyFormatter = NumberFormat.currency(
+    locale: 'en_PH',
+    symbol: '₱',
+  );
+
+  String _formatCurrency(double amount) {
+    try {
+      return _currencyFormatter.format(amount);
+    } catch (e) {
+      return '₱${amount.toStringAsFixed(2)}';
+    }
+  }
+
   // Helper method to validate pricing data based on option type
   bool _hasValidPricingData(
     Map<String, dynamic> apiPricing,
@@ -109,10 +124,8 @@ class ResultsScreenState extends State<ResultsScreen> {
       final formattedPartName = _formatDamagedPartForApi(damagedPart);
 
       // Get both repair and replace data at once
-      final bothPricingData =
-          await PricingService.getBothRepairAndReplacePricing(
-            formattedPartName,
-          );
+      final bothPricingData = await PricesRepository.instance
+          .getBothRepairAndReplacePricing(formattedPartName);
 
       if (mounted) {
         setState(() {
@@ -339,16 +352,19 @@ class ResultsScreenState extends State<ResultsScreen> {
       if (_cachedHasCost == true) {
         try {
           if (_cachedCostEstimate is num) {
-            _cachedCostEstimate =
-                '₱${(_cachedCostEstimate as num).toStringAsFixed(2)}';
+            _cachedCostEstimate = _formatCurrency(
+              (_cachedCostEstimate as num).toDouble(),
+            );
           } else {
             double cost = double.parse(_cachedCostEstimate.toString());
-            _cachedCostEstimate = '₱${cost.toStringAsFixed(2)}';
+            _cachedCostEstimate = _formatCurrency(cost);
           }
         } catch (e) {
-          // If parsing fails, just prepend a dollar sign
-          // DEBUG: print("Error formatting cost: $e");
-          _cachedCostEstimate = '₱$_cachedCostEstimate';
+          // If parsing fails, prepend a peso sign only if missing
+          if (_cachedCostEstimate != null &&
+              !_cachedCostEstimate!.startsWith('₱')) {
+            _cachedCostEstimate = '₱$_cachedCostEstimate';
+          }
         }
       }
 
@@ -590,11 +606,11 @@ class ResultsScreenState extends State<ResultsScreen> {
     // Format cost values with dollar sign and 2 decimal places
     if (lowerField.contains('cost')) {
       if (value is num) {
-        return '₱${value.toStringAsFixed(2)}';
+        return _formatCurrency(value.toDouble());
       } else {
         try {
           final numValue = double.parse(value.toString());
-          return '₱${numValue.toStringAsFixed(2)}';
+          return _formatCurrency(numValue);
         } catch (e) {
           return '₱${value.toString()}';
         }
@@ -915,6 +931,131 @@ class ResultsScreenState extends State<ResultsScreen> {
                 SizedBox(height: 16.h),
                 _buildDamageInfoDisplay(damageInfo),
               ],
+            ),
+          ),
+          SizedBox(height: 16.h),
+
+          // New: Estimated Cost of Damages card (compact, follows existing design)
+          _buildResultCard(
+            title: 'Estimated Cost of Damages',
+            icon: Icons.attach_money,
+            content: Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16.sp),
+              decoration: BoxDecoration(
+                color: GlobalStyles.primaryColor.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12.sp),
+                border: Border.all(
+                  color: GlobalStyles.primaryColor.withValues(alpha: 0.15),
+                  width: 1.w,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Estimated total for all detected damages',
+                    style: GoogleFonts.inter(
+                      color: Color(0xFF2A2A2A),
+                      fontSize: 14.sp,
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+
+                  // Price box
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 18.h,
+                      horizontal: 16.w,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8.r),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: Colors.grey.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    child: Builder(
+                      builder: (context) {
+                        // If API provided a cached cost, prefer that
+                        if (_cachedHasCost == true &&
+                            _cachedCostEstimate != null &&
+                            _cachedCostEstimate != 'Estimate not available') {
+                          return Text(
+                            _cachedCostEstimate!,
+                            style: GoogleFonts.inter(
+                              color: GlobalStyles.primaryColor,
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        }
+
+                        // Otherwise try to compute from fetched pricing data and selected options
+                        double computedTotal = 0.0;
+                        bool hasComputed = false;
+
+                        _selectedRepairOptions.forEach((idx, option) {
+                          if (option == 'repair') {
+                            final repair = _repairPricingData[idx];
+                            final replace = _replacePricingData[idx];
+                            double thinsmith =
+                                (repair?['insurance'] as num?)?.toDouble() ??
+                                0.0;
+                            double bodyPaint =
+                                (replace?['srp_insurance'] as num?)
+                                    ?.toDouble() ??
+                                0.0;
+                            if (thinsmith > 0 || bodyPaint > 0) {
+                              computedTotal += thinsmith + bodyPaint;
+                              hasComputed = true;
+                            }
+                          } else if (option == 'replace') {
+                            final replace = _replacePricingData[idx];
+                            double replacePrice =
+                                (replace?['srp_insurance'] as num?)
+                                    ?.toDouble() ??
+                                0.0;
+                            if (replacePrice > 0) {
+                              computedTotal += replacePrice;
+                              hasComputed = true;
+                            }
+                          }
+                        });
+
+                        if (hasComputed) {
+                          return Text(
+                            _formatCurrency(computedTotal),
+                            style: GoogleFonts.inter(
+                              color: GlobalStyles.primaryColor,
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        }
+
+                        // Fallback when no estimate available
+                        return Text(
+                          'Estimate not available',
+                          style: GoogleFonts.inter(
+                            color: Color(0x992A2A2A),
+                            fontSize: 14.sp,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1405,7 +1546,7 @@ class ResultsScreenState extends State<ResultsScreen> {
                 ),
               ),
               Text(
-                '₱${finalPrice.toStringAsFixed(2)}',
+                _formatCurrency(finalPrice),
                 style: GoogleFonts.inter(
                   color: GlobalStyles.primaryColor,
                   fontSize: 16,
@@ -1495,7 +1636,7 @@ class ResultsScreenState extends State<ResultsScreen> {
             ),
           ),
           Text(
-            '₱${amount.toStringAsFixed(2)}',
+            _formatCurrency(amount),
             style: GoogleFonts.inter(
               color: Color(0xFF2A2A2A),
               fontSize: 14.sp,

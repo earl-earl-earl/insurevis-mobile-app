@@ -11,7 +11,7 @@ import 'package:insurevis/services/supabase_service.dart';
 import 'package:insurevis/services/claims_service.dart';
 import 'package:insurevis/services/documents_service.dart';
 import 'package:insurevis/models/document_model.dart';
-import 'package:insurevis/services/pricing_service.dart';
+import 'package:insurevis/services/prices_repository.dart';
 
 class InsuranceDocumentUpload extends StatefulWidget {
   final List<String> imagePaths;
@@ -303,10 +303,8 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       final formattedPartName = _formatDamagedPartForApi(damagedPart);
 
       // Get both repair and replace data at once
-      final bothPricingData =
-          await PricingService.getBothRepairAndReplacePricing(
-            formattedPartName,
-          );
+      final bothPricingData = await PricesRepository.instance
+          .getBothRepairAndReplacePricing(formattedPartName);
 
       if (mounted) {
         setState(() {
@@ -857,7 +855,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           Row(
             children: [
               Text(
-                'Estimated Damage Cost',
+                'Estimated Cost',
                 style: GoogleFonts.inter(
                   fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
@@ -868,7 +866,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           ),
           SizedBox(height: 8.h),
           Text(
-            'This is the estimated cost based on the damage assessment from your photos.',
+            'This is the estimated cost based on your repair options.',
             style: GoogleFonts.inter(
               fontSize: 14.sp,
               color: const Color(0x992A2A2A),
@@ -929,7 +927,9 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                     ),
                   ] else ...[
                     Text(
-                      _currencyFormat.format(_estimatedDamageCost),
+                      _estimatedDamageCost == 0.0
+                          ? 'N/A'
+                          : _currencyFormat.format(_estimatedDamageCost),
                       style: GoogleFonts.inter(
                         fontSize: 28.sp,
                         color: GlobalStyles.primaryColor,
@@ -1319,53 +1319,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         ),
         SizedBox(height: 12.h),
 
-        // Damage type dropdown
-        Text(
-          'Damage Type',
-          style: GoogleFonts.inter(
-            color: const Color(0x992A2A2A),
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        SizedBox(height: 8.h),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w),
-          decoration: BoxDecoration(
-            color: Colors.black12.withAlpha((0.04 * 255).toInt()),
-            borderRadius: BorderRadius.circular(8.r),
-          ),
-          child: DropdownButton<String>(
-            value: _newDamageType,
-            hint: Text(
-              'Select damage type',
-              style: GoogleFonts.inter(color: const Color(0x992A2A2A)),
-            ),
-            isExpanded: true,
-            style: GoogleFonts.inter(
-              color: const Color(0xFF2A2A2A),
-              fontSize: 14.sp,
-            ),
-            dropdownColor: Colors.white,
-            underline: const SizedBox.shrink(),
-            items:
-                _carDamageTypes
-                    .map(
-                      (d) => DropdownMenuItem<String>(
-                        value: d,
-                        child: Text(
-                          _formatLabel(d),
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF2A2A2A),
-                            fontSize: 14.sp,
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-            onChanged: (val) => setState(() => _newDamageType = val),
-          ),
-        ),
+        // Damage type removed for manual additions — only part selection is required
         SizedBox(height: 12.h),
 
         // Repair/Replace buttons for new damage
@@ -1427,7 +1381,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               ),
             ),
             onPressed:
-                (_newDamagePart != null && _newDamageType != null)
+                (_newDamagePart != null)
                     ? () {
                       // Add to manual damages list
                       setState(() {
@@ -1436,7 +1390,8 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
                         _manualDamages.add({
                           'damaged_part': _newDamagePart!,
-                          'damage_type': _newDamageType!,
+                          // leave damage_type empty for manual additions
+                          'damage_type': '',
                         });
 
                         // Set selected option for this new damage
@@ -1690,34 +1645,36 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               ),
             ],
           ),
-          SizedBox(height: 8.h),
-          Row(
-            children: [
-              Icon(
-                Icons.build_circle_rounded,
-                color: Colors.orange,
-                size: 16.sp,
-              ),
-              SizedBox(width: 8.w),
-              Text(
-                'Damage Type: ',
-                style: GoogleFonts.inter(
-                  color: const Color(0x992A2A2A),
-                  fontSize: 14.sp,
+          if (damageType.trim().isNotEmpty) ...[
+            SizedBox(height: 8.h),
+            Row(
+              children: [
+                Icon(
+                  Icons.build_circle_rounded,
+                  color: Colors.orange,
+                  size: 16.sp,
                 ),
-              ),
-              Expanded(
-                child: Text(
-                  _formatLabel(damageType),
+                SizedBox(width: 8.w),
+                Text(
+                  'Damage Type: ',
                   style: GoogleFonts.inter(
-                    color: const Color(0xFF2A2A2A),
+                    color: const Color(0x992A2A2A),
                     fontSize: 14.sp,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-            ],
-          ),
+                Expanded(
+                  child: Text(
+                    _formatLabel(damageType),
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFF2A2A2A),
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

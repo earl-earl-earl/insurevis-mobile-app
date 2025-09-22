@@ -193,7 +193,10 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
               );
             },
             style: ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(Colors.grey.shade700),
+              elevation: const WidgetStatePropertyAll(0),
+              backgroundColor: WidgetStatePropertyAll(
+                GlobalStyles.primaryColor.withValues(alpha: 0.2),
+              ),
               padding: const WidgetStatePropertyAll(
                 EdgeInsets.symmetric(vertical: 16, horizontal: 20),
               ),
@@ -204,7 +207,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             child: Text(
               "View Assessment",
               style: GoogleFonts.inter(
-                color: Colors.white,
+                color: GlobalStyles.primaryColor,
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w600,
               ),
