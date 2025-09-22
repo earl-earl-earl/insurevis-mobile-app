@@ -1672,6 +1672,50 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         };
       }
 
+      // Ensure every response passed to the PDF service has a usable total_cost
+      // If not severe, fill missing/zero/'N/A' values using the computed
+      // estimated cost. We distribute the estimate evenly across missing entries
+      // so the PDF doesn't show 'N/A'.
+      if (!_isDamageSevere && pdfResponses.isNotEmpty) {
+        // prefer the already-calculated estimated cost (includes user choices)
+        double totalToUse =
+            _estimatedDamageCost > 0
+                ? _estimatedDamageCost
+                : _calculateTotalFromPricingData();
+
+        // If totalToUse is still 0, try summing any existing response totals
+        if (totalToUse <= 0) {
+          double existingSum = 0.0;
+          pdfResponses.forEach((k, v) {
+            existingSum += _parseToDouble(v['total_cost']);
+          });
+          if (existingSum > 0) totalToUse = existingSum;
+        }
+
+        // Find keys that are missing a meaningful total_cost
+        final missingKeys =
+            pdfResponses.keys.where((k) {
+              final val = pdfResponses[k]?['total_cost'];
+              if (val == null) return true;
+              final s = val.toString().toLowerCase();
+              if (s.isEmpty) return true;
+              if (s.contains('n/a')) return true;
+              if (_parseToDouble(val) == 0.0) return true;
+              return false;
+            }).toList();
+
+        if (missingKeys.isNotEmpty) {
+          // If we still have no usable total, fall back to 0.00 so PDF shows a number
+          if (totalToUse <= 0) totalToUse = 0.0;
+          final perMissing = totalToUse / missingKeys.length;
+          final formatted =
+              perMissing > 0 ? _formatCurrency(perMissing) : 'N/A';
+          for (final k in missingKeys) {
+            pdfResponses[k]!['total_cost'] = formatted;
+          }
+        }
+      }
+
       if (_isDamageSevere) {
         pdfResponses.forEach((key, value) {
           value['total_cost'] = 'To be given by the mechanic';
@@ -1782,7 +1826,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
           ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Assessment report saved to: $savedPath'),
+              content: Text('Assessment report saved successfully!'),
               backgroundColor: Colors.green,
               action: SnackBarAction(
                 label: 'Share',

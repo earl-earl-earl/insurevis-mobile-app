@@ -357,19 +357,7 @@ class _HomeState extends State<Home> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) {
-                    return Scaffold(
-                      body: ProfileScreen(),
-                      appBar: GlobalStyles.buildCustomAppBar(
-                        context: context,
-                        icon: Icons.arrow_back_rounded,
-                        color: Color(0xFF2A2A2A),
-                        appBarBackgroundColor: Colors.transparent,
-                      ),
-                    );
-                  },
-                ),
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
             },
             icon: Icon(

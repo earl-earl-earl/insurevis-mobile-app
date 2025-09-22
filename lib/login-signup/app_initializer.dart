@@ -244,19 +244,10 @@ class AppInitializerState extends State<AppInitializer>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      appBar: AppBar(backgroundColor: Colors.white, elevation: 0),
+      body: SizedBox(
         height: double.infinity,
         width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GlobalStyles.backgroundColorStart,
-              GlobalStyles.backgroundColorEnd,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
         child: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
             return FadeTransition(
@@ -270,9 +261,7 @@ class AppInitializerState extends State<AppInitializer>
                     Container(
                       decoration: const BoxDecoration(
                         image: DecorationImage(
-                          image: AssetImage(
-                            "assets/images/logo/logo_box_gradient_png.png",
-                          ),
+                          image: AssetImage("assets/images/logo/4.png"),
                           fit: BoxFit.contain,
                         ),
                       ),

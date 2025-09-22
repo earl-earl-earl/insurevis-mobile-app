@@ -106,7 +106,8 @@ class NotificationProvider with ChangeNotifier {
       Supabase.instance.client.auth.onAuthStateChange.listen((event) {
         if (event.event == AuthChangeEvent.signedIn) {
           _fetchNotificationsFromDatabase();
-          _startRealtimeChannel();
+          // Fire-and-forget async start - don't block auth state listener
+          unawaited(_startRealtimeChannel());
         } else if (event.event == AuthChangeEvent.signedOut) {
           _stopRealtimeChannel();
           _stopPolling();
@@ -231,7 +232,7 @@ class NotificationProvider with ChangeNotifier {
     });
   }
 
-  void _startRealtimeChannel() {
+  Future<void> _startRealtimeChannel() async {
     try {
       final user = SupabaseService.currentUser;
       if (user == null) return;
@@ -358,8 +359,40 @@ class NotificationProvider with ChangeNotifier {
           },
         );
 
-        dyn.subscribe();
-        _realtimeChannel = dyn;
+        // Attempt to subscribe with retries in case of transient realtime/timeouts
+        try {
+          // Some realtime client implementations may throw a RealtimeSubscribeException
+          // when subscribe times out. Handle that explicitly and retry a few times
+          // with exponential backoff before falling back to polling.
+          const int maxAttempts = 3;
+          int attempt = 0;
+          while (true) {
+            attempt++;
+            try {
+              dyn.subscribe();
+              _realtimeChannel = dyn;
+              break;
+            } catch (e) {
+              // If it's a timed out subscribe, retry, otherwise rethrow to outer catch
+              final errStr = e.toString();
+              final isTimeout =
+                  errStr.contains('timedOut') ||
+                  errStr.toLowerCase().contains('timeout') ||
+                  errStr.contains('RealtimeSubscribeException');
+
+              if (!isTimeout || attempt >= maxAttempts) {
+                rethrow;
+              }
+
+              // Wait with exponential backoff (in milliseconds)
+              final backoffMs = 250 * (1 << (attempt - 1));
+              await Future.delayed(Duration(milliseconds: backoffMs));
+            }
+          }
+        } catch (e) {
+          debugPrint('Realtime .on/subscribe not available: $e');
+          _startPolling();
+        }
       } catch (e) {
         debugPrint('Realtime .on/subscribe not available: $e');
         _startPolling();
@@ -617,6 +650,7 @@ class NotificationProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // ignore: unused_element
   void _sendPushNotification(AppNotification notification) {
     if (!_pushNotificationsEnabled) return;
     debugPrint('Push notification sent: ${notification.title}');

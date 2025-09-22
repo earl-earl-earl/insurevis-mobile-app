@@ -191,6 +191,7 @@ class PDFService {
     final isSevere = overallSeverity.toLowerCase() == 'severe';
     final totalCost = apiResponse['total_cost']?.toString() ?? 'Not available';
     final damages = apiResponse['damages'] ?? apiResponse['prediction'] ?? [];
+    final bool isManual = imagePath.isEmpty;
 
     String formattedCost;
     if (isSevere) {
@@ -199,14 +200,49 @@ class PDFService {
       formattedCost = 'Not available';
       if (totalCost != 'Not available' && totalCost.isNotEmpty) {
         try {
-          if (totalCost.startsWith('₱') || totalCost.startsWith('PHP')) {
-            formattedCost = totalCost;
+          // Normalize cases where totalCost may start with the peso symbol (₱) or 'PHP'.
+          // We want the PDF to always display 'PHP <amount>'.
+          var tc = totalCost.trim();
+          if (tc.startsWith('₱')) {
+            // Remove the peso symbol and any whitespace after it
+            tc = tc.substring(1).trim();
+            // If what's left is numeric, format it; otherwise keep as-is but prefix with PHP
+            final parsed = double.tryParse(tc);
+            if (parsed != null) {
+              formattedCost = 'PHP ${parsed.toStringAsFixed(2)}';
+            } else {
+              formattedCost = 'PHP $tc';
+            }
+          } else if (tc.toUpperCase().startsWith('PHP')) {
+            // Remove leading 'PHP' and any punctuation/space
+            var after = tc.substring(3).trim();
+            if (after.startsWith(':') ||
+                after.startsWith('-') ||
+                after.startsWith('.')) {
+              after = after.substring(1).trim();
+            }
+            final parsed = double.tryParse(after);
+            if (parsed != null) {
+              formattedCost = 'PHP ${parsed.toStringAsFixed(2)}';
+            } else if (after.isNotEmpty) {
+              formattedCost = 'PHP $after';
+            } else {
+              // If nothing after 'PHP', just keep original normalized
+              formattedCost = 'PHP';
+            }
           } else {
-            final cost = double.parse(totalCost);
+            final cost = double.parse(tc);
             formattedCost = 'PHP ${cost.toStringAsFixed(2)}';
           }
         } catch (e) {
-          formattedCost = totalCost;
+          // Fallback: ensure we at least prefix with PHP instead of the peso symbol
+          if (totalCost.startsWith('₱')) {
+            formattedCost = 'PHP ${totalCost.substring(1).trim()}';
+          } else if (totalCost.toUpperCase().startsWith('PHP')) {
+            formattedCost = totalCost;
+          } else {
+            formattedCost = 'PHP $totalCost';
+          }
         }
       }
     }
@@ -335,7 +371,7 @@ class PDFService {
 
         if (damages.isNotEmpty && !isSevere) ...[
           pw.Text(
-            'Detected Damages',
+            isManual ? 'Manual Damages' : 'Detected Damages',
             style: pw.TextStyle(
               fontSize: 18,
               fontWeight: pw.FontWeight.bold,

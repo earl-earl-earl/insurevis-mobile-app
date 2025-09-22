@@ -56,6 +56,7 @@ flutter:
   assets:
     - assets/
     - assets/images/
+    - assets/images/logo/
 
 flutter_launcher_icons:
   android: true
@@ -68,7 +69,8 @@ flutter_launcher_icons:
     generate: true
   linux:
     generate: true
-  image_path: "assets/images/logo/logo_box_png.png"
+  # Updated to use the requested app icon image
+  image_path: "assets/images/logo/3.png"
   min_sdk_android: 21
   remove_alpha_ios: true
 

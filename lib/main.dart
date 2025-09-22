@@ -50,13 +50,19 @@ void main() async {
   final _deviceService = UserDeviceService(Supabase.instance.client);
   await _deviceService.init();
 
-  // Initialize prices cache so UI can read cached lists without hitting the API repeatedly
-  try {
-    await PricesRepository.instance.init();
-  } catch (e) {
-    // Don't block app start on pricing init failures; UI will fallback to live fetches
-    debugPrint('PricesRepository init failed: $e');
-  }
+  // Initialize prices cache so UI can read cached lists without hitting the API repeatedly.
+  // Run asynchronously without awaiting so app startup isn't blocked. We use
+  // Future.microtask to schedule the work on the event loop; moving this to a
+  // separate isolate is possible but requires the init code to be isolate-safe.
+  Future.microtask(() async {
+    try {
+      await PricesRepository.instance.init();
+    } catch (e, st) {
+      // Don't block app start on pricing init failures; UI will fallback to live fetches
+      // Include stack trace to aid debugging.
+      debugPrint('PricesRepository init failed: $e\n$st');
+    }
+  });
 
   // Force portrait orientation
   // For Vulkan/OpenGL settings, configure in Android manifest instead
@@ -90,6 +96,7 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // Preload common images used across the app
     precacheImage(const AssetImage('assets/images/onboarding.jpeg'), context);
+    precacheImage(const AssetImage('assets/images/logo/4.png'), context);
 
     return ScreenUtilInit(
       designSize: const Size(412, 915),
