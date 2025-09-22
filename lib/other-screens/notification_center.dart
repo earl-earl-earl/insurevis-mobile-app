@@ -569,18 +569,18 @@ class _NotificationCenterState extends State<NotificationCenter> {
             ),
             title: Text(
               'Clear All Notifications',
-              style: GoogleFonts.inter(color: Colors.white),
+              style: GoogleFonts.inter(color: Color(0xFF2A2A2A, fontWeight: FontWeight.bold)),
             ),
             content: Text(
               'Are you sure you want to clear all notifications? This action cannot be undone.',
-              style: GoogleFonts.inter(color: Colors.white70),
+              style: GoogleFonts.inter(color: Color(0x992A2A2A)),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(
                   'Cancel',
-                  style: GoogleFonts.inter(color: Colors.white70),
+                  style: GoogleFonts.inter(color: Color(0xFF2A2A2A)),
                 ),
               ),
               ElevatedButton(
@@ -592,7 +592,7 @@ class _NotificationCenterState extends State<NotificationCenter> {
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: Text('Clear All'),
+                child: Text('Clear All', style: GoogleFonts.inter(color: Colors.white),
               ),
             ],
           ),
