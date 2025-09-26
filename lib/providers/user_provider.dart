@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -199,13 +201,16 @@ class UserProvider with ChangeNotifier {
       final userData = prefs.getString('user_profile');
 
       if (userData != null) {
-        // Load saved user data
-        _currentUser = UserProfile.fromJson(
-          Map<String, dynamic>.from(
-            // In a real app, you'd use json.decode here
-            _getDemoUserData(),
-          ),
-        );
+        try {
+          // Parse stored JSON string into a map and restore user
+          final Map<String, dynamic> parsed = json.decode(userData);
+          _currentUser = UserProfile.fromJson(parsed);
+        } catch (e) {
+          // If parsing fails, fall back to demo data
+          debugPrint('Failed to parse saved user profile, using demo: $e');
+          _currentUser = UserProfile.fromJson(_getDemoUserData());
+          await _saveUserProfile();
+        }
       } else {
         // Initialize with demo data
         _currentUser = UserProfile.fromJson(_getDemoUserData());
@@ -341,8 +346,11 @@ class UserProvider with ChangeNotifier {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      // In a real app, you'd use json.encode here
-      await prefs.setString('user_profile', _currentUser!.toJson().toString());
+      // Persist the user profile as a JSON string
+      await prefs.setString(
+        'user_profile',
+        json.encode(_currentUser!.toJson()),
+      );
     } catch (e) {
       // Handle error silently or log it
       debugPrint('Failed to save user profile: $e');

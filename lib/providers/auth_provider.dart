@@ -295,6 +295,7 @@ class AuthProvider with ChangeNotifier {
     String? name,
     String? phone,
     String? address,
+    String? email,
   }) async {
     if (_currentUser == null) {
       _error = 'No user signed in';
@@ -307,6 +308,21 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // If email is provided and different, attempt to update via Supabase Auth
+      if (email != null && email.trim().isNotEmpty) {
+        final currentEmail = _currentUser!.email;
+        if (email.trim().toLowerCase() != currentEmail.toLowerCase()) {
+          final emailResult = await SupabaseService.updateUserEmail(
+            newEmail: email.trim().toLowerCase(),
+          );
+
+          if (emailResult['success'] != true) {
+            _error = emailResult['message'] ?? 'Failed to update email';
+            return false;
+          }
+        }
+      }
+
       final result = await SupabaseService.updateUserProfile(
         userId: _currentUser!.id,
         name: name,

@@ -20,7 +20,7 @@ class _FAQScreenState extends State<FAQScreen> {
       'category': 'Getting Started',
       'question': 'How do I create an account?',
       'answer':
-          'To create an account, download the InsureVis app and tap "Sign Up". Enter your email, create a password, and verify your email address. You can also sign up using your Google or Facebook account.',
+          'Open the app and tap Sign Up. Provide your name, email and a strong password (minimum 8 characters, upper + lower case, number and special character). The app uses Supabase for authentication. If an account with the email already exists you will be prompted to sign in instead.',
     },
     {
       'category': 'Getting Started',
@@ -32,7 +32,7 @@ class _FAQScreenState extends State<FAQScreen> {
       'category': 'Damage Assessment',
       'question': 'How accurate are the damage assessments?',
       'answer':
-          'Our AI technology provides estimates with 85-90% accuracy based on thousands of training cases. However, results may vary depending on image quality, lighting, and damage complexity. We recommend professional inspection for final insurance claims.',
+          'InsureVis produces automated AI assessments and cost estimates. Accuracy depends on image quality, number of angles provided and damage complexity. Use the report as a reliable preliminary assessment — insurers may still require a physical inspection for final claim approval.',
     },
     {
       'category': 'Damage Assessment',
@@ -50,19 +50,19 @@ class _FAQScreenState extends State<FAQScreen> {
       'category': 'Photos & Images',
       'question': 'What makes a good damage photo?',
       'answer':
-          'Take photos in good lighting, keep the camera steady, capture the entire damaged area, take multiple angles, and ensure the damage is clearly visible. Avoid shadows and reflections when possible.',
+          'Use good, even lighting, keep the camera steady and include multiple angles of the damaged area. Make sure the damage fills the frame enough to be clearly visible. Avoid heavy shadows, reflections and extreme zoom which can reduce analysis quality.',
     },
     {
       'category': 'Photos & Images',
       'question': 'Can I upload multiple photos?',
       'answer':
-          'Yes, you can upload multiple photos of the same vehicle or assess different vehicles separately. Multiple angles help improve assessment accuracy.',
+          'Yes. The app supports multi-photo assessments and the exported PDF/report will include all images submitted for that assessment. Note that individual file uploads are validated; most document/photo uploads have a 10MB per-file limit.',
     },
     {
       'category': 'Insurance Claims',
-      'question': 'Can I use this for insurance claims?',
+      'question': 'Can I use InsureVis reports for insurance claims?',
       'answer':
-          'Yes, our detailed reports are accepted by major insurance companies as preliminary assessments. However, your insurance company may still require a professional inspection for final claim processing.',
+          'Yes — the app can generate detailed PDF assessment reports (summary, insurance and technical templates) that many insurers accept as preliminary documentation. Insurers may still request a physical inspection before finalising a claim.',
     },
     {
       'category': 'Insurance Claims',
@@ -74,7 +74,7 @@ class _FAQScreenState extends State<FAQScreen> {
       'category': 'Cost Estimates',
       'question': 'How are repair costs calculated?',
       'answer':
-          'Repair costs are calculated based on damage type, severity, vehicle make/model, local labor rates, and parts pricing. Our database is regularly updated with current market prices.',
+          'Cost estimates are generated from the detected damage type and severity, combined with vehicle make/model data and local pricing when available. Estimates are indicative — actual repair shop quotes may vary.',
     },
     {
       'category': 'Cost Estimates',
@@ -86,49 +86,55 @@ class _FAQScreenState extends State<FAQScreen> {
       'category': 'Technical Issues',
       'question': 'The app is running slowly. What should I do?',
       'answer':
-          'Try closing other apps, ensuring you have good internet connection, restarting the app, or restarting your device. Make sure you have the latest version of the app installed.',
+          'Close background apps, check your internet connection and try again. Large uploads or slow connections can delay processing. If problems persist, update the app and contact support with logs via the Contact screen.',
     },
     {
       'category': 'Technical Issues',
       'question': 'My photos won\'t upload. What\'s wrong?',
       'answer':
-          'Check your internet connection, ensure the photo file size isn\'t too large (max 10MB), verify camera permissions are enabled, and try taking a new photo if the file appears corrupted.',
+          'Common causes: poor connection, camera/storage permissions not granted, or the file exceeds the 10MB per-file limit. Try re-taking the photo, reduce image size or use the gallery uploader. The web portal and services also enforce a 10MB file limit for documents.',
     },
     {
       'category': 'Account & Settings',
       'question': 'How do I change my password?',
       'answer':
-          'Go to Settings > Security > Change Password. Enter your current password and choose a new one. You can also reset your password from the login screen if you forgot it.',
+          'While signed in go to Settings > Security > Change Password and provide your current password plus a new strong password. If you forgot your password use the Reset Password option on the login screen — a reset email will be sent to your address.',
     },
     {
       'category': 'Account & Settings',
       'question': 'Can I delete my account?',
       'answer':
-          'Yes, you can delete your account by going to Settings > Account > Delete Account. Note that this action is permanent and will remove all your assessment history.',
+          'Account deletion is available from Settings > Account > Delete Account. Deleting your account removes your profile, assessments and documents from the app and backend — this action is permanent. If you need help restoring data contact support immediately.',
     },
     {
       'category': 'Privacy & Security',
       'question': 'Is my data secure?',
       'answer':
-          'Yes, we use industry-standard encryption to protect your data. Photos and personal information are stored securely and are not shared without your consent. See our Privacy Policy for details.',
+          'The app uses Supabase and standard transport/security practices to protect your data. Files and personal information are stored with access controls; the Privacy Policy screen describes collection and sharing practices. Contact support for data deletion or export requests.',
     },
     {
       'category': 'Privacy & Security',
       'question': 'Who can see my assessment reports?',
       'answer':
-          'Only you can see your reports by default. You can choose to share them with insurance companies, repair shops, or other authorized parties when needed.',
+          'By default reports are private to your account. You can export or share generated PDFs with insurers, repair shops or other parties. Sharing is a manual action initiated by you.',
     },
     {
       'category': 'Billing & Subscriptions',
       'question': 'Is the app free to use?',
       'answer':
-          'InsureVis offers both free and premium features. Basic damage assessment is free with limited monthly usage. Premium subscriptions provide unlimited assessments and advanced features.',
+          'Yes — InsureVis is 100% free to use. There are no paid plans or subscriptions required to access the app\'s features.',
     },
     {
       'category': 'Billing & Subscriptions',
       'question': 'How do I cancel my subscription?',
       'answer':
-          'You can cancel your subscription anytime in Settings > Subscription or through your app store account settings. Your subscription will remain active until the end of the current billing period.',
+          'There are no subscriptions to cancel — the app is fully free. If you see billing-related messages, please contact support so we can investigate.',
+    },
+    {
+      'category': 'Exports & Reports',
+      'question': 'Can I export assessment reports?',
+      'answer':
+          'Yes. The app generates PDF reports (multiple templates: summary, insurance and technical). PDFs include images, cost breakdowns and metadata and are intended for sharing with insurers and repair shops.',
     },
   ];
 

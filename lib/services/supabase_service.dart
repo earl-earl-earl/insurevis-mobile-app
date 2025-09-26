@@ -13,6 +13,7 @@ class SupabaseService {
   static bool _isSigningIn = false;
   static bool _isSigningUp = false;
   static bool _isSigningOut = false;
+  static bool _isChangingPassword = false;
 
   // Session timeout configuration
   static const Duration _sessionTimeout = Duration(seconds: 45);
@@ -368,6 +369,99 @@ class SupabaseService {
     }
   }
 
+  /// Change password for the currently authenticated user
+  /// Requires the current password for security verification
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    // Prevent multiple concurrent password change operations
+    if (_isChangingPassword) {
+      return {
+        'success': false,
+        'message': 'Password change already in progress. Please wait.',
+      };
+    }
+
+    _isChangingPassword = true;
+
+    try {
+      // Check if user is authenticated
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        return {
+          'success': false,
+          'message': 'You must be signed in to change your password.',
+        };
+      }
+
+      // Validate inputs
+      if (currentPassword.isEmpty) {
+        return {'success': false, 'message': 'Current password is required'};
+      }
+
+      final passwordError = validatePassword(newPassword);
+      if (passwordError != null) {
+        return {'success': false, 'message': passwordError};
+      }
+
+      // Check that new password is different from current password
+      if (currentPassword == newPassword) {
+        return {
+          'success': false,
+          'message': 'New password must be different from current password',
+        };
+      }
+
+      // First, verify the current password by attempting to sign in
+      // This is a security measure to ensure the user knows their current password
+      try {
+        await _supabase.auth.signInWithPassword(
+          email: user.email!,
+          password: currentPassword,
+        );
+      } catch (e) {
+        if (kDebugMode) {
+          print('Current password verification failed: $e');
+        }
+
+        final errorString = e.toString().toLowerCase();
+        if (errorString.contains('invalid_credentials') ||
+            errorString.contains('invalid login') ||
+            errorString.contains('wrong password')) {
+          return {'success': false, 'message': 'Current password is incorrect'};
+        }
+
+        return {
+          'success': false,
+          'message': 'Failed to verify current password. Please try again.',
+        };
+      }
+
+      // Update the password using Supabase Auth
+      await _supabase.auth
+          .updateUser(UserAttributes(password: newPassword))
+          .timeout(_sessionTimeout);
+
+      if (kDebugMode) {
+        print('Password changed successfully for user: ${user.id}');
+      }
+
+      return {'success': true, 'message': 'Password changed successfully'};
+    } catch (e) {
+      if (kDebugMode) {
+        print('Password change error: $e');
+      }
+
+      return {
+        'success': false,
+        'message': _mapErrorMessage(e.toString(), 'password_change'),
+      };
+    } finally {
+      _isChangingPassword = false;
+    }
+  }
+
   /// Map Supabase errors to user-friendly messages
   static String _mapErrorMessage(String error, String operation) {
     final errorLower = error.toLowerCase();
@@ -384,6 +478,8 @@ class SupabaseService {
         errorLower.contains('incorrect password')) {
       return operation == 'signin'
           ? 'Invalid email or password. Please check your credentials and try again.'
+          : operation == 'password_change'
+          ? 'Current password is incorrect'
           : 'Invalid credentials';
     }
 
@@ -481,6 +577,8 @@ class SupabaseService {
         return 'Failed to sign out. Please try again.';
       case 'reset':
         return 'Failed to send password reset email. Please try again.';
+      case 'password_change':
+        return 'Failed to change password. Please try again.';
       default:
         return 'An unexpected error occurred. Please try again.';
     }
@@ -873,6 +971,45 @@ class SupabaseService {
       }
       // If there's an issue checking, return false so caller can decide
       return false;
+    }
+  }
+
+  /// Update authenticated user's email address.
+  ///
+  /// This updates the email on the Auth user record. Supabase may require
+  /// email confirmation for the new email address, and the SDK may return
+  /// an error if re-authentication or confirmation is required.
+  static Future<Map<String, dynamic>> updateUserEmail({
+    required String newEmail,
+  }) async {
+    try {
+      final emailError = validateEmail(newEmail.trim().toLowerCase());
+      if (emailError != null) return {'success': false, 'message': emailError};
+
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        return {'success': false, 'message': 'No user signed in'};
+      }
+
+      // Call Supabase auth updateUser to change email
+      // Use UserAttributes from supabase_flutter
+      await _supabase.auth
+          .updateUser(UserAttributes(email: newEmail.trim().toLowerCase()))
+          .timeout(_sessionTimeout);
+
+      // Clear cached profile to force reload on next read
+      _cachedUserProfile = null;
+
+      return {'success': true, 'message': 'Email updated successfully'};
+    } on PostgrestException catch (e) {
+      if (kDebugMode) print('updateUserEmail PostgrestException: $e');
+      return {'success': false, 'message': e.message};
+    } catch (e) {
+      if (kDebugMode) print('updateUserEmail error: $e');
+      return {
+        'success': false,
+        'message': _mapErrorMessage(e.toString(), 'update'),
+      };
     }
   }
 

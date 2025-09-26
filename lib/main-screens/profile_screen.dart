@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:insurevis/main-screens/change_password_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
-import 'package:insurevis/other-screens/settings_screen.dart';
 import 'package:insurevis/other-screens/terms_of_service_screen.dart';
 import 'package:insurevis/other-screens/privacy_policy_screen.dart';
 import 'package:insurevis/other-screens/contact_us_screen.dart';
 import 'package:insurevis/other-screens/faq_screen.dart';
 import 'package:insurevis/providers/auth_provider.dart';
+
+import 'package:insurevis/services/supabase_service.dart';
+import '../other-screens/personal_data_screen.dart';
 
 // Returns a random Color from [colors]. If [colors] is null or empty,
 // a small default palette is used. The function is private to this file.
@@ -150,20 +153,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // ),
 
               // SizedBox(height: 10.h),
+              Text(
+                'Personal Details',
+                style: GoogleFonts.inter(
+                  color: GlobalStyles.primaryColor,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.left,
+              ),
 
-              // _buildSettingItem(
-              //   icon: Icons.person_outline,
-              //   title: 'Personal Data',
-              //   subtitle: 'Change name, email id',
-              //   onTap: () {
-              //     Navigator.push(
-              //       context,
-              //       MaterialPageRoute(
-              //         builder: (context) => const SettingsScreen(),
-              //       ),
-              //     );
-              //   },
-              // ),
+              SizedBox(height: 10.h),
+
+              _buildSettingItem(
+                icon: Icons.person_outline,
+                title: 'Personal Data',
+                subtitle: 'Change name, email, phone number',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PersonalDataScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              Text(
+                'Account Security',
+                style: GoogleFonts.inter(
+                  color: GlobalStyles.primaryColor,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.left,
+              ),
+
+              SizedBox(height: 10.h),
+
+              _buildSettingItem(
+                icon: Icons.person_outline,
+                title: 'Change Password',
+                subtitle: 'Change your account password',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChangePasswordScreen(),
+                    ),
+                  );
+                },
+              ),
 
               // _buildSettingItem(
               //   icon: Icons.backup_outlined,
@@ -326,6 +366,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text('Signed out')),
                                     );
+                                    // Navigate to sign-in and clear navigation stack
+                                    Navigator.pushNamedAndRemoveUntil(
+                                      context,
+                                      '/signin',
+                                      (route) => false,
+                                    );
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
@@ -393,40 +439,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           size: 20.sp,
         ),
         onTap: onTap,
-      ),
-    );
-  }
-
-  Widget _buildToggleItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    bool? value,
-    ValueChanged<bool>? onChanged,
-  }) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 15.h),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(13), // 0.05 * 255
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: SwitchListTile(
-        secondary: Icon(icon, color: Color(0x992A2A2A), size: 24.sp),
-        title: Text(
-          title,
-          style: GoogleFonts.inter(
-            color: Color(0xFF2A2A2A),
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: GoogleFonts.inter(color: Color(0x772A2A2A), fontSize: 12.sp),
-        ),
-        value: value ?? true,
-        activeColor: GlobalStyles.primaryColor,
-        onChanged: onChanged ?? (value) {},
       ),
     );
   }

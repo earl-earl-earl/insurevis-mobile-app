@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/providers/theme_provider.dart';
+import 'package:insurevis/providers/auth_provider.dart';
+import 'package:insurevis/providers/user_provider.dart';
 import 'package:insurevis/other-screens/terms_of_service_screen.dart';
 import 'package:insurevis/other-screens/privacy_policy_screen.dart';
 import 'package:insurevis/other-screens/contact_us_screen.dart';
@@ -599,9 +601,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(context);
-                // Handle sign out logic
+
+                // Perform sign-out using the AuthProvider and clear local demo user
+                try {
+                  final authProvider = Provider.of<AuthProvider>(
+                    context,
+                    listen: false,
+                  );
+                  await authProvider.signOut();
+                } catch (e) {
+                  debugPrint('AuthProvider.signOut failed: $e');
+                }
+
+                try {
+                  final userProvider = Provider.of<UserProvider>(
+                    context,
+                    listen: false,
+                  );
+                  await userProvider.logout();
+                } catch (e) {
+                  debugPrint('UserProvider.logout failed: $e');
+                }
+
+                // Navigate to sign-in and remove all previous routes
                 Navigator.pushNamedAndRemoveUntil(
                   context,
                   '/signin',
