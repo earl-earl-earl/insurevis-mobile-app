@@ -9,9 +9,7 @@
     
     <!-- Allow ngrok domains -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">ngrok-free.app</domain>
-        <domain includeSubdomains="true">ngrok.io</domain>
-        <domain includeSubdomains="true">rooster-faithful-terminally.ngrok-free.app</domain>
+    <domain includeSubdomains="true">insurevis-api-965cf5b0.centralindia.azurecontainer.io</domain>
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />

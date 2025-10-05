@@ -1,13 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 import 'package:insurevis/other-screens/result_screen.dart';
+import 'package:insurevis/services/image_upload_service.dart';
 
 class MultipleImageUpload extends StatefulWidget {
   const MultipleImageUpload({super.key});
@@ -550,32 +549,14 @@ class _MultipleImageUploadState extends State<MultipleImageUpload> {
   }
 
   Future<bool> _sendImageToAPI(XFile image) async {
-    final url = Uri.parse(
-      'https://rooster-faithful-terminally.ngrok-free.app/predict',
-    );
-
     try {
       // DEBUG: print("Uploading image: ${image.path}");
 
-      final ioClient =
-          HttpClient()..badCertificateCallback = (cert, host, port) => true;
-      final client = IOClient(ioClient);
-      final request =
-          http.MultipartRequest('POST', url)
-            ..files.add(
-              await http.MultipartFile.fromPath('image_file', image.path),
-            )
-            ..headers.addAll({
-              'Accept': 'application/json',
-              'ngrok-skip-browser-warning':
-                  'true', // Skip ngrok browser warning
-              'User-Agent': 'InsurevisApp/1.0',
-            });
-
-      final streamedResponse = await client.send(request);
-      final response = await http.Response.fromStream(streamedResponse);
-
-      return response.statusCode == 200;
+      // Use ImageUploadService for uploading
+      return await ImageUploadService().uploadXFile(
+        image: image,
+        fileFieldName: 'image_file',
+      );
     } catch (e) {
       // DEBUG: print("Error uploading image: $e");
       return false;

@@ -1,16 +1,14 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/other-screens/result_screen.dart';
 import 'package:insurevis/other-screens/pdf_assessment_view.dart';
 import 'package:insurevis/other-screens/insurance_document_upload.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
+import 'package:insurevis/services/image_upload_service.dart';
 
 class MultipleResultsScreen extends StatefulWidget {
   final List<String> imagePaths;
@@ -691,29 +689,14 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   }
 
   Future<Map<String, dynamic>?> _sendImageToAPI(String imagePath) async {
-    final url = Uri.parse(
-      'https://rooster-faithful-terminally.ngrok-free.app/predict',
-    );
-
     try {
       // DEBUG: print("Uploading image: $imagePath");
 
-      final ioClient =
-          HttpClient()..badCertificateCallback = (cert, host, port) => true;
-      final client = IOClient(ioClient);
-
-      final request = http.MultipartRequest('POST', url)
-        ..files.add(await http.MultipartFile.fromPath('image_file', imagePath));
-
-      final streamedResponse = await client.send(request);
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        // DEBUG: print("API Error: ${response.statusCode}");
-        return null;
-      }
+      // Use ImageUploadService for uploading
+      return await ImageUploadService().uploadImagePathWithIOClient(
+        imagePath: imagePath,
+        fileFieldName: 'image_file',
+      );
     } catch (e) {
       // DEBUG: print("Error uploading image: $e");
       return null;

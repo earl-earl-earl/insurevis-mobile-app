@@ -3,11 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
-import 'package:insurevis/utils/network_helper.dart';
+import 'package:insurevis/services/image_upload_service.dart';
 import 'package:insurevis/services/prices_repository.dart';
 import 'package:intl/intl.dart';
 
@@ -178,8 +177,6 @@ class ResultsScreenState extends State<ResultsScreen> {
   }
 
   Future<void> _uploadImage() async {
-    final url = 'https://rooster-faithful-terminally.ngrok-free.app/predict';
-
     try {
       // Verify if image exists
       if (!_imageFile.existsSync()) {
@@ -193,34 +190,28 @@ class ResultsScreenState extends State<ResultsScreen> {
 
       // DEBUG: print("Uploading image from: ${_imageFile.path}");
 
-      // Use NetworkHelper for sending multipart request
-      final streamedResponse = await NetworkHelper.sendMultipartRequest(
-        url: url,
-        filePath: _imageFile.path,
+      // Use ImageUploadService for uploading
+      final responseData = await ImageUploadService().uploadImageFile(
+        imagePath: _imageFile.path,
         fileFieldName: 'image_file',
       );
 
-      // DEBUG: print("Response received: ${streamedResponse.statusCode}");
-
-      final response = await http.Response.fromStream(streamedResponse);
-      // DEBUG: print("Response body: ${response.body.substring(0, min(100, response.body.length))}...");
-
-      if (response.statusCode == 200) {
+      if (responseData != null) {
         // Process data outside of setState to avoid UI jank
         // DEBUG: print("Success! Processing response...");
-        await _processApiResponse(response.body);
+        await _processApiResponse(jsonEncode(responseData));
 
         if (mounted) {
           setState(() {
-            _apiResponse = response.body;
+            _apiResponse = jsonEncode(responseData);
             _isLoading = false;
           });
         }
       } else {
-        // DEBUG: print("Error: ${response.statusCode} - ${response.body}");
+        // DEBUG: print("Error: Upload failed");
         if (mounted) {
           setState(() {
-            _apiResponse = 'Error: ${response.statusCode} - ${response.body}';
+            _apiResponse = 'Error: Upload failed';
             _isLoading = false;
           });
         }

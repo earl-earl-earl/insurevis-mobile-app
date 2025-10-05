@@ -1,16 +1,14 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/other-screens/result_screen.dart';
 import 'package:insurevis/other-screens/pdf_assessment_view.dart';
 import 'package:insurevis/other-screens/insurance_document_upload.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
-import 'package:insurevis/utils/network_helper.dart';
+import 'package:insurevis/services/image_upload_service.dart';
 
 class MultipleResultsScreen extends StatefulWidget {
   final List<String> imagePaths;
@@ -714,26 +712,14 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   }
 
   Future<Map<String, dynamic>?> _sendImageToAPI(String imagePath) async {
-    const url = 'https://rooster-faithful-terminally.ngrok-free.app/predict';
-
     try {
       // DEBUG: print("Uploading image: $imagePath");
 
-      // Use NetworkHelper for sending multipart request
-      final streamedResponse = await NetworkHelper.sendMultipartRequest(
-        url: url,
-        filePath: imagePath,
+      // Use ImageUploadService for uploading
+      return await ImageUploadService().uploadImageFile(
+        imagePath: imagePath,
         fileFieldName: 'image_file',
       );
-
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        // DEBUG: print("API Error: ${response.statusCode}");
-        return null;
-      }
     } catch (e) {
       // DEBUG: print("Error uploading image: $e");
       return null;
