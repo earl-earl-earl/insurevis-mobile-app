@@ -11,8 +11,8 @@ import 'package:insurevis/other-screens/contact_us_screen.dart';
 import 'package:insurevis/other-screens/faq_screen.dart';
 import 'package:insurevis/providers/auth_provider.dart';
 
-import 'package:insurevis/services/supabase_service.dart';
 import '../other-screens/personal_data_screen.dart';
+import 'package:insurevis/main-screens/delete_account_screen.dart';
 
 // Returns a random Color from [colors]. If [colors] is null or empty,
 // a small default palette is used. The function is private to this file.
@@ -68,7 +68,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        centerTitle: true,
         backgroundColor: Colors.white,
         iconTheme: IconThemeData(color: Color(0xFF2A2A2A)),
       ),
@@ -200,6 +199,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const ChangePasswordScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              _buildSettingItem(
+                icon: Icons.delete_outline,
+                title: 'Delete Account',
+                subtitle: 'Permanently remove your account',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DeleteAccountScreen(),
                     ),
                   );
                 },

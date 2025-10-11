@@ -161,7 +161,6 @@ class _NotificationCenterState extends State<NotificationCenter> {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16.r),
         color:
             notification.isRead
                 ? Colors.white

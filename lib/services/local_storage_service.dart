@@ -227,6 +227,12 @@ class LocalStorageService {
     }
   }
 
+  /// Public wrapper to request storage permissions from UI
+  /// Returns true if permissions are granted, false otherwise.
+  static Future<bool> requestStoragePermissions() async {
+    return await _requestStoragePermissions();
+  }
+
   /// Create the main app directory
   static Future<Directory?> _createAppDirectory() async {
     return await getAppDirectory();

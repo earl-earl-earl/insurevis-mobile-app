@@ -17,6 +17,7 @@ class AuthProvider with ChangeNotifier {
   bool _isSigningIn = false;
   bool _isSigningUp = false;
   bool _isSigningOut = false;
+  bool _isDeletingAccount = false;
 
   // Getters
   UserProfile? get currentUser => _currentUser;
@@ -27,6 +28,7 @@ class AuthProvider with ChangeNotifier {
   bool get isSigningIn => _isSigningIn;
   bool get isSigningUp => _isSigningUp;
   bool get isSigningOut => _isSigningOut;
+  bool get isDeletingAccount => _isDeletingAccount;
 
   /// Initialize the auth provider
   Future<void> initialize() async {
@@ -55,6 +57,60 @@ class AuthProvider with ChangeNotifier {
         print('Auth initialization error: $e');
       }
     } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Delete the current account (requires prior re-auth in UI)
+  /// Returns true if backend confirms deletion request; signs out afterwards.
+  Future<bool> deleteAccount({required String password, String? reason}) async {
+    if (_isDeletingAccount) {
+      _error = 'Account deletion already in progress. Please wait.';
+      notifyListeners();
+      return false;
+    }
+
+    if (_currentUser == null) {
+      _error = 'No user signed in';
+      notifyListeners();
+      return false;
+    }
+
+    _isDeletingAccount = true;
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Step 1: Re-authenticate for security
+      final reauth = await SupabaseService.reauthenticateWithPassword(
+        password: password,
+      );
+      if (reauth['success'] != true) {
+        _error = reauth['message'] ?? 'Re-authentication failed';
+        return false;
+      }
+
+      // Step 2: Call backend to delete data and auth user
+      final resp = await SupabaseService.requestAccountDeletion(reason: reason);
+      if (resp['success'] != true) {
+        _error = resp['message'] ?? 'Failed to delete account';
+        return false;
+      }
+
+      // Step 3: Sign out locally to clear session
+      await SupabaseService.signOut();
+      _clearUserData();
+      return true;
+    } catch (e) {
+      _error = 'Account deletion failed: $e';
+      if (kDebugMode) {
+        print('deleteAccount error: $e');
+      }
+      return false;
+    } finally {
+      _isDeletingAccount = false;
       _isLoading = false;
       notifyListeners();
     }
@@ -118,11 +174,35 @@ class AuthProvider with ChangeNotifier {
           await _loadUserProfile();
         }
 
-        if (kDebugMode) {
-          print('Sign-up successful: ${result['message']}');
-        }
+        // Attempt automatic sign-in using the provided credentials.
+        // Some Supabase setups allow immediate sign-in after signup; if not,
+        // this will fail gracefully and the account still exists.
+        try {
+          final autoSignInSuccess = await signIn(
+            email: email,
+            password: password,
+          );
 
-        return true;
+          if (autoSignInSuccess) {
+            if (kDebugMode) {
+              print('Auto sign-in after sign-up succeeded');
+            }
+            return true;
+          } else {
+            // Auto sign-in failed; inform the user but still treat signup as success
+            _error =
+                'Account created but automatic sign-in failed. Please sign in manually.';
+            notifyListeners();
+            return true;
+          }
+        } catch (e) {
+          // If sign-in throws for any reason, log and continue — account was created
+          if (kDebugMode) print('Auto sign-in error: $e');
+          _error =
+              'Account created. Automatic sign-in unavailable; please sign in manually.';
+          notifyListeners();
+          return true;
+        }
       } else {
         _error = result['message'] ?? 'Sign-up failed';
         return false;

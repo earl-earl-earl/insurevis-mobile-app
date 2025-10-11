@@ -257,7 +257,7 @@ class PDFService {
                 ? 'Image $entryNumber Analysis'
                 : 'Manual Damage Entry #$entryNumber',
             style: pw.TextStyle(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: pw.FontWeight.bold,
               color: PdfColors.blueGrey800,
             ),
@@ -290,9 +290,9 @@ class PDFService {
                 ),
                 pw.SizedBox(height: 10),
                 pw.Container(
-                  height: 250,
+                  height: 160,
                   decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.grey, width: 2),
+                    border: pw.Border.all(color: PdfColors.grey, width: 1),
                     borderRadius: pw.BorderRadius.circular(5),
                   ),
                   child: pw.Image(image, fit: pw.BoxFit.contain),

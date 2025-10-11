@@ -1005,8 +1005,18 @@ class ResultsScreenState extends State<ResultsScreen> {
                                 (replace?['srp_insurance'] as num?)
                                     ?.toDouble() ??
                                 0.0;
-                            if (thinsmith > 0 || bodyPaint > 0) {
-                              computedTotal += thinsmith + bodyPaint;
+                            // Labor may be provided by either repair or replace payloads
+                            double labor =
+                                (repair?['cost_installation_personal'] as num?)
+                                    ?.toDouble() ??
+                                (replace?['cost_installation_personal'] as num?)
+                                    ?.toDouble() ??
+                                0.0;
+
+                            final double partTotal =
+                                thinsmith + bodyPaint + labor;
+                            if (partTotal > 0) {
+                              computedTotal += partTotal;
                               hasComputed = true;
                             }
                           } else if (option == 'replace') {
@@ -1015,8 +1025,13 @@ class ResultsScreenState extends State<ResultsScreen> {
                                 (replace?['srp_insurance'] as num?)
                                     ?.toDouble() ??
                                 0.0;
-                            if (replacePrice > 0) {
-                              computedTotal += replacePrice;
+                            double labor =
+                                (replace?['cost_installation_personal'] as num?)
+                                    ?.toDouble() ??
+                                0.0;
+                            final double partTotal = replacePrice + labor;
+                            if (partTotal > 0) {
+                              computedTotal += partTotal;
                               hasComputed = true;
                             }
                           }
@@ -1393,74 +1408,74 @@ class ResultsScreenState extends State<ResultsScreen> {
     );
   }
 
-  Widget _buildDamageInfoSection(Map<String, dynamic> damage) {
-    String damagedPart = 'Unknown';
-    if (damage.containsKey('damaged_part')) {
-      damagedPart = damage['damaged_part']?.toString() ?? 'Unknown';
-    } else if (damage.containsKey('part_name')) {
-      damagedPart = damage['part_name']?.toString() ?? 'Unknown';
-    }
+  // Widget _buildDamageInfoSection(Map<String, dynamic> damage) {
+  //   String damagedPart = 'Unknown';
+  //   if (damage.containsKey('damaged_part')) {
+  //     damagedPart = damage['damaged_part']?.toString() ?? 'Unknown';
+  //   } else if (damage.containsKey('part_name')) {
+  //     damagedPart = damage['part_name']?.toString() ?? 'Unknown';
+  //   }
 
-    String damageType = 'Unknown';
-    if (damage.containsKey('damage_type')) {
-      final damageTypeValue = damage['damage_type'];
-      if (damageTypeValue is Map && damageTypeValue.containsKey('class_name')) {
-        damageType = damageTypeValue['class_name']?.toString() ?? 'Unknown';
-      } else {
-        damageType = damageTypeValue?.toString() ?? 'Unknown';
-      }
-    }
+  //   String damageType = 'Unknown';
+  //   if (damage.containsKey('damage_type')) {
+  //     final damageTypeValue = damage['damage_type'];
+  //     if (damageTypeValue is Map && damageTypeValue.containsKey('class_name')) {
+  //       damageType = damageTypeValue['class_name']?.toString() ?? 'Unknown';
+  //     } else {
+  //       damageType = damageTypeValue?.toString() ?? 'Unknown';
+  //     }
+  //   }
 
-    return Container(
-      padding: EdgeInsets.all(12.r),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Damaged Part: ',
-                style: GoogleFonts.inter(
-                  color: Color(0x992A2A2A),
-                  fontSize: 14.sp,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  damagedPart,
-                  style: GoogleFonts.inter(
-                    color: Color(0xFF2A2A2A),
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Text(
-                'Damage Type: ',
-                style: GoogleFonts.inter(color: Colors.black54, fontSize: 14),
-              ),
-              Expanded(
-                child: Text(
-                  damageType,
-                  style: GoogleFonts.inter(
-                    color: Colors.black,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  //   return Container(
+  //     padding: EdgeInsets.all(12.r),
+  //     decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Row(
+  //           children: [
+  //             Text(
+  //               'Damaged Part: ',
+  //               style: GoogleFonts.inter(
+  //                 color: Color(0x992A2A2A),
+  //                 fontSize: 14.sp,
+  //               ),
+  //             ),
+  //             Expanded(
+  //               child: Text(
+  //                 damagedPart,
+  //                 style: GoogleFonts.inter(
+  //                   color: Color(0xFF2A2A2A),
+  //                   fontSize: 14.sp,
+  //                   fontWeight: FontWeight.w500,
+  //                 ),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //         const SizedBox(height: 8),
+  //         Row(
+  //           children: [
+  //             Text(
+  //               'Damage Type: ',
+  //               style: GoogleFonts.inter(color: Colors.black54, fontSize: 14),
+  //             ),
+  //             Expanded(
+  //               child: Text(
+  //                 damageType,
+  //                 style: GoogleFonts.inter(
+  //                   color: Colors.black,
+  //                   fontSize: 14,
+  //                   fontWeight: FontWeight.w500,
+  //                 ),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildApiCostBreakdown(
     String option,
@@ -1520,6 +1535,13 @@ class ResultsScreenState extends State<ResultsScreen> {
               (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0,
             ),
             _buildCostItem('Body Paint Price', bodyPaintPrice),
+          ] else if (option == 'replace') ...[
+            SizedBox(height: 8.h),
+            // For replace, srp_insurance already represents part+paint price
+            _buildCostItem(
+              'Body Paint Price',
+              (apiPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0,
+            ),
           ],
           Divider(color: Colors.grey.withValues(alpha: 0.3), height: 20),
           Row(
@@ -1537,7 +1559,8 @@ class ResultsScreenState extends State<ResultsScreen> {
                 ),
               ),
               Text(
-                _formatCurrency(finalPrice),
+                // Display total including labor fee so UI total matches computed totals
+                _formatCurrency(finalPrice + laborFee),
                 style: GoogleFonts.inter(
                   color: GlobalStyles.primaryColor,
                   fontSize: 16,
@@ -1549,7 +1572,7 @@ class ResultsScreenState extends State<ResultsScreen> {
           if (option == 'replace') ...[
             const SizedBox(height: 8),
             Text(
-              'Total includes part price and paint/materials',
+              'Total includes part price, paint/materials, and installation labor',
               style: GoogleFonts.inter(
                 color: Colors.black.withValues(alpha: 0.7),
                 fontSize: 12,
@@ -1559,7 +1582,7 @@ class ResultsScreenState extends State<ResultsScreen> {
           ] else if (option == 'repair' && bodyPaintPricing != null) ...[
             const SizedBox(height: 8),
             Text(
-              'Total includes thinsmith work and body paint costs',
+              'Total includes thinsmith work, body paint costs, and installation labor',
               style: GoogleFonts.inter(
                 color: Colors.black.withValues(alpha: 0.7),
                 fontSize: 12,

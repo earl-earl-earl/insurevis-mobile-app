@@ -199,11 +199,23 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
       setState(() => _isLoading = false);
 
       if (success && mounted) {
-        // Show success message
+        final provider = Provider.of<AuthProvider>(context, listen: false);
+
+        // If auto sign-in succeeded, navigate directly to home
+        if (provider.isLoggedIn) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/home',
+            (Route<dynamic> route) => false,
+          );
+          return;
+        }
+
+        // Otherwise, show success message and navigate to signin screen
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
-              "Account created successfully! Please check your email for verification.",
+              "Account created successfully! Please sign in to continue.",
             ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
@@ -214,7 +226,6 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
           ),
         );
 
-        // Navigate to signin screen for email verification
         Navigator.pushNamedAndRemoveUntil(
           context,
           '/signin',

@@ -36,19 +36,37 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase (required for firebase_messaging)
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    try {
+      await FirebaseMsg().initFCM();
+    } catch (e) {
+      debugPrint('Warning: FirebaseMsg.initFCM failed: $e');
+    }
+  } catch (e) {
+    // If Firebase fails (no network / misconfigured), log and continue so app can work offline
+    debugPrint('Warning: Firebase initialization failed: $e');
+  }
 
-  await FirebaseMsg().initFCM();
+  // Initialize Supabase (best-effort). If it fails, continue with limited functionality.
+  try {
+    await Supabase.initialize(
+      url: SupabaseConfig.supabaseUrl,
+      anonKey: SupabaseConfig.supabaseAnonKey,
+    );
 
-  // Initialize Supabase
-  await Supabase.initialize(
-    url: SupabaseConfig.supabaseUrl,
-    anonKey: SupabaseConfig.supabaseAnonKey,
-  );
-
-  // Start user device service to manage FCM tokens
-  final _deviceService = UserDeviceService(Supabase.instance.client);
-  await _deviceService.init();
+    // Start user device service to manage FCM tokens (best-effort)
+    try {
+      final _deviceService = UserDeviceService(Supabase.instance.client);
+      await _deviceService.init();
+    } catch (e) {
+      debugPrint('Warning: UserDeviceService.init failed: $e');
+    }
+  } catch (e) {
+    debugPrint('Warning: Supabase initialization failed: $e');
+  }
 
   // Initialize prices cache so UI can read cached lists without hitting the API repeatedly.
   // Run asynchronously without awaiting so app startup isn't blocked. We use

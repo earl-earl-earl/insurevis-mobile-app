@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/utils/pdf_service.dart';
+import 'package:insurevis/services/local_storage_service.dart';
 import 'package:insurevis/services/prices_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -36,7 +37,6 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   final List<Map<String, String>> _manualDamages = [];
   bool _showAddDamageForm = false;
   String? _newDamagePart;
-  String? _newDamageType;
 
   final List<String> _carParts = [
     "Back-bumper",
@@ -62,14 +62,8 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     "Windshield",
   ];
 
-  final List<String> _carDamageTypes = [
-    "Crack",
-    "Dent",
-    "Shattered Glass",
-    "Broken Lamp",
-    "Scratch / Paint Wear",
-    "Flat Tire",
-  ];
+  // Note: We do not maintain a local list of damage types here; manual damages
+  // only require selecting the part, not the type.
 
   bool get _isDamageSevere {
     final responses = widget.apiResponses ?? <String, Map<String, dynamic>>{};
@@ -457,7 +451,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                       SizedBox(height: 4.h),
                       if (response.containsKey('overall_severity'))
                         Text(
-                          'Severity: ${response['overall_severity']}',
+                          'Severity: ${_formatLabel(response['overall_severity']?.toString() ?? '')}',
                           style: GoogleFonts.inter(
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w600,
@@ -877,12 +871,25 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                         ],
                       );
                     }
+
                     if (selectedOption == 'repair') {
+                      // Prefer repository-provided total_with_labor when available
                       double thinsmith =
                           (repairData?['insurance'] as num?)?.toDouble() ?? 0.0;
                       double bodyPaint =
                           (replaceData?['srp_insurance'] as num?)?.toDouble() ??
                           0.0;
+                      double labor =
+                          (repairData?['cost_installation_personal'] as num?)
+                              ?.toDouble() ??
+                          (replaceData?['cost_installation_personal'] as num?)
+                              ?.toDouble() ??
+                          0.0;
+                      final repoTotal =
+                          (repairData?['total_with_labor'] as num?)
+                              ?.toDouble() ??
+                          (replaceData?['total_with_labor'] as num?)
+                              ?.toDouble();
                       if (thinsmith == 0.0 && bodyPaint == 0.0) {
                         return Row(
                           children: [
@@ -902,7 +909,8 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                           ],
                         );
                       }
-                      final total = thinsmith + bodyPaint;
+                      final total =
+                          repoTotal ?? (thinsmith + bodyPaint + labor);
                       return Text(
                         _formatCurrency(total),
                         style: GoogleFonts.inter(
@@ -912,11 +920,23 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                         ),
                       );
                     }
+
                     if (selectedOption == 'replace') {
+                      // Prefer repository total that already includes labor.
+                      final repoTotalReplace =
+                          (replaceData?['total_with_labor'] as num?)
+                              ?.toDouble();
                       double replacePrice =
                           (replaceData?['srp_insurance'] as num?)?.toDouble() ??
+                          (replaceData?['srp_personal'] as num?)?.toDouble() ??
                           0.0;
-                      if (replacePrice == 0.0) {
+                      double laborReplace =
+                          (replaceData?['cost_installation_personal'] as num?)
+                              ?.toDouble() ??
+                          0.0;
+                      final displayedReplace =
+                          repoTotalReplace ?? (replacePrice + laborReplace);
+                      if (displayedReplace == 0.0) {
                         return Row(
                           children: [
                             const Icon(
@@ -936,7 +956,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                         );
                       }
                       return Text(
-                        _formatCurrency(replacePrice),
+                        _formatCurrency(displayedReplace),
                         style: GoogleFonts.inter(
                           color: Color(0xFF2A2A2A),
                           fontSize: 14.sp,
@@ -944,6 +964,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                         ),
                       );
                     }
+
                     return Text(
                       '—',
                       style: GoogleFonts.inter(color: Color(0x992A2A2A)),
@@ -1107,7 +1128,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                               );
                               _showAddDamageForm = false;
                               _newDamagePart = null;
-                              _newDamageType = null;
+                              // no damage type field maintained
                             });
                           },
                   style: ButtonStyle(
@@ -1143,7 +1164,6 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                       () => setState(() {
                         _showAddDamageForm = false;
                         _newDamagePart = null;
-                        _newDamageType = null;
                       }),
                   style: ButtonStyle(
                     shape: WidgetStatePropertyAll<RoundedRectangleBorder>(
@@ -1302,13 +1322,32 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                     ],
                   );
                 }
+                // include installation labor in manual damage estimates as well
                 double repairCost =
                     (repairData?['insurance'] as num?)?.toDouble() ?? 0.0;
                 double repairAdd =
                     (replaceData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-                double totalRepair = repairCost + repairAdd;
+                double labor =
+                    (repairData?['cost_installation_personal'] as num?)
+                        ?.toDouble() ??
+                    (replaceData?['cost_installation_personal'] as num?)
+                        ?.toDouble() ??
+                    0.0;
+                final repoTotal =
+                    (repairData?['total_with_labor'] as num?)?.toDouble() ??
+                    (replaceData?['total_with_labor'] as num?)?.toDouble();
+                double totalRepair =
+                    repoTotal ?? (repairCost + repairAdd + labor);
+                final repoTotalReplace =
+                    (replaceData?['total_with_labor'] as num?)?.toDouble();
                 double replacePrice =
                     (replaceData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+                double replaceLabor =
+                    (replaceData?['cost_installation_personal'] as num?)
+                        ?.toDouble() ??
+                    0.0;
+                final displayedReplacePrice =
+                    repoTotalReplace ?? (replacePrice + replaceLabor);
                 if (selectedOption == 'repair') {
                   if (totalRepair == 0.0) {
                     return Row(
@@ -1353,7 +1392,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                   );
                 }
                 if (selectedOption == 'replace') {
-                  if (replacePrice == 0.0) {
+                  if (displayedReplacePrice == 0.0) {
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -1386,7 +1425,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                         style: GoogleFonts.inter(color: Color(0x992A2A2A)),
                       ),
                       Text(
-                        _formatCurrency(replacePrice),
+                        _formatCurrency(displayedReplacePrice),
                         style: GoogleFonts.inter(
                           color: Color(0xFF2A2A2A),
                           fontWeight: FontWeight.bold,
@@ -1593,58 +1632,165 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     if (val is num) return val.toDouble();
     if (val is String) {
       final sanitized = val.replaceAll(RegExp(r"[^0-9.\-]"), '');
-      try {
-        return double.parse(sanitized);
-      } catch (e) {
-        return 0.0;
-      }
+      return double.tryParse(sanitized) ?? 0.0;
     }
     return 0.0;
   }
 
+  // Sum up the totals from user-selected options across all damages (API + manual).
+  // Prefers repository-provided total_with_labor; otherwise falls back to
+  // part + labor according to the UI logic for each option.
   double _calculateTotalFromPricingData() {
     double total = 0.0;
-    _selectedRepairOptions.forEach((damageIndex, selectedOption) {
-      if (selectedOption == null) return;
-      if (selectedOption == 'repair' &&
-          _repairPricingData[damageIndex] != null) {
-        final repairData = _repairPricingData[damageIndex]!;
-        final replacePricingForRepair = _replacePricingData[damageIndex];
-        double repairCost =
-            (repairData['insurance'] as num?)?.toDouble() ?? 0.0;
-        if (replacePricingForRepair != null) {
-          repairCost +=
-              (replacePricingForRepair['srp_insurance'] as num?)?.toDouble() ??
-              0.0;
+    for (final entry in _selectedRepairOptions.entries) {
+      final int damageIndex = entry.key;
+      final String? selectedOption = entry.value;
+      if (selectedOption == null) continue;
+
+      if (selectedOption == 'repair') {
+        final repairData = _repairPricingData[damageIndex];
+        final replaceData = _replacePricingData[damageIndex];
+        if (repairData == null && replaceData == null) continue;
+
+        // Prefer total_with_labor if available from either dataset.
+        final repoTotal =
+            (repairData?['total_with_labor'] as num?)?.toDouble() ??
+            (replaceData?['total_with_labor'] as num?)?.toDouble();
+        if (repoTotal != null) {
+          total += repoTotal;
+          continue;
         }
-        total += repairCost;
-      } else if (selectedOption == 'replace' &&
-          _replacePricingData[damageIndex] != null) {
-        final replaceData = _replacePricingData[damageIndex]!;
-        double replaceCost =
-            (replaceData['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-        total += replaceCost;
+
+        // Fallback: repair thinsmith + paint (srp_insurance) + labor
+        final double repairInsurance =
+            (repairData?['insurance'] as num?)?.toDouble() ?? 0.0;
+        final double bodyPaint =
+            (replaceData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+        final double labor =
+            (repairData?['cost_installation_personal'] as num?)?.toDouble() ??
+            (replaceData?['cost_installation_personal'] as num?)?.toDouble() ??
+            0.0;
+        total += (repairInsurance + bodyPaint + labor);
+      } else if (selectedOption == 'replace') {
+        final replaceData = _replacePricingData[damageIndex];
+        if (replaceData == null) continue;
+
+        // Prefer canonical total including labor
+        final repoTotal = (replaceData['total_with_labor'] as num?)?.toDouble();
+        if (repoTotal != null) {
+          total += repoTotal;
+          continue;
+        }
+
+        // Fallback: part SRP (insurance or personal) + labor
+        final double partPrice =
+            (replaceData['srp_insurance'] as num?)?.toDouble() ??
+            (replaceData['srp_personal'] as num?)?.toDouble() ??
+            0.0;
+        final double labor =
+            (replaceData['cost_installation_personal'] as num?)?.toDouble() ??
+            0.0;
+        total += (partPrice + labor);
       }
-    });
+    }
     return total;
   }
 
   Color _getSeverityColor(String severity) {
     final lowerSeverity = severity.toLowerCase();
-    if (lowerSeverity.contains('high') || lowerSeverity.contains('severe'))
+    if (lowerSeverity.contains('high') || lowerSeverity.contains('severe')) {
       return Colors.red;
-    if (lowerSeverity.contains('medium') || lowerSeverity.contains('moderate'))
+    }
+    if (lowerSeverity.contains('medium') ||
+        lowerSeverity.contains('moderate')) {
       return Colors.orange;
-    if (lowerSeverity.contains('low') || lowerSeverity.contains('minor'))
+    }
+    if (lowerSeverity.contains('low') || lowerSeverity.contains('minor')) {
       return Colors.green;
+    }
     return Colors.blue;
   }
 
   Future<void> _savePDF() async {
     setState(() => _isSaving = true);
     try {
-      final status = await Permission.storage.request();
-      if (!status.isGranted) throw Exception('Storage permission not granted');
+      // Check existing permissions first
+      bool hasPerm = await LocalStorageService.hasStoragePermissions();
+
+      if (!hasPerm) {
+        // Ask the user if they'd like to grant storage permission
+        final shouldRequest = await showDialog<bool?>(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: Text(
+                  'Storage permission required',
+                  style: GoogleFonts.inter(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                content: Text(
+                  'To save the PDF report to your device we need storage permission. Would you like to grant it now?',
+                  style: GoogleFonts.inter(fontSize: 14.sp),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: Text('Cancel', style: GoogleFonts.inter()),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: Text('Allow', style: GoogleFonts.inter()),
+                  ),
+                ],
+              ),
+        );
+
+        if (shouldRequest != true) {
+          setState(() => _isSaving = false);
+          return;
+        }
+
+        // Request permissions via service
+        final granted = await LocalStorageService.requestStoragePermissions();
+        if (!granted) {
+          // If still not granted, offer to open app settings
+          final openSettings = await showDialog<bool?>(
+            context: context,
+            builder:
+                (context) => AlertDialog(
+                  title: Text(
+                    'Permission required',
+                    style: GoogleFonts.inter(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  content: Text(
+                    'Storage permission was not granted. You can open app settings to allow it manually.',
+                    style: GoogleFonts.inter(fontSize: 14.sp),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: Text('Cancel', style: GoogleFonts.inter()),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: Text('Open Settings', style: GoogleFonts.inter()),
+                    ),
+                  ],
+                ),
+          );
+
+          if (openSettings == true) {
+            await openAppSettings();
+          }
+          setState(() => _isSaving = false);
+          return;
+        }
+      }
 
       final Map<String, Map<String, dynamic>> pdfResponses = {};
       final apiResponsesForPdf =
@@ -1823,15 +1969,21 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       }
       if (savedPath != null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).clearSnackBars();
-          ScaffoldMessenger.of(context).showSnackBar(
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
             SnackBar(
               content: Text('Assessment report saved successfully!'),
               backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+              behavior: SnackBarBehavior.floating,
               action: SnackBarAction(
                 label: 'Share',
                 textColor: Colors.white,
-                onPressed: () => _sharePDF(savedPath!),
+                onPressed: () {
+                  messenger.hideCurrentSnackBar();
+                  _sharePDF(savedPath!);
+                },
               ),
             ),
           );
@@ -1842,11 +1994,14 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Error saving report: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -1864,11 +2019,14 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       ], text: 'Vehicle Assessment Report');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Error sharing file: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }

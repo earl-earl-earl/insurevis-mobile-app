@@ -7,6 +7,7 @@ import 'package:insurevis/other-screens/result_screen.dart';
 import 'package:insurevis/other-screens/pdf_assessment_view.dart';
 import 'package:insurevis/other-screens/insurance_document_upload.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 import 'package:insurevis/services/image_upload_service.dart';
 
@@ -38,6 +39,9 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool anyUploading = _uploadResults.values.any(
+      (status) => status == 'uploading',
+    );
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -55,6 +59,16 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             color: const Color(0xFF2A2A2A),
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Add image',
+            icon: const Icon(
+              Icons.add_photo_alternate,
+              color: Color(0xFF2A2A2A),
+            ),
+            onPressed: _addImage,
+          ),
+        ],
       ),
       // Download PDF button removed
       bottomNavigationBar: null,
@@ -64,7 +78,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
           child:
               _isUploading
                   ? _buildLoadingView()
-                  : _buildResultsViewWithFixedButtons(),
+                  : _buildResultsViewWithFixedButtons(anyUploading),
         ),
       ),
     );
@@ -105,7 +119,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     );
   }
 
-  Widget _buildResultsViewWithFixedButtons() {
+  Widget _buildResultsViewWithFixedButtons(bool anyUploading) {
     return Column(
       children: [
         // Scrollable content takes up available space
@@ -131,6 +145,49 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                     color: const Color(0x992A2A2A),
                   ),
                 ),
+                if (anyUploading) ...[
+                  SizedBox(height: 6.h),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 14.sp,
+                        height: 14.sp,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: GlobalStyles.primaryColor,
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Text(
+                        'Analyzing new image(s)...',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: GlobalStyles.primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                SizedBox(height: 8.h),
+
+                // Disclaimer: AI can make mistakes (orange)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.orange, size: 16.sp),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: Text(
+                        'Note: AI analysis can make mistakes. Please review the results carefully.',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
                 SizedBox(height: 24.h),
 
                 // Results list
@@ -164,32 +221,35 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
               top: BorderSide(color: Colors.white.withAlpha(25), width: 1),
             ),
           ),
-          child: _buildActionButtons(),
+          child: _buildActionButtons(anyUploading),
         ),
       ],
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(bool anyUploading) {
     return Column(
       children: [
         // View Assessment Button (top)
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => PDFAssessmentView(
-                        imagePaths: widget.imagePaths,
-                        apiResponses: _apiResponses,
-                        assessmentIds: _assessmentIds,
-                      ),
-                ),
-              );
-            },
+            onPressed:
+                anyUploading
+                    ? null
+                    : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => PDFAssessmentView(
+                                imagePaths: widget.imagePaths,
+                                apiResponses: _apiResponses,
+                                assessmentIds: _assessmentIds,
+                              ),
+                        ),
+                      );
+                    },
             style: ButtonStyle(
               elevation: const WidgetStatePropertyAll(0),
               backgroundColor: WidgetStatePropertyAll(
@@ -205,7 +265,10 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             child: Text(
               "View Assessment",
               style: GoogleFonts.inter(
-                color: GlobalStyles.primaryColor,
+                color:
+                    anyUploading
+                        ? GlobalStyles.primaryColor.withAlpha(120)
+                        : GlobalStyles.primaryColor,
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w600,
               ),
@@ -218,22 +281,25 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => InsuranceDocumentUpload(
-                        imagePaths: widget.imagePaths,
-                        apiResponses: _apiResponses,
-                        assessmentIds: _assessmentIds,
-                      ),
-                ),
-              );
-            },
+            onPressed:
+                anyUploading
+                    ? null
+                    : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => InsuranceDocumentUpload(
+                                imagePaths: widget.imagePaths,
+                                apiResponses: _apiResponses,
+                                assessmentIds: _assessmentIds,
+                              ),
+                        ),
+                      );
+                    },
             style: ButtonStyle(
               backgroundColor: WidgetStatePropertyAll(
-                GlobalStyles.primaryColor,
+                anyUploading ? Colors.grey : GlobalStyles.primaryColor,
               ),
               padding: const WidgetStatePropertyAll(
                 EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -263,6 +329,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     String? assessmentId,
     Map<String, dynamic>? apiResponse,
   ) {
+    final bool isUploading = status == 'uploading';
     Color borderColor = Colors.white.withAlpha(76);
     Widget statusWidget = Container();
     bool canTap = false;
@@ -325,7 +392,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       );
     }
 
-    return Container(
+    final cardContent = Container(
       margin: EdgeInsets.only(bottom: 16.h),
       decoration: BoxDecoration(
         color:
@@ -464,6 +531,27 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             ),
         ],
       ),
+    );
+
+    return Stack(
+      children: [
+        Opacity(opacity: isUploading ? 0.5 : 1.0, child: cardContent),
+        if (isUploading)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Center(
+                child: SizedBox(
+                  width: 32.w,
+                  height: 32.w,
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: GlobalStyles.primaryColor,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -762,5 +850,63 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _addImage() async {
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(source: ImageSource.gallery);
+      if (picked == null) return;
+      final imagePath = picked.path;
+
+      setState(() {
+        // Add to the list displayed
+        widget.imagePaths.add(imagePath);
+        // Mark as uploading
+        _uploadResults[imagePath] = 'uploading';
+        _expandedCards[imagePath] = false;
+        // Cache thumbnail
+        _cachedImages[imagePath] = ClipRRect(
+          borderRadius: BorderRadius.circular(12.r),
+          child: SizedBox(
+            width: 80.w,
+            height: 80.w,
+            child: Image.file(
+              File(imagePath),
+              fit: BoxFit.cover,
+              cacheWidth: 80,
+              cacheHeight: 80,
+            ),
+          ),
+        );
+      });
+
+      // Trigger upload/analysis but do not block the whole screen
+      final assessmentProvider = Provider.of<AssessmentProvider>(
+        context,
+        listen: false,
+      );
+      try {
+        final apiResponse = await _sendImageToAPI(imagePath);
+        if (apiResponse != null) {
+          setState(() {
+            _apiResponses[imagePath] = apiResponse;
+          });
+          final assessment = await assessmentProvider.addAssessment(imagePath);
+          setState(() {
+            _uploadResults[imagePath] = 'success';
+            _assessmentIds[imagePath] = assessment.id;
+          });
+        } else {
+          setState(() {
+            _uploadResults[imagePath] = 'error';
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _uploadResults[imagePath] = 'error';
+        });
+      }
+    } catch (_) {}
   }
 }

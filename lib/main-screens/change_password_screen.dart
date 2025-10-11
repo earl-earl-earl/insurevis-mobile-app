@@ -14,13 +14,18 @@ class ChangePasswordScreen extends StatefulWidget {
 }
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
-  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _isLoading = false;
   String? _currentPasswordError;
   String? _newPasswordError;
+  bool _obscureCurrent = true;
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
@@ -54,7 +59,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final confirm = _confirmPasswordController.text;
 
     if (currentPass.isEmpty) {
-      setState(() => _currentPasswordError = 'Please enter your current password');
+      setState(
+        () => _currentPasswordError = 'Please enter your current password',
+      );
       return;
     }
 
@@ -69,7 +76,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
 
     if (currentPass == newPass) {
-      setState(() => _newPasswordError = 'New password must be different from current password');
+      setState(
+        () =>
+            _newPasswordError =
+                'New password must be different from current password',
+      );
       return;
     }
 
@@ -80,13 +91,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
 
     setState(() => _isLoading = true);
-    
+
+    // Keep reference to currentUser to preserve imports and potential future use
+    // ignore: unused_local_variable
     final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
     final result = await SupabaseService.changePassword(
       currentPassword: currentPass,
       newPassword: newPass,
     );
-    
+
     setState(() => _isLoading = false);
 
     if (result['success'] == true) {
@@ -108,6 +121,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     required String hint,
     String? error,
     bool isRequired = true,
+    required bool obscure,
+    required VoidCallback onToggle,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,22 +135,20 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               fontSize: 14.sp,
               fontWeight: FontWeight.w600,
             ),
-            children: isRequired ? [
-              TextSpan(
-                text: ' *',
-                style: TextStyle(color: Colors.red),
-              ),
-            ] : null,
+            children:
+                isRequired
+                    ? [
+                      TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
+                    ]
+                    : null,
           ),
         ),
         SizedBox(height: 8.h),
         Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12.r),
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
           child: TextField(
             controller: controller,
-            obscureText: true,
+            obscureText: obscure,
             style: GoogleFonts.inter(
               fontSize: 14.sp,
               color: const Color(0xFF2A2A2A),
@@ -152,6 +165,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
               filled: true,
               fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  obscure ? Icons.visibility_off : Icons.visibility,
+                  color: const Color(0x992A2A2A),
+                ),
+                onPressed: onToggle,
+              ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(
@@ -165,17 +185,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(
-                  color: Colors.red[300]!,
-                  width: 1.5.w,
-                ),
+                borderSide: BorderSide(color: Colors.red[300]!, width: 1.5.w),
               ),
               focusedErrorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(
-                  color: Colors.red[300]!,
-                  width: 1.5.w,
-                ),
+                borderSide: BorderSide(color: Colors.red[300]!, width: 1.5.w),
               ),
             ),
           ),
@@ -184,11 +198,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           SizedBox(height: 8.h),
           Row(
             children: [
-              Icon(
-                Icons.error_outline,
-                color: Colors.red[300],
-                size: 16.sp,
-              ),
+              Icon(Icons.error_outline, color: Colors.red[300], size: 16.sp),
               SizedBox(width: 6.w),
               Expanded(
                 child: Text(
@@ -252,6 +262,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   controller: _currentPasswordController,
                   hint: 'Enter your current password',
                   error: _currentPasswordError,
+                  obscure: _obscureCurrent,
+                  onToggle:
+                      () => setState(() => _obscureCurrent = !_obscureCurrent),
                 ),
 
                 SizedBox(height: 24.h),
@@ -261,6 +274,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   controller: _newPasswordController,
                   hint: 'Enter new password',
                   error: _newPasswordError,
+                  obscure: _obscureNew,
+                  onToggle: () => setState(() => _obscureNew = !_obscureNew),
                 ),
 
                 SizedBox(height: 24.h),
@@ -269,47 +284,50 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   label: 'Confirm New Password',
                   controller: _confirmPasswordController,
                   hint: 'Confirm new password',
+                  obscure: _obscureConfirm,
+                  onToggle:
+                      () => setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
 
                 SizedBox(height: 32.h),
 
                 _isLoading
                     ? Container(
-                        height: 60.h,
-                        decoration: BoxDecoration(
-                          color: GlobalStyles.primaryColor.withAlpha(180),
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: Center(
-                          child: SizedBox(
-                            width: 24.w,
-                            height: 24.h,
-                            child: const CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          ),
-                        ),
-                      )
-                    : ElevatedButton(
-                        onPressed: _changePassword,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: GlobalStyles.primaryColor,
-                          padding: EdgeInsets.symmetric(vertical: 20.h),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                          minimumSize: Size(double.infinity, 60.h),
-                        ),
-                        child: Text(
-                          'Change Password',
-                          style: GoogleFonts.inter(
+                      height: 60.h,
+                      decoration: BoxDecoration(
+                        color: GlobalStyles.primaryColor.withAlpha(180),
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: Center(
+                        child: SizedBox(
+                          width: 24.w,
+                          height: 24.h,
+                          child: const CircularProgressIndicator(
                             color: Colors.white,
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w600,
+                            strokeWidth: 2.5,
                           ),
                         ),
                       ),
+                    )
+                    : ElevatedButton(
+                      onPressed: _changePassword,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: GlobalStyles.primaryColor,
+                        padding: EdgeInsets.symmetric(vertical: 20.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        minimumSize: Size(double.infinity, 60.h),
+                      ),
+                      child: Text(
+                        'Change Password',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
               ],
             ),
           ),

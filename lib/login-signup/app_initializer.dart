@@ -190,12 +190,17 @@ class AppInitializerState extends State<AppInitializer>
         });
       }
     } catch (e) {
+      // Log the error but do not rethrow so app can continue offline.
       if (mounted) {
         setState(() {
-          _loadingStatus = "Authentication initialization failed";
+          _loadingStatus =
+              "Authentication initialization failed (offline mode)";
         });
       }
-      rethrow;
+      debugPrint('Auth initialize failed, continuing in offline mode: $e');
+      // Intentionally do not rethrow. The app will navigate using the current
+      // value of authProvider.isLoggedIn (likely false) so onboarding or cached
+      // screens can proceed even when network/auth failed.
     }
   }
 

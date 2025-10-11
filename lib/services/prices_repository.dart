@@ -104,6 +104,33 @@ class PricesRepository {
       final repairData = await findThinsmithPart(damagedPart);
       final replaceData = await findBodyPaintPart(damagedPart);
 
+      // compute totals that include installation labor when available
+      double repairInsurance =
+          (repairData?['insurance'] as num?)?.toDouble() ?? 0.0;
+      double replaceSrpInsurance =
+          (replaceData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+      double repairLabor =
+          (repairData?['cost_installation_personal'] as num?)?.toDouble() ??
+          0.0;
+      double replaceLabor =
+          (replaceData?['cost_installation_personal'] as num?)?.toDouble() ??
+          0.0;
+
+      final repairTotalWithLabor =
+          (repairInsurance + replaceSrpInsurance + repairLabor) > 0
+              ? (repairInsurance + replaceSrpInsurance + repairLabor)
+              : null;
+
+      final replaceTotalWithLabor =
+          (replaceSrpInsurance + replaceLabor) > 0
+              ? (replaceSrpInsurance + replaceLabor)
+              : null;
+
+      final combinedTotalWithLabor =
+          (repairTotalWithLabor ?? 0.0) + (replaceTotalWithLabor ?? 0.0) > 0
+              ? ((repairTotalWithLabor ?? 0.0) + (replaceTotalWithLabor ?? 0.0))
+              : null;
+
       return {
         'part_name': damagedPart,
         'repair_data':
@@ -117,6 +144,8 @@ class PricesRepository {
                   'insurance': repairData['insurance'],
                   'srp': repairData['srp'],
                   'id': repairData['id'],
+                  // total including repair insurance + (possible) body-paint srp + labor
+                  'total_with_labor': repairTotalWithLabor,
                   'message': 'Repair pricing available from thinsmith database',
                 }
                 : {
@@ -127,6 +156,7 @@ class PricesRepository {
                   'insurance': null,
                   'srp': null,
                   'id': null,
+                  'total_with_labor': null,
                   'message': 'Repair pricing not found in thinsmith database',
                 },
         'replace_data':
@@ -140,6 +170,8 @@ class PricesRepository {
                   'srp_insurance': replaceData['srp_insurance'],
                   'srp_personal': replaceData['srp_personal'],
                   'id': replaceData['id'],
+                  // total including part/paint srp + labor
+                  'total_with_labor': replaceTotalWithLabor,
                   'message':
                       'Replace pricing available from body-paint database',
                 }
@@ -151,11 +183,13 @@ class PricesRepository {
                   'srp_insurance': null,
                   'srp_personal': null,
                   'id': null,
+                  'total_with_labor': null,
                   'message': 'Replace pricing not found in body-paint database',
                 },
         'has_repair_data': repairData != null,
         'has_replace_data': replaceData != null,
         'overall_success': repairData != null || replaceData != null,
+        'combined_total_with_labor': combinedTotalWithLabor,
       };
     } catch (e) {
       return {

@@ -14,6 +14,7 @@ class SupabaseService {
   static bool _isSigningUp = false;
   static bool _isSigningOut = false;
   static bool _isChangingPassword = false;
+  static bool _isDeletingAccount = false;
 
   // Session timeout configuration
   static const Duration _sessionTimeout = Duration(seconds: 45);
@@ -33,6 +34,114 @@ class SupabaseService {
     }
 
     return null;
+  }
+
+  /// Re-authenticate the current user by verifying their password
+  static Future<Map<String, dynamic>> reauthenticateWithPassword({
+    required String password,
+  }) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null || user.email == null) {
+        return {'success': false, 'message': 'No user signed in'};
+      }
+
+      // Attempt sign-in to verify credentials (will refresh session)
+      await _supabase.auth.signInWithPassword(
+        email: user.email!,
+        password: password,
+      );
+
+      return {'success': true, 'message': 'Re-authenticated'};
+    } catch (e) {
+      if (kDebugMode) {
+        print('Re-authentication error: $e');
+      }
+      final msg = _mapErrorMessage(e.toString(), 'signin');
+      return {'success': false, 'message': msg};
+    }
+  }
+
+  /// Request account deletion via Edge Function or backend API.
+  /// The server-side function should delete all user data and the auth user.
+  static Future<Map<String, dynamic>> requestAccountDeletion({
+    String? reason,
+  }) async {
+    if (_isDeletingAccount) {
+      return {
+        'success': false,
+        'message': 'Account deletion already in progress. Please wait.',
+      };
+    }
+
+    _isDeletingAccount = true;
+
+    try {
+      final session = _supabase.auth.currentSession;
+      final user = _supabase.auth.currentUser;
+      if (session == null || user == null) {
+        return {'success': false, 'message': 'No user signed in'};
+      }
+
+      final accessToken = session.accessToken;
+      if (accessToken.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Session invalid. Please sign in again.',
+        };
+      }
+
+      // Prefer a dedicated "rapid-service" edge function (already used in repo)
+      final uri = Uri.parse(
+        '${SupabaseConfig.supabaseUrl}/functions/v1/rapid-service',
+      );
+
+      final resp = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              // Pass the user's access token so the function can identify the user securely
+              'Authorization': 'Bearer ' + accessToken,
+              // Some setups require the anon key as apikey header
+              'apikey': SupabaseConfig.supabaseAnonKey,
+            },
+            body: jsonEncode({
+              'action': 'delete_account',
+              'reason': reason ?? 'user_requested',
+            }),
+          )
+          .timeout(_sessionTimeout);
+
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        try {
+          final body = jsonDecode(resp.body);
+          final success = body['success'] == true;
+          final message = body['message'] ?? 'Account deletion requested';
+          return {'success': success, 'message': message};
+        } catch (_) {
+          return {'success': true, 'message': 'Account deletion requested'};
+        }
+      } else {
+        String message = 'Server returned ${resp.statusCode}';
+        try {
+          final body = jsonDecode(resp.body);
+          if (body is Map && body['message'] != null) message = body['message'];
+        } catch (_) {}
+        return {'success': false, 'message': message};
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Account deletion request error: $e');
+      }
+      return {
+        'success': false,
+        'message':
+            'Account deletion is not configured. Please contact support.',
+      };
+    } finally {
+      _isDeletingAccount = false;
+    }
   }
 
   static String? validatePassword(String password) {

@@ -231,23 +231,46 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         final repairData = _repairPricingData[damageIndex]!;
         final replacePricingForRepair = _replacePricingData[damageIndex];
 
-        // For repair: thinsmith + body paint
-        double repairCost =
-            (repairData['insurance'] as num?)?.toDouble() ?? 0.0;
-        if (replacePricingForRepair != null) {
-          repairCost +=
-              (replacePricingForRepair['srp_insurance'] as num?)?.toDouble() ??
+        // Prefer repo-provided total_with_labor if present
+        final repoTotal =
+            (repairData['total_with_labor'] as num?)?.toDouble() ??
+            (replacePricingForRepair?['total_with_labor'] as num?)?.toDouble();
+
+        if (repoTotal != null) {
+          total += repoTotal;
+        } else {
+          // For repair: thinsmith + body paint + labor
+          double repairCost =
+              (repairData['insurance'] as num?)?.toDouble() ?? 0.0;
+          if (replacePricingForRepair != null) {
+            repairCost +=
+                (replacePricingForRepair['srp_insurance'] as num?)
+                    ?.toDouble() ??
+                0.0;
+          }
+          double labor =
+              (repairData['cost_installation_personal'] as num?)?.toDouble() ??
+              (replacePricingForRepair?['cost_installation_personal'] as num?)
+                  ?.toDouble() ??
               0.0;
+          total += repairCost + labor;
         }
-        total += repairCost;
       } else if (selectedOption == 'replace' &&
           _replacePricingData[damageIndex] != null) {
         final replaceData = _replacePricingData[damageIndex]!;
-
-        // For replace: body-paint data only
-        double replaceCost =
-            (replaceData['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-        total += replaceCost;
+        final repoTotalReplace =
+            (replaceData['total_with_labor'] as num?)?.toDouble();
+        if (repoTotalReplace != null) {
+          total += repoTotalReplace;
+        } else {
+          // For replace: body-paint data only + labor
+          double replaceCost =
+              (replaceData['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+          double laborReplace =
+              (replaceData['cost_installation_personal'] as num?)?.toDouble() ??
+              0.0;
+          total += replaceCost + laborReplace;
+        }
       }
     });
 
@@ -821,13 +844,20 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               firstDate: DateTime.now().subtract(const Duration(days: 365)),
               lastDate: DateTime.now(),
               builder: (context, child) {
+                // Use a light themed date picker for a brighter calendar design
                 return Theme(
                   data: Theme.of(context).copyWith(
-                    colorScheme: ColorScheme.dark(
+                    colorScheme: ColorScheme.light(
                       primary: GlobalStyles.primaryColor,
                       onPrimary: Colors.white,
-                      surface: Colors.grey[800]!,
-                      onSurface: Colors.white,
+                      surface: Colors.white,
+                      onSurface: const Color(0xFF2A2A2A),
+                    ),
+                    dialogBackgroundColor: Colors.white,
+                    textButtonTheme: TextButtonThemeData(
+                      style: TextButton.styleFrom(
+                        foregroundColor: GlobalStyles.primaryColor,
+                      ),
                     ),
                   ),
                   child: child!,
@@ -2203,9 +2233,9 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   Future<void> _pickDocument(String category) async {
     try {
-      // Request storage permission
-      final status = await Permission.storage.request();
-      if (!status.isGranted) {
+      // Ensure we have storage permission before launching file picker.
+      final hasPerm = await _ensureStoragePermission();
+      if (!hasPerm) {
         _showErrorMessage('Storage permission is required to upload documents');
         return;
       }
@@ -2228,6 +2258,67 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       }
     } catch (e) {
       _showErrorMessage('Error picking document: $e');
+    }
+  }
+
+  /// Ensures storage permission is granted. Handles Android's MANAGE_EXTERNAL_STORAGE
+  /// where applicable. Returns true if permission is available, false otherwise.
+  Future<bool> _ensureStoragePermission() async {
+    try {
+      // On Android, newer versions may require MANAGE_EXTERNAL_STORAGE for broad access.
+      if (Platform.isAndroid) {
+        // First try the normal storage permission
+        final status = await Permission.storage.status;
+        if (status.isGranted) return true;
+
+        // If Android 11+ and storage not granted, try manage external storage
+        final manageStatus = await Permission.manageExternalStorage.status;
+        if (manageStatus.isGranted) return true;
+
+        // Request storage first
+        final requested = await Permission.storage.request();
+        if (requested.isGranted) return true;
+
+        // If still not granted, request manage external storage permission
+        final manageRequested =
+            await Permission.manageExternalStorage.request();
+        if (manageRequested.isGranted) return true;
+
+        // If permanently denied or restricted, prompt user to open app settings
+        if (requested.isPermanentlyDenied ||
+            manageRequested.isPermanentlyDenied) {
+          final open = await showDialog<bool?>(
+            context: context,
+            builder:
+                (context) => AlertDialog(
+                  title: const Text('Storage permission required'),
+                  content: const Text(
+                    'Storage permission is required to upload documents. Open app settings to allow it.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('Open settings'),
+                    ),
+                  ],
+                ),
+          );
+          if (open == true) await openAppSettings();
+          return false;
+        }
+
+        return false;
+      } else {
+        // On non-Android platforms, storage permission is not required the same way.
+        return true;
+      }
+    } catch (e) {
+      // On error, be conservative and return false so callers can show message.
+      return false;
     }
   }
 
