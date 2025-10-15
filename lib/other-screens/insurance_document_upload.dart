@@ -62,7 +62,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   final List<Map<String, String>> _manualDamages = [];
   bool _showAddDamageForm = false;
   String? _newDamagePart;
-  String? _newDamageType;
   String _newSelectedOption = 'repair';
 
   // Car parts and damage types for dropdowns
@@ -90,14 +89,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     "Windshield",
   ];
 
-  final List<String> _carDamageTypes = [
-    "Crack",
-    "Dent",
-    "Shattered Glass",
-    "Broken Lamp",
-    "Scratch / Paint Wear",
-    "Flat Tire",
-  ];
+  // Note: Manual entry does not capture a specific damage type at this time.
 
   // Document categories and their uploaded files
   Map<String, List<File>> uploadedDocuments = {
@@ -1437,7 +1429,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
                         // reset form
                         _newDamagePart = null;
-                        _newDamageType = null;
                         _newSelectedOption = 'repair';
                         _showAddDamageForm = false;
                       });
@@ -1490,14 +1481,12 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               ),
               IconButton(
                 onPressed: () {
-                  setState(() {
-                    // convert globalIndex back to manual list index
-                    final manualIdx =
-                        globalIndex < 0 ? -globalIndex - 1 : globalIndex;
-                    if (manualIdx >= 0 && manualIdx < _manualDamages.length) {
-                      _manualDamages.removeAt(manualIdx);
-                    }
-                  });
+                  // convert globalIndex back to manual list index
+                  final manualIdx =
+                      globalIndex < 0 ? -globalIndex - 1 : globalIndex;
+                  if (manualIdx >= 0 && manualIdx < _manualDamages.length) {
+                    _removeManualDamageAt(manualIdx);
+                  }
                 },
                 icon: Icon(
                   Icons.remove_circle_rounded,
@@ -1543,6 +1532,74 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         ],
       ),
     );
+  }
+
+  // Removes a manual damage at the given list index and keeps internal maps in sync.
+  void _removeManualDamageAt(int manualIdx) {
+    // Compute the negative key used for this manual damage before removal
+    final int removedKey = -(manualIdx + 1);
+
+    setState(() {
+      // Remove from the manual damages list (affects UI ordering/indices)
+      _manualDamages.removeAt(manualIdx);
+
+      // Clean up selection and pricing entries for the removed key
+      _selectedRepairOptions.remove(removedKey);
+      _repairPricingData.remove(removedKey);
+      _replacePricingData.remove(removedKey);
+      _isLoadingPricing.remove(removedKey);
+
+      // Shift keys for remaining manual items that were after the removed one
+      // For keys less than removedKey (e.g., -4 when removed is -3), add +1 to move them closer to 0
+      Map<int, String> newSelected = {};
+      _selectedRepairOptions.forEach((k, v) {
+        if (k < 0 && k < removedKey) {
+          newSelected[k + 1] = v; // shift
+        } else {
+          newSelected[k] = v; // keep
+        }
+      });
+      _selectedRepairOptions = newSelected;
+
+      Map<int, Map<String, dynamic>?> newRepairPricing = {};
+      _repairPricingData.forEach((k, v) {
+        if (k < 0 && k < removedKey) {
+          newRepairPricing[k + 1] = v;
+        } else {
+          newRepairPricing[k] = v;
+        }
+      });
+      _repairPricingData
+        ..clear()
+        ..addAll(newRepairPricing);
+
+      Map<int, Map<String, dynamic>?> newReplacePricing = {};
+      _replacePricingData.forEach((k, v) {
+        if (k < 0 && k < removedKey) {
+          newReplacePricing[k + 1] = v;
+        } else {
+          newReplacePricing[k] = v;
+        }
+      });
+      _replacePricingData
+        ..clear()
+        ..addAll(newReplacePricing);
+
+      Map<int, bool> newLoading = {};
+      _isLoadingPricing.forEach((k, v) {
+        if (k < 0 && k < removedKey) {
+          newLoading[k + 1] = v;
+        } else {
+          newLoading[k] = v;
+        }
+      });
+      _isLoadingPricing
+        ..clear()
+        ..addAll(newLoading);
+    });
+
+    // Recalculate estimated cost after removal & reindexing
+    _calculateEstimatedDamageCost();
   }
 
   Widget _buildDamageRepairOption(int index, Map<String, dynamic> damage) {
@@ -2697,7 +2754,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       barrierDismissible: false,
       builder:
           (context) => AlertDialog(
-            backgroundColor: Colors.grey[900],
+            backgroundColor: Colors.white,
             title: Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.green, size: 24.sp),
@@ -2705,7 +2762,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 Text(
                   'Claim Submitted',
                   style: GoogleFonts.inter(
-                    color: Colors.white,
+                    color: Color(0xFF2A2A2A),
                     fontSize: 18.sp,
                   ),
                 ),
@@ -2718,7 +2775,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 Text(
                   'Your insurance claim has been submitted successfully.',
                   style: GoogleFonts.inter(
-                    color: Colors.white70,
+                    color: Color(0x992A2A2A),
                     fontSize: 14.sp,
                   ),
                 ),
@@ -2747,7 +2804,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                           style: GoogleFonts.inter(
                             color: Colors.green,
                             fontSize: 14.sp,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -2758,7 +2815,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 Text(
                   'You will receive a confirmation email shortly.',
                   style: GoogleFonts.inter(
-                    color: Colors.white70,
+                    color: Color(0x992A2A2A),
                     fontSize: 12.sp,
                   ),
                 ),

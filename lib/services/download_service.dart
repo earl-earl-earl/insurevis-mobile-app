@@ -136,6 +136,62 @@ class DownloadService {
     }
   }
 
+  /// Downloads a file specifically for in-app viewing and saves it to an
+  /// app-accessible directory (cache/documents). This avoids using public
+  /// Downloads/MediaStore paths which are not directly readable by the viewer
+  /// and can cause EACCES or content:// issues.
+  Future<String> downloadForViewing({
+    required String url,
+    required String fileName,
+    ProgressCallback? onProgress,
+    CancelToken? cancelToken,
+  }) async {
+    final safeName = _sanitize(fileName);
+
+    // Prefer temporary/cache directory for transient viewer files
+    Directory targetDir;
+    try {
+      targetDir = await getTemporaryDirectory();
+    } catch (_) {
+      targetDir = await getApplicationDocumentsDirectory();
+    }
+    final targetPath = p.join(targetDir.path, safeName);
+
+    try {
+      // Stream bytes to memory (allows progress), then write to a file
+      final resp = await _dio.get<List<int>>(
+        url,
+        options: Options(
+          responseType: ResponseType.bytes,
+          followRedirects: true,
+        ),
+        cancelToken: cancelToken,
+        onReceiveProgress: onProgress,
+      );
+      final bytes = Uint8List.fromList(resp.data ?? []);
+      final file = File(targetPath);
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } on DioException catch (e) {
+      // If auth-protected, retry with manual bytes fetch
+      if (e.response?.statusCode == 403 || e.response?.statusCode == 401) {
+        final bytes = await _fetchBytes(url, cancelToken: cancelToken);
+        final file = File(targetPath);
+        await file.writeAsBytes(bytes, flush: true);
+        return file.path;
+      }
+      rethrow;
+    } catch (_) {
+      // Last resort: fall back to documents dir
+      final docsDir = await getApplicationDocumentsDirectory();
+      final fallbackPath = p.join(docsDir.path, safeName);
+      final bytes = await _fetchBytes(url, cancelToken: cancelToken);
+      final file = File(fallbackPath);
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    }
+  }
+
   String _inferMimeType(String filename) {
     final ext = p.extension(filename).toLowerCase();
     switch (ext) {

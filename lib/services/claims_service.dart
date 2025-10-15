@@ -1,7 +1,7 @@
 // Claims Service for InsureVis
 // Handles CRUD operations for claims with mandatory document references
 
-import 'dart:convert';
+// import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/insurevis_models.dart';
 
@@ -37,8 +37,8 @@ class ClaimsService {
         'vehicle_plate_number': vehiclePlateNumber,
         'estimated_damage_cost': estimatedDamageCost,
         // store damages payload (JSON) if provided
-        if (damages != null) 'detected_damages': jsonEncode(damages),
-        'status': 'draft',
+        // if (damages != null) 'detected_damages': jsonEncode(damages),
+        // 'status': 'draft',
       };
 
       final response =

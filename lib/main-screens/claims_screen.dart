@@ -1113,7 +1113,7 @@ class _ClaimDetailsSheetState extends State<_ClaimDetailsSheet> {
 
     try {
       await _downloader.ensurePermissions();
-      final savedPath = await _downloader.downloadToDevice(
+      final savedPath = await _downloader.downloadForViewing(
         url: url,
         fileName: doc.fileName,
         onProgress: (received, total) {
@@ -1164,7 +1164,7 @@ class _ClaimDetailsSheetState extends State<_ClaimDetailsSheet> {
           doc.fileName.toLowerCase().endsWith('.pdf')
               ? doc.fileName
               : p.setExtension(doc.fileName, '.pdf');
-      final savedPath = await _downloader.downloadToDevice(
+      final savedPath = await _downloader.downloadForViewing(
         url: url,
         fileName: fileName,
         onProgress: (received, total) {
@@ -1883,7 +1883,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
 
     try {
       await _downloader.ensurePermissions();
-      final savedPath = await _downloader.downloadToDevice(
+      final savedPath = await _downloader.downloadForViewing(
         url: url,
         fileName: doc.fileName,
         onProgress: (received, total) {
@@ -1938,7 +1938,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
           doc.fileName.toLowerCase().endsWith('.pdf')
               ? doc.fileName
               : '${doc.fileName}.pdf';
-      final savedPath = await _downloader.downloadToDevice(
+      final savedPath = await _downloader.downloadForViewing(
         url: url,
         fileName: fileName,
         onProgress: (received, total) {
