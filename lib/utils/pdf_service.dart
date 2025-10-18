@@ -381,6 +381,7 @@ class PDFService {
           pw.SizedBox(height: 10),
           ...damages.map((damage) {
             String damageType = 'Unknown';
+            String damagePart = '';
             String severity = '';
             if (damage is Map<String, dynamic>) {
               damageType =
@@ -389,6 +390,7 @@ class PDFService {
                   damage['damaged_part']?.toString() ??
                   'Unknown';
               severity = damage['severity']?.toString() ?? '';
+              damagePart = damage['damaged_part']?.toString() ?? '';
             } else if (damage is String) {
               damageType = damage;
             }
@@ -402,9 +404,22 @@ class PDFService {
               child: pw.Row(
                 children: [
                   pw.Expanded(
-                    child: pw.Text(
-                      _capitalizeFirst(damageType),
-                      style: const pw.TextStyle(fontSize: 12),
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          damageType,
+                          style: const pw.TextStyle(fontSize: 12),
+                        ),
+                        pw.Text(
+                          damagePart,
+                          style: pw.TextStyle(
+                            fontSize: 12,
+                            fontStyle: pw.FontStyle.italic,
+                            color: PdfColors.grey600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   if (severity.isNotEmpty)
