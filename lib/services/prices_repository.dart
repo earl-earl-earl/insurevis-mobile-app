@@ -133,33 +133,8 @@ class PricesRepository {
 
       return {
         'part_name': damagedPart,
+        // Swapped: repair_data now reports from body-paint (replaceData)
         'repair_data':
-            repairData != null
-                ? {
-                  'success': true,
-                  'source': 'thinsmith',
-                  'part_name': repairData['part_name'],
-                  'cost_installation_personal':
-                      repairData['cost_installation_personal'],
-                  'insurance': repairData['insurance'],
-                  'srp': repairData['srp'],
-                  'id': repairData['id'],
-                  // total including repair insurance + (possible) body-paint srp + labor
-                  'total_with_labor': repairTotalWithLabor,
-                  'message': 'Repair pricing available from thinsmith database',
-                }
-                : {
-                  'success': false,
-                  'source': 'thinsmith',
-                  'part_name': damagedPart,
-                  'cost_installation_personal': null,
-                  'insurance': null,
-                  'srp': null,
-                  'id': null,
-                  'total_with_labor': null,
-                  'message': 'Repair pricing not found in thinsmith database',
-                },
-        'replace_data':
             replaceData != null
                 ? {
                   'success': true,
@@ -170,10 +145,10 @@ class PricesRepository {
                   'srp_insurance': replaceData['srp_insurance'],
                   'srp_personal': replaceData['srp_personal'],
                   'id': replaceData['id'],
-                  // total including part/paint srp + labor
+                  // total including part/paint srp + labor (previously replace total)
                   'total_with_labor': replaceTotalWithLabor,
                   'message':
-                      'Replace pricing available from body-paint database',
+                      'Repair pricing available from body-paint database',
                 }
                 : {
                   'success': false,
@@ -184,28 +159,46 @@ class PricesRepository {
                   'srp_personal': null,
                   'id': null,
                   'total_with_labor': null,
-                  'message': 'Replace pricing not found in body-paint database',
+                  'message': 'Repair pricing not found in body-paint database',
                 },
-        'has_repair_data': repairData != null,
-        'has_replace_data': replaceData != null,
+        // Swapped: replace_data now reports from thinsmith (repairData)
+        'replace_data':
+            repairData != null
+                ? {
+                  'success': true,
+                  'source': 'thinsmith',
+                  'part_name': repairData['part_name'],
+                  'cost_installation_personal':
+                      repairData['cost_installation_personal'],
+                  'insurance': repairData['insurance'],
+                  'srp': repairData['srp'],
+                  'id': repairData['id'],
+                  // total including repair insurance + (possible) body-paint srp + labor (previously repair total)
+                  'total_with_labor': repairTotalWithLabor,
+                  'message':
+                      'Replace pricing available from thinsmith database',
+                }
+                : {
+                  'success': false,
+                  'source': 'thinsmith',
+                  'part_name': damagedPart,
+                  'cost_installation_personal': null,
+                  'insurance': null,
+                  'srp': null,
+                  'id': null,
+                  'total_with_labor': null,
+                  'message': 'Replace pricing not found in thinsmith database',
+                },
+        'has_repair_data': replaceData != null,
+        'has_replace_data': repairData != null,
         'overall_success': repairData != null || replaceData != null,
         'combined_total_with_labor': combinedTotalWithLabor,
       };
     } catch (e) {
       return {
         'part_name': damagedPart,
+        // Swapped error sources/messages to match the new mapping
         'repair_data': {
-          'success': false,
-          'source': 'thinsmith',
-          'part_name': damagedPart,
-          'cost_installation_personal': null,
-          'insurance': null,
-          'srp': null,
-          'id': null,
-          'message': 'Error occurred while searching thinsmith: $e',
-          'error': e.toString(),
-        },
-        'replace_data': {
           'success': false,
           'source': 'body_paint',
           'part_name': damagedPart,
@@ -214,6 +207,17 @@ class PricesRepository {
           'srp_personal': null,
           'id': null,
           'message': 'Error occurred while searching body-paint: $e',
+          'error': e.toString(),
+        },
+        'replace_data': {
+          'success': false,
+          'source': 'thinsmith',
+          'part_name': damagedPart,
+          'cost_installation_personal': null,
+          'insurance': null,
+          'srp': null,
+          'id': null,
+          'message': 'Error occurred while searching thinsmith: $e',
           'error': e.toString(),
         },
         'has_repair_data': false,

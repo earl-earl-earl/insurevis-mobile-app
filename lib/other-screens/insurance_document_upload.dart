@@ -218,50 +218,47 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     double total = 0.0;
 
     _selectedRepairOptions.forEach((damageIndex, selectedOption) {
-      if (selectedOption == 'repair' &&
-          _repairPricingData[damageIndex] != null) {
-        final repairData = _repairPricingData[damageIndex]!;
-        final replacePricingForRepair = _replacePricingData[damageIndex];
+      if (selectedOption == 'repair') {
+        final repairData = _repairPricingData[damageIndex];
+        if (repairData == null) return;
 
-        // Prefer repo-provided total_with_labor if present
-        final repoTotal =
-            (repairData['total_with_labor'] as num?)?.toDouble() ??
-            (replacePricingForRepair?['total_with_labor'] as num?)?.toDouble();
+        // Prefer comprehensive total
+        final repoTotal = (repairData['total_with_labor'] as num?)?.toDouble();
 
         if (repoTotal != null) {
           total += repoTotal;
         } else {
-          // For repair: thinsmith + body paint + labor
-          double repairCost =
-              (repairData['insurance'] as num?)?.toDouble() ?? 0.0;
-          if (replacePricingForRepair != null) {
-            repairCost +=
-                (replacePricingForRepair['srp_insurance'] as num?)
-                    ?.toDouble() ??
-                0.0;
-          }
+          // For repair: body-paint only + labor
+          double bodyPaint =
+              (repairData['srp_insurance'] as num?)?.toDouble() ?? 0.0;
           double labor =
               (repairData['cost_installation_personal'] as num?)?.toDouble() ??
-              (replacePricingForRepair?['cost_installation_personal'] as num?)
-                  ?.toDouble() ??
               0.0;
-          total += repairCost + labor;
+          total += bodyPaint + labor;
         }
-      } else if (selectedOption == 'replace' &&
-          _replacePricingData[damageIndex] != null) {
-        final replaceData = _replacePricingData[damageIndex]!;
+      } else if (selectedOption == 'replace') {
+        final replacePricing = _replacePricingData[damageIndex];
+        final repairData = _repairPricingData[damageIndex];
+        if (replacePricing == null && repairData == null) return;
+
+        // Prefer comprehensive total
         final repoTotalReplace =
-            (replaceData['total_with_labor'] as num?)?.toDouble();
+            (replacePricing?['total_with_labor'] as num?)?.toDouble() ??
+            (repairData?['total_with_labor'] as num?)?.toDouble();
         if (repoTotalReplace != null) {
           total += repoTotalReplace;
         } else {
-          // For replace: body-paint data only + labor
-          double replaceCost =
-              (replaceData['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-          double laborReplace =
-              (replaceData['cost_installation_personal'] as num?)?.toDouble() ??
+          // For replace: thinsmith + body-paint + labor
+          double thinsmith =
+              (replacePricing?['insurance'] as num?)?.toDouble() ?? 0.0;
+          double bodyPaint =
+              (repairData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+          double labor =
+              (replacePricing?['cost_installation_personal'] as num?)
+                  ?.toDouble() ??
+              (repairData?['cost_installation_personal'] as num?)?.toDouble() ??
               0.0;
-          total += replaceCost + laborReplace;
+          total += thinsmith + bodyPaint + labor;
         }
       }
     });
@@ -2558,16 +2555,16 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             final selectedOption = _selectedRepairOptions[i] ?? 'repair';
 
             // pricing info (may be null)
-            final repairData = _repairPricingData[i];
-            final replaceData = _replacePricingData[i];
+            final bodyPaintPricing = _repairPricingData[i];
+            final thinsmithPricing = _replacePricingData[i];
 
             double? repairInsurance =
-                repairData != null
-                    ? (repairData['insurance'] as num?)?.toDouble()
+                thinsmithPricing != null
+                    ? (thinsmithPricing['insurance'] as num?)?.toDouble()
                     : null;
             double? replaceInsurance =
-                replaceData != null
-                    ? (replaceData['srp_insurance'] as num?)?.toDouble()
+                bodyPaintPricing != null
+                    ? (bodyPaintPricing['srp_insurance'] as num?)?.toDouble()
                     : null;
 
             damagesPayload.add({
@@ -2591,16 +2588,16 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         final damageType = manual['damage_type'] ?? 'Unknown Damage';
         final selectedOption = _selectedRepairOptions[globalIndex] ?? 'repair';
 
-        final repairData = _repairPricingData[globalIndex];
-        final replaceData = _replacePricingData[globalIndex];
+        final bodyPaintPricing = _repairPricingData[globalIndex];
+        final thinsmithPricing = _replacePricingData[globalIndex];
 
         double? repairInsurance =
-            repairData != null
-                ? (repairData['insurance'] as num?)?.toDouble()
+            thinsmithPricing != null
+                ? (thinsmithPricing['insurance'] as num?)?.toDouble()
                 : null;
         double? replaceInsurance =
-            replaceData != null
-                ? (replaceData['srp_insurance'] as num?)?.toDouble()
+            bodyPaintPricing != null
+                ? (bodyPaintPricing['srp_insurance'] as num?)?.toDouble()
                 : null;
 
         damagesPayload.add({

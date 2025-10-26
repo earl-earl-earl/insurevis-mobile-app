@@ -851,7 +851,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                   builder: (context) {
                     final isLoading = _isLoadingPricing[index] ?? false;
                     final repairData = _repairPricingData[index];
-                    final replaceData = _replacePricingData[index];
+                    final replacePricing = _replacePricingData[index];
                     if (isLoading) {
                       return Row(
                         children: [
@@ -873,24 +873,18 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                     }
 
                     if (selectedOption == 'repair') {
-                      // Prefer repository-provided total_with_labor when available
-                      double thinsmith =
-                          (repairData?['insurance'] as num?)?.toDouble() ?? 0.0;
-                      double bodyPaint =
-                          (replaceData?['srp_insurance'] as num?)?.toDouble() ??
+                      // Repair: uses only body-paint data from repairData
+                      final double bodyPaint =
+                          (repairData?['srp_insurance'] as num?)?.toDouble() ??
                           0.0;
-                      double labor =
+                      final double labor =
                           (repairData?['cost_installation_personal'] as num?)
                               ?.toDouble() ??
-                          (replaceData?['cost_installation_personal'] as num?)
-                              ?.toDouble() ??
                           0.0;
+                      // Prefer comprehensive total
                       final repoTotal =
-                          (repairData?['total_with_labor'] as num?)
-                              ?.toDouble() ??
-                          (replaceData?['total_with_labor'] as num?)
-                              ?.toDouble();
-                      if (thinsmith == 0.0 && bodyPaint == 0.0) {
+                          (repairData?['total_with_labor'] as num?)?.toDouble();
+                      if (bodyPaint == 0.0) {
                         return Row(
                           children: [
                             const Icon(
@@ -909,8 +903,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                           ],
                         );
                       }
-                      final total =
-                          repoTotal ?? (thinsmith + bodyPaint + labor);
+                      final total = repoTotal ?? (bodyPaint + labor);
                       return Text(
                         _formatCurrency(total),
                         style: GoogleFonts.inter(
@@ -922,20 +915,26 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                     }
 
                     if (selectedOption == 'replace') {
-                      // Prefer repository total that already includes labor.
-                      final repoTotalReplace =
-                          (replaceData?['total_with_labor'] as num?)
-                              ?.toDouble();
-                      double replacePrice =
-                          (replaceData?['srp_insurance'] as num?)?.toDouble() ??
-                          (replaceData?['srp_personal'] as num?)?.toDouble() ??
+                      // Replace: uses both thinsmith (replacePricing) and body-paint (repairData)
+                      final double thinsmith =
+                          (replacePricing?['insurance'] as num?)?.toDouble() ??
                           0.0;
-                      double laborReplace =
-                          (replaceData?['cost_installation_personal'] as num?)
+                      final double bodyPaint =
+                          (repairData?['srp_insurance'] as num?)?.toDouble() ??
+                          0.0;
+                      final double labor =
+                          (replacePricing?['cost_installation_personal']
+                                  as num?)
+                              ?.toDouble() ??
+                          (repairData?['cost_installation_personal'] as num?)
                               ?.toDouble() ??
                           0.0;
+                      final repoTotalReplace =
+                          (replacePricing?['total_with_labor'] as num?)
+                              ?.toDouble() ??
+                          (repairData?['total_with_labor'] as num?)?.toDouble();
                       final displayedReplace =
-                          repoTotalReplace ?? (replacePrice + laborReplace);
+                          repoTotalReplace ?? (thinsmith + bodyPaint + labor);
                       if (displayedReplace == 0.0) {
                         return Row(
                           children: [
@@ -1289,7 +1288,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               builder: (context) {
                 final isLoading = _isLoadingPricing[globalIndex] ?? false;
                 final repairData = _repairPricingData[globalIndex];
-                final replaceData = _replacePricingData[globalIndex];
+                final replacePricing = _replacePricingData[globalIndex];
                 if (isLoading) {
                   return Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1322,33 +1321,20 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                     ],
                   );
                 }
-                // include installation labor in manual damage estimates as well
-                double repairCost =
-                    (repairData?['insurance'] as num?)?.toDouble() ?? 0.0;
-                double repairAdd =
-                    (replaceData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-                double labor =
-                    (repairData?['cost_installation_personal'] as num?)
-                        ?.toDouble() ??
-                    (replaceData?['cost_installation_personal'] as num?)
-                        ?.toDouble() ??
-                    0.0;
-                final repoTotal =
-                    (repairData?['total_with_labor'] as num?)?.toDouble() ??
-                    (replaceData?['total_with_labor'] as num?)?.toDouble();
-                double totalRepair =
-                    repoTotal ?? (repairCost + repairAdd + labor);
-                final repoTotalReplace =
-                    (replaceData?['total_with_labor'] as num?)?.toDouble();
-                double replacePrice =
-                    (replaceData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-                double replaceLabor =
-                    (replaceData?['cost_installation_personal'] as num?)
-                        ?.toDouble() ??
-                    0.0;
-                final displayedReplacePrice =
-                    repoTotalReplace ?? (replacePrice + replaceLabor);
+                // Manual damage estimates
+                // Repair: body-paint only; Replace: thinsmith + body-paint
+
                 if (selectedOption == 'repair') {
+                  final double bodyPaint =
+                      (repairData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+                  final double labor =
+                      (repairData?['cost_installation_personal'] as num?)
+                          ?.toDouble() ??
+                      0.0;
+                  final repoTotal =
+                      (repairData?['total_with_labor'] as num?)?.toDouble();
+                  double totalRepair = repoTotal ?? (bodyPaint + labor);
+
                   if (totalRepair == 0.0) {
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1391,7 +1377,25 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                     ],
                   );
                 }
+
                 if (selectedOption == 'replace') {
+                  final double thinsmith =
+                      (replacePricing?['insurance'] as num?)?.toDouble() ?? 0.0;
+                  final double bodyPaint =
+                      (repairData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+                  final double labor =
+                      (replacePricing?['cost_installation_personal'] as num?)
+                          ?.toDouble() ??
+                      (repairData?['cost_installation_personal'] as num?)
+                          ?.toDouble() ??
+                      0.0;
+                  final repoTotalReplace =
+                      (replacePricing?['total_with_labor'] as num?)
+                          ?.toDouble() ??
+                      (repairData?['total_with_labor'] as num?)?.toDouble();
+                  final displayedReplacePrice =
+                      repoTotalReplace ?? (thinsmith + bodyPaint + labor);
+
                   if (displayedReplacePrice == 0.0) {
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1434,6 +1438,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                     ],
                   );
                 }
+
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1637,9 +1642,6 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     return 0.0;
   }
 
-  // Sum up the totals from user-selected options across all damages (API + manual).
-  // Prefers repository-provided total_with_labor; otherwise falls back to
-  // part + labor according to the UI logic for each option.
   double _calculateTotalFromPricingData() {
     double total = 0.0;
     for (final entry in _selectedRepairOptions.entries) {
@@ -1649,48 +1651,47 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
 
       if (selectedOption == 'repair') {
         final repairData = _repairPricingData[damageIndex];
-        final replaceData = _replacePricingData[damageIndex];
-        if (repairData == null && replaceData == null) continue;
+        if (repairData == null) continue;
 
-        // Prefer total_with_labor if available from either dataset.
-        final repoTotal =
-            (repairData?['total_with_labor'] as num?)?.toDouble() ??
-            (replaceData?['total_with_labor'] as num?)?.toDouble();
+        // Prefer total_with_labor if available
+        final repoTotal = (repairData['total_with_labor'] as num?)?.toDouble();
         if (repoTotal != null) {
           total += repoTotal;
           continue;
         }
 
-        // Fallback: repair thinsmith + paint (srp_insurance) + labor
-        final double repairInsurance =
-            (repairData?['insurance'] as num?)?.toDouble() ?? 0.0;
+        // Fallback: body-paint only + labor
         final double bodyPaint =
-            (replaceData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+            (repairData['srp_insurance'] as num?)?.toDouble() ?? 0.0;
         final double labor =
-            (repairData?['cost_installation_personal'] as num?)?.toDouble() ??
-            (replaceData?['cost_installation_personal'] as num?)?.toDouble() ??
+            (repairData['cost_installation_personal'] as num?)?.toDouble() ??
             0.0;
-        total += (repairInsurance + bodyPaint + labor);
+        total += (bodyPaint + labor);
       } else if (selectedOption == 'replace') {
-        final replaceData = _replacePricingData[damageIndex];
-        if (replaceData == null) continue;
+        final replacePricing = _replacePricingData[damageIndex];
+        final repairData = _repairPricingData[damageIndex];
+        if (replacePricing == null && repairData == null) continue;
 
         // Prefer canonical total including labor
-        final repoTotal = (replaceData['total_with_labor'] as num?)?.toDouble();
+        final repoTotal =
+            (replacePricing?['total_with_labor'] as num?)?.toDouble() ??
+            (repairData?['total_with_labor'] as num?)?.toDouble();
         if (repoTotal != null) {
           total += repoTotal;
           continue;
         }
 
-        // Fallback: part SRP (insurance or personal) + labor
-        final double partPrice =
-            (replaceData['srp_insurance'] as num?)?.toDouble() ??
-            (replaceData['srp_personal'] as num?)?.toDouble() ??
-            0.0;
+        // Fallback: thinsmith + body-paint + labor
+        final double thinsmith =
+            (replacePricing?['insurance'] as num?)?.toDouble() ?? 0.0;
+        final double bodyPaint =
+            (repairData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
         final double labor =
-            (replaceData['cost_installation_personal'] as num?)?.toDouble() ??
+            (replacePricing?['cost_installation_personal'] as num?)
+                ?.toDouble() ??
+            (repairData?['cost_installation_personal'] as num?)?.toDouble() ??
             0.0;
-        total += (partPrice + labor);
+        total += (thinsmith + bodyPaint + labor);
       }
     }
     return total;

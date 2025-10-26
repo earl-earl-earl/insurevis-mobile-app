@@ -996,40 +996,47 @@ class ResultsScreenState extends State<ResultsScreen> {
 
                         _selectedRepairOptions.forEach((idx, option) {
                           if (option == 'repair') {
-                            final repair = _repairPricingData[idx];
-                            final replace = _replacePricingData[idx];
-                            double thinsmith =
-                                (repair?['insurance'] as num?)?.toDouble() ??
-                                0.0;
-                            double bodyPaint =
-                                (replace?['srp_insurance'] as num?)
+                            // After repository swap: thinsmith is now in replacePricing, body-paint in repairPricing
+
+                            final bodyPaintPricing = _repairPricingData[idx];
+                            final double bodyPaint =
+                                (bodyPaintPricing?['srp_insurance'] as num?)
                                     ?.toDouble() ??
                                 0.0;
-                            // Labor may be provided by either repair or replace payloads
-                            double labor =
-                                (repair?['cost_installation_personal'] as num?)
-                                    ?.toDouble() ??
-                                (replace?['cost_installation_personal'] as num?)
+                            // Labor may be provided by either payload
+                            final double labor =
+                                (bodyPaintPricing?['cost_installation_personal']
+                                        as num?)
                                     ?.toDouble() ??
                                 0.0;
 
-                            final double partTotal =
-                                thinsmith + bodyPaint + labor;
+                            final double partTotal = bodyPaint + labor;
                             if (partTotal > 0) {
                               computedTotal += partTotal;
                               hasComputed = true;
                             }
                           } else if (option == 'replace') {
-                            final replace = _replacePricingData[idx];
-                            double replacePrice =
-                                (replace?['srp_insurance'] as num?)
+                            // Replace now uses body-paint pricing (stored under repairPricing)
+                            final thinsmithPricing = _replacePricingData[idx];
+                            final bodyPaintPricing = _repairPricingData[idx];
+                            final double thinsmith =
+                                (thinsmithPricing?['insurance'] as num?)
                                     ?.toDouble() ??
                                 0.0;
-                            double labor =
-                                (replace?['cost_installation_personal'] as num?)
+                            final double replacePrice =
+                                (bodyPaintPricing?['srp_insurance'] as num?)
                                     ?.toDouble() ??
                                 0.0;
-                            final double partTotal = replacePrice + labor;
+                            final double labor =
+                                (thinsmithPricing?['cost_installation_personal']
+                                        as num?)
+                                    ?.toDouble() ??
+                                (bodyPaintPricing?['cost_installation_personal']
+                                        as num?)
+                                    ?.toDouble() ??
+                                0.0;
+                            final double partTotal =
+                                thinsmith + replacePrice + labor;
                             if (partTotal > 0) {
                               computedTotal += partTotal;
                               hasComputed = true;
@@ -1365,16 +1372,20 @@ class ResultsScreenState extends State<ResultsScreen> {
                 ),
               )
             else if ((selectedOption == 'repair' &&
-                    repairPricing != null &&
-                    _hasValidPricingData(repairPricing, selectedOption)) ||
-                (selectedOption == 'replace' &&
+                    // For repair we validate thinsmith (now in replacePricing)
                     replacePricing != null &&
-                    _hasValidPricingData(replacePricing, selectedOption))) ...[
+                    _hasValidPricingData(replacePricing, selectedOption)) ||
+                (selectedOption == 'replace' &&
+                    // For replace we validate body-paint (now in repairPricing)
+                    repairPricing != null &&
+                    _hasValidPricingData(repairPricing, selectedOption))) ...[
               _buildApiCostBreakdown(
                 selectedOption,
+                // For repair, pass body-paint pricing; for replace, pass thinsmith pricing
                 selectedOption == 'repair' ? repairPricing! : replacePricing!,
                 damage,
-                selectedOption == 'repair' ? replacePricing : null,
+                // For replace, also pass body-paint pricing for the additive component
+                selectedOption == 'replace' ? repairPricing : null,
               ),
             ] else
               Container(
@@ -1486,23 +1497,27 @@ class ResultsScreenState extends State<ResultsScreen> {
     double laborFee = 0.0;
     double finalPrice = 0.0;
     double bodyPaintPrice = 0.0;
+    double thinsmithPrice = 0.0;
 
     if (option == 'replace') {
+      // Replace: apiPricing has thinsmith (replacePricing), bodyPaintPricing has body-paint (repairPricing)
+      thinsmithPrice = (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0;
       laborFee =
-          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
-      finalPrice = (apiPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-    } else {
-      laborFee =
-          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
-      double thinsmithPrice =
-          (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0;
-
+          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ??
+          (bodyPaintPricing?['cost_installation_personal'] as num?)
+              ?.toDouble() ??
+          0.0;
       if (bodyPaintPricing != null) {
         bodyPaintPrice =
             (bodyPaintPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
       }
-
       finalPrice = thinsmithPrice + bodyPaintPrice;
+    } else {
+      // Repair: apiPricing has body-paint (repairPricing)
+      laborFee =
+          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
+      bodyPaintPrice = (apiPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+      finalPrice = bodyPaintPrice;
     }
 
     return Container(
@@ -1528,20 +1543,14 @@ class ResultsScreenState extends State<ResultsScreen> {
           ),
           SizedBox(height: 8.h),
           _buildCostItem('Labor Fee (Installation)', laborFee),
-          if (option == 'repair' && bodyPaintPricing != null) ...[
+          if (option == 'repair') ...[
             SizedBox(height: 8.h),
-            _buildCostItem(
-              'Thinsmith Price',
-              (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0,
-            ),
-            _buildCostItem('Body Paint Price', bodyPaintPrice),
+            _buildCostItem('Paint Price', bodyPaintPrice),
           ] else if (option == 'replace') ...[
             SizedBox(height: 8.h),
-            // For replace, srp_insurance already represents part+paint price
-            _buildCostItem(
-              'Body Paint Price',
-              (apiPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0,
-            ),
+            // For replace, show both thinsmith and body paint
+            _buildCostItem('Part Price', thinsmithPrice),
+            _buildCostItem('Paint Price', bodyPaintPrice),
           ],
           Divider(color: Colors.grey.withValues(alpha: 0.3), height: 20),
           Row(
@@ -1572,7 +1581,7 @@ class ResultsScreenState extends State<ResultsScreen> {
           if (option == 'replace') ...[
             const SizedBox(height: 8),
             Text(
-              'Total includes part price, paint/materials, and installation labor',
+              'Total includes thinsmith work, body paint costs, and installation labor',
               style: GoogleFonts.inter(
                 color: Colors.black.withValues(alpha: 0.7),
                 fontSize: 12,
@@ -1582,7 +1591,7 @@ class ResultsScreenState extends State<ResultsScreen> {
           ] else if (option == 'repair' && bodyPaintPricing != null) ...[
             const SizedBox(height: 8),
             Text(
-              'Total includes thinsmith work, body paint costs, and installation labor',
+              'Total includes part price, paint/materials, and installation labor',
               style: GoogleFonts.inter(
                 color: Colors.black.withValues(alpha: 0.7),
                 fontSize: 12,
