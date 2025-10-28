@@ -1542,7 +1542,7 @@ class ResultsScreenState extends State<ResultsScreen> {
             ],
           ),
           SizedBox(height: 8.h),
-          _buildCostItem('Labor Fee (Installation)', laborFee),
+          _buildCostItem('Labor Fee', laborFee),
           if (option == 'repair') ...[
             SizedBox(height: 8.h),
             _buildCostItem('Paint Price', bodyPaintPrice),
@@ -1581,7 +1581,7 @@ class ResultsScreenState extends State<ResultsScreen> {
           if (option == 'replace') ...[
             const SizedBox(height: 8),
             Text(
-              'Total includes thinsmith work, body paint costs, and installation labor',
+              'Total includes thinsmith work, body paint costs, and labor',
               style: GoogleFonts.inter(
                 color: Colors.black.withValues(alpha: 0.7),
                 fontSize: 12,
@@ -1591,7 +1591,7 @@ class ResultsScreenState extends State<ResultsScreen> {
           ] else if (option == 'repair' && bodyPaintPricing != null) ...[
             const SizedBox(height: 8),
             Text(
-              'Total includes part price, paint/materials, and installation labor',
+              'Total includes part price, paint/materials, and labor',
               style: GoogleFonts.inter(
                 color: Colors.black.withValues(alpha: 0.7),
                 fontSize: 12,
