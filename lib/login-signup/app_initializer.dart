@@ -28,6 +28,9 @@ class AppInitializerState extends State<AppInitializer>
   String _loadingStatus = "Initializing...";
   double _loadingProgress = 0.0;
 
+  // Static flag for notification navigation from terminated state
+  static bool shouldNavigateToNotifications = false;
+
   // List of assets to preload
   final List<String> _imagePaths = [
     'assets/images/app_logo.png',
@@ -212,7 +215,19 @@ class AppInitializerState extends State<AppInitializer>
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainContainer()),
-      );
+      ).then((_) {
+        // After navigation completes, check if we need to navigate to notifications
+        if (AppInitializerState.shouldNavigateToNotifications) {
+          AppInitializerState.shouldNavigateToNotifications =
+              false; // Reset flag
+          // Navigate to notifications after a short delay to ensure UI is ready
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (context.mounted) {
+              Navigator.of(context).pushNamed('/notifications');
+            }
+          });
+        }
+      });
     } else {
       // User is not logged in - go to onboarding screen
       Navigator.pushReplacement(

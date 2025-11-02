@@ -288,6 +288,12 @@ class ResultsScreenState extends State<ResultsScreen> {
     return text[0].toUpperCase() + text.substring(1).toLowerCase();
   }
 
+  // Helper method to capitalize the option name
+  String _capitalizeOption(String option) {
+    if (option.isEmpty) return option;
+    return option[0].toUpperCase() + option.substring(1);
+  }
+
   // Helper method to get appropriate color based on severity level
   Color _getSeverityColor(String severity) {
     final lowerSeverity = severity.toLowerCase();
@@ -1403,7 +1409,7 @@ class ResultsScreenState extends State<ResultsScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'No price for this part yet.',
+                        '${_capitalizeOption(selectedOption)} option is not applicable for $damagedPart',
                         style: GoogleFonts.inter(
                           color: Colors.orange,
                           fontSize: 12,

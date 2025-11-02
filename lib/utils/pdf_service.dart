@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -97,6 +98,63 @@ class PDFService {
       final pdf = pw.Document();
       final responseEntries = apiResponses.entries.toList();
 
+      // Calculate total estimated cost from all responses
+      double totalEstimatedCost = 0.0;
+      bool hasAnySevere = false;
+      for (var entry in responseEntries) {
+        final apiResponse = entry.value;
+        final overallSeverity =
+            apiResponse['overall_severity']?.toString() ?? '';
+        if (overallSeverity.toLowerCase() == 'severe') {
+          hasAnySevere = true;
+        }
+
+        final totalCost = apiResponse['total_cost']?.toString() ?? '';
+        if (totalCost.isNotEmpty && totalCost != 'Not available') {
+          try {
+            var tc = totalCost.trim();
+            // Remove currency symbols and extract numeric value
+            if (tc.startsWith('₱')) {
+              tc = tc.substring(1).trim();
+            } else if (tc.toUpperCase().startsWith('PHP')) {
+              tc = tc.substring(3).trim();
+              if (tc.startsWith(':') ||
+                  tc.startsWith('-') ||
+                  tc.startsWith('.')) {
+                tc = tc.substring(1).trim();
+              }
+            }
+            // Remove commas if present
+            tc = tc.replaceAll(',', '');
+            final parsed = double.tryParse(tc);
+            if (parsed != null) {
+              totalEstimatedCost += parsed;
+            }
+          } catch (e) {
+            print('Error parsing cost: $e');
+          }
+        }
+      }
+
+      // Add summary page at the beginning
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          header: _buildHeader,
+          footer: _buildFooter,
+          build:
+              (pw.Context context) => [
+                _buildSummaryPage(
+                  responseEntries.length,
+                  totalEstimatedCost,
+                  hasAnySevere,
+                ),
+              ],
+        ),
+      );
+
+      // Add individual damage assessment pages
       for (var i = 0; i < responseEntries.length; i++) {
         final entry = responseEntries[i];
         final responseKey = entry.key;
@@ -165,6 +223,177 @@ class PDFService {
       print('Error generating PDF bytes: $e');
       return null;
     }
+  }
+
+  /// Builds a summary page showing the total estimated cost
+  static pw.Widget _buildSummaryPage(
+    int totalAssessments,
+    double totalEstimatedCost,
+    bool hasAnySevere,
+  ) {
+    String formattedTotal;
+    if (hasAnySevere) {
+      formattedTotal = 'To be given by mechanic';
+    } else {
+      // Format with comma separator for thousands
+      final formatter = NumberFormat('#,##0.00', 'en_US');
+      formattedTotal = 'PHP ${formatter.format(totalEstimatedCost)}';
+    }
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.SizedBox(height: 40),
+        pw.Center(
+          child: pw.Text(
+            'Vehicle Damage Assessment Report',
+            style: pw.TextStyle(
+              fontSize: 28,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.blueGrey800,
+            ),
+          ),
+        ),
+        pw.SizedBox(height: 10),
+        pw.Center(
+          child: pw.Text(
+            'Summary',
+            style: pw.TextStyle(
+              fontSize: 20,
+              fontWeight: pw.FontWeight.normal,
+              color: PdfColors.blueGrey600,
+            ),
+          ),
+        ),
+        pw.SizedBox(height: 50),
+        pw.Divider(height: 2, color: PdfColors.blueGrey300),
+        pw.SizedBox(height: 40),
+
+        // Report details
+        pw.Container(
+          padding: const pw.EdgeInsets.all(20),
+          decoration: pw.BoxDecoration(
+            color: PdfColors.blueGrey50,
+            border: pw.Border.all(color: PdfColors.blueGrey200),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Report Date:',
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.blueGrey800,
+                    ),
+                  ),
+                  pw.Text(
+                    DateTime.now().toString().split(' ')[0],
+                    style: const pw.TextStyle(
+                      fontSize: 14,
+                      color: PdfColors.blueGrey800,
+                    ),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 15),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Total Assessments:',
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.blueGrey800,
+                    ),
+                  ),
+                  pw.Text(
+                    '$totalAssessments',
+                    style: const pw.TextStyle(
+                      fontSize: 14,
+                      color: PdfColors.blueGrey800,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        pw.SizedBox(height: 40),
+
+        // Total estimated cost - prominent display
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.all(30),
+          decoration: pw.BoxDecoration(
+            color: hasAnySevere ? PdfColors.red50 : PdfColors.blue50,
+            border: pw.Border.all(
+              color: hasAnySevere ? PdfColors.red200 : PdfColors.blue200,
+              width: 2,
+            ),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+          ),
+          child: pw.Column(
+            children: [
+              pw.Text(
+                'Total Estimated Cost',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.blueGrey700,
+                ),
+              ),
+              pw.SizedBox(height: 15),
+              pw.Text(
+                formattedTotal,
+                style: pw.TextStyle(
+                  fontSize: 36,
+                  fontWeight: pw.FontWeight.bold,
+                  color: hasAnySevere ? PdfColors.red800 : PdfColors.blue800,
+                ),
+              ),
+              if (hasAnySevere) ...[
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  'Severe damage detected - professional assessment required',
+                  style: const pw.TextStyle(
+                    fontSize: 12,
+                    color: PdfColors.red700,
+                  ),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        pw.SizedBox(height: 40),
+        pw.Divider(height: 2, color: PdfColors.blueGrey300),
+        pw.SizedBox(height: 20),
+
+        pw.Text(
+          'Detailed Assessment',
+          style: pw.TextStyle(
+            fontSize: 16,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.blueGrey800,
+          ),
+        ),
+        pw.SizedBox(height: 10),
+        pw.Text(
+          'This report contains $totalAssessments detailed damage assessment(s). '
+          'Each assessment includes information about detected damages, severity levels, '
+          'and individual cost estimates. Please review each section carefully.',
+          style: const pw.TextStyle(fontSize: 12, color: PdfColors.blueGrey600),
+        ),
+      ],
+    );
   }
 
   /// Builds the content for a single page of the PDF report.

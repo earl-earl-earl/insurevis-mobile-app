@@ -38,26 +38,29 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   bool _showAddDamageForm = false;
   String? _newDamagePart;
 
+  // Map to track which damage indices belong to which image path
+  final Map<String, List<int>> _imageToDamageIndices = {};
+
   final List<String> _carParts = [
-    "Back-bumper",
-    "Back-door",
-    "Back-wheel",
-    "Back-window",
-    "Back-windshield",
+    "Back Bumper",
+    "Back Door",
+    "Back Wheel",
+    "Back Window",
+    "Back Windshield",
     "Fender",
-    "Front-bumper",
-    "Front-door",
-    "Front-wheel",
-    "Front-window",
+    "Front Bumper",
+    "Front Door",
+    "Front Wheel",
+    "Front Window",
     "Grille",
     "Headlight",
     "Hood",
-    "License-plate",
+    "License Plate",
     "Mirror",
-    "Quarter-panel",
-    "Rocker-panel",
+    "Quarter Panel",
+    "Rocker Panel",
     "Roof",
-    "Tail-light",
+    "Tail Light",
     "Trunk",
     "Windshield",
   ];
@@ -95,21 +98,39 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     }
   }
 
+  // Helper method to capitalize the option name
+  String _capitalizeOption(String option) {
+    if (option.isEmpty) return option;
+    return option[0].toUpperCase() + option.substring(1);
+  }
+
   void _initializeRepairOptions() {
     List<Map<String, dynamic>> damagesList = [];
     final apiResponses =
         widget.apiResponses ?? <String, Map<String, dynamic>>{};
     if (apiResponses.isNotEmpty) {
-      for (var response in apiResponses.values) {
+      int globalDamageIndex = 0;
+      for (var entry in apiResponses.entries) {
+        final imagePath = entry.key;
+        final response = entry.value;
+
+        List<Map<String, dynamic>> imageDamages = [];
         if (response['damages'] is List) {
-          damagesList.addAll(
-            (response['damages'] as List).cast<Map<String, dynamic>>(),
-          );
+          imageDamages =
+              (response['damages'] as List).cast<Map<String, dynamic>>();
         } else if (response['prediction'] is List) {
-          damagesList.addAll(
-            (response['prediction'] as List).cast<Map<String, dynamic>>(),
-          );
+          imageDamages =
+              (response['prediction'] as List).cast<Map<String, dynamic>>();
         }
+
+        // Track which damage indices belong to this image
+        List<int> damageIndicesForImage = [];
+        for (var damage in imageDamages) {
+          damageIndicesForImage.add(globalDamageIndex);
+          damagesList.add(damage);
+          globalDamageIndex++;
+        }
+        _imageToDamageIndices[imagePath] = damageIndicesForImage;
       }
     }
     // If there are API-detected damages, default each to 'repair' and
@@ -154,9 +175,14 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
           ),
         ),
       ),
-      body: SizedBox(height: double.infinity, child: _buildAssessmentContent()),
-      bottomNavigationBar: SafeArea(
-        minimum: EdgeInsets.all(12.w),
+      body: SafeArea(
+        child: SizedBox(
+          height: double.infinity,
+          child: _buildAssessmentContent(),
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 20.w),
         child: SizedBox(
           height: 60.h,
           child: ElevatedButton.icon(
@@ -460,17 +486,46 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                             ),
                           ),
                         ),
-                      if (response.containsKey('total_cost'))
-                        Text(
-                          _isDamageSevere
-                              ? 'Cost: To be given by the mechanic'
-                              : 'Cost: ${_formatCurrency(_parseToDouble(response['total_cost']))}',
-                          style: GoogleFonts.inter(
-                            fontSize: 14.sp,
-                            color:
-                                _isDamageSevere ? Colors.orange : Colors.green,
-                          ),
-                        ),
+                      // Calculate cost based on user selections and fetched pricing
+                      Builder(
+                        builder: (context) {
+                          if (_isDamageSevere) {
+                            return Text(
+                              'Cost: To be given by the mechanic',
+                              style: GoogleFonts.inter(
+                                fontSize: 14.sp,
+                                color: Colors.orange,
+                              ),
+                            );
+                          }
+
+                          final calculatedCost = _calculateCostForImage(
+                            imagePath,
+                          );
+
+                          // If we have calculated pricing data, use it; otherwise fall back to API response
+                          if (calculatedCost > 0) {
+                            return Text(
+                              'Cost: ${_formatCurrency(calculatedCost)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 14.sp,
+                                color: Colors.green,
+                              ),
+                            );
+                          } else if (response.containsKey('total_cost')) {
+                            // Fallback to API response if pricing not yet loaded
+                            return Text(
+                              'Cost: ${_formatCurrency(_parseToDouble(response['total_cost']))}',
+                              style: GoogleFonts.inter(
+                                fontSize: 14.sp,
+                                color: Colors.green,
+                              ),
+                            );
+                          }
+
+                          return const SizedBox.shrink();
+                        },
+                      ),
                     ],
                   ],
                 ),
@@ -894,7 +949,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                             ),
                             SizedBox(width: 8.w),
                             Text(
-                              'Price unavailable',
+                              '${_capitalizeOption(selectedOption ?? 'repair')} option is not applicable for $damagedPart',
                               style: GoogleFonts.inter(
                                 color: Colors.orange,
                                 fontSize: 13.sp,
@@ -945,7 +1000,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                             ),
                             SizedBox(width: 8.w),
                             Text(
-                              'Price unavailable',
+                              '${_capitalizeOption(selectedOption ?? 'replace')} option is not applicable for $damagedPart',
                               style: GoogleFonts.inter(
                                 color: Colors.orange,
                                 fontSize: 13.sp,
@@ -1697,6 +1752,63 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     return total;
   }
 
+  // Calculate cost for a specific image based on its damages
+  double _calculateCostForImage(String imagePath) {
+    double total = 0.0;
+    final damageIndices = _imageToDamageIndices[imagePath] ?? [];
+
+    for (final damageIndex in damageIndices) {
+      final selectedOption = _selectedRepairOptions[damageIndex];
+      if (selectedOption == null) continue;
+
+      if (selectedOption == 'repair') {
+        final repairData = _repairPricingData[damageIndex];
+        if (repairData == null) continue;
+
+        // Prefer total_with_labor if available
+        final repoTotal = (repairData['total_with_labor'] as num?)?.toDouble();
+        if (repoTotal != null) {
+          total += repoTotal;
+          continue;
+        }
+
+        // Fallback: body-paint only + labor
+        final double bodyPaint =
+            (repairData['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+        final double labor =
+            (repairData['cost_installation_personal'] as num?)?.toDouble() ??
+            0.0;
+        total += (bodyPaint + labor);
+      } else if (selectedOption == 'replace') {
+        final replacePricing = _replacePricingData[damageIndex];
+        final repairData = _repairPricingData[damageIndex];
+        if (replacePricing == null && repairData == null) continue;
+
+        // Prefer canonical total including labor
+        final repoTotal =
+            (replacePricing?['total_with_labor'] as num?)?.toDouble() ??
+            (repairData?['total_with_labor'] as num?)?.toDouble();
+        if (repoTotal != null) {
+          total += repoTotal;
+          continue;
+        }
+
+        // Fallback: thinsmith + body-paint + labor
+        final double thinsmith =
+            (replacePricing?['insurance'] as num?)?.toDouble() ?? 0.0;
+        final double bodyPaint =
+            (repairData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+        final double labor =
+            (replacePricing?['cost_installation_personal'] as num?)
+                ?.toDouble() ??
+            (repairData?['cost_installation_personal'] as num?)?.toDouble() ??
+            0.0;
+        total += (thinsmith + bodyPaint + labor);
+      }
+    }
+    return total;
+  }
+
   Color _getSeverityColor(String severity) {
     final lowerSeverity = severity.toLowerCase();
     if (lowerSeverity.contains('high') || lowerSeverity.contains('severe')) {
@@ -1852,12 +1964,24 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
             }).toList();
 
         if (missingKeys.isNotEmpty) {
-          // If we still have no usable total, fall back to 0.00 so PDF shows a number
-          if (totalToUse <= 0) totalToUse = 0.0;
-          final perMissing = totalToUse / missingKeys.length;
-          final formatted =
-              perMissing > 0 ? _formatCurrency(perMissing) : 'N/A';
+          // Calculate individual cost for each image/entry based on its specific damages
           for (final k in missingKeys) {
+            double costForThisEntry = 0.0;
+
+            // Check if this key corresponds to an actual image path
+            if (_imageToDamageIndices.containsKey(k)) {
+              // Calculate cost based on damages associated with this specific image
+              costForThisEntry = _calculateCostForImage(k);
+            } else if (k == 'manual_report_1') {
+              // For manual damages, calculate the total from pricing data
+              costForThisEntry = _calculateTotalFromPricingData();
+            }
+
+            // Format and assign the calculated cost
+            final formatted =
+                costForThisEntry > 0
+                    ? _formatCurrency(costForThisEntry)
+                    : 'N/A';
             pdfResponses[k]!['total_cost'] = formatted;
           }
         }
@@ -1946,8 +2070,8 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
           treeUri = null;
         }
         if (treeUri != null) {
-          final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final defaultFileName = 'InsureVis_Assessment_Report_$timestamp.pdf';
+          final currentDate = DateTime.now().toString().substring(0, 10);
+          final defaultFileName = 'Damage Assessment ($currentDate).pdf';
           try {
             final newFileUri = await FileWriter.saveFileToTree(
               treeUri,
@@ -1956,15 +2080,17 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
             );
             savedPath = newFileUri;
           } catch (e) {
+            final currentDate = DateTime.now().toString().substring(0, 10);
             savedPath = await PDFService.savePdfBytesWithPicker(
               bytes,
-              'InsureVis_Assessment_Report_${DateTime.now().millisecondsSinceEpoch}.pdf',
+              'Damage Assessment ($currentDate).pdf',
             );
           }
         } else {
+          final currentDate = DateTime.now().toString().substring(0, 10);
           savedPath = await PDFService.savePdfBytesWithPicker(
             bytes,
-            'InsureVis_Assessment_Report_${DateTime.now().millisecondsSinceEpoch}.pdf',
+            'Damage Assessment ($currentDate).pdf',
           );
         }
       }

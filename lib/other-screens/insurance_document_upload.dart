@@ -12,6 +12,7 @@ import 'package:insurevis/services/claims_service.dart';
 import 'package:insurevis/services/documents_service.dart';
 import 'package:insurevis/models/document_model.dart';
 import 'package:insurevis/services/prices_repository.dart';
+import 'package:insurevis/services/car_brands_repository.dart';
 
 class InsuranceDocumentUpload extends StatefulWidget {
   final List<String> imagePaths;
@@ -33,13 +34,25 @@ class InsuranceDocumentUpload extends StatefulWidget {
 class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   final ImagePicker _picker = ImagePicker();
   final DocumentService _documentService = DocumentService();
-  bool _isUploading = false;
 
   // Vehicle information controllers
   final TextEditingController _vehicleMakeController = TextEditingController();
   final TextEditingController _vehicleModelController = TextEditingController();
   final TextEditingController _vehicleYearController = TextEditingController();
   final TextEditingController _plateNumberController = TextEditingController();
+
+  // Car brands and models data from API
+  List<Map<String, dynamic>> _carBrandsData = [];
+  bool _isLoadingBrands = false;
+
+  // Selected values for dropdowns
+  String? _selectedMake;
+  String? _selectedModel;
+  bool _isMakeOthers = false;
+  bool _isModelOthers = false;
+
+  // Available models for selected make
+  List<Map<String, dynamic>> _availableModels = [];
 
   // Incident information controllers
   final TextEditingController _incidentLocationController =
@@ -141,6 +154,114 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     _calculateEstimatedDamageCost();
     _loadDamageAssessmentImages();
     _fetchAllPricingData();
+    _fetchCarBrands();
+  }
+
+  /// Fetches car brands data from the repository (which handles caching)
+  Future<void> _fetchCarBrands() async {
+    setState(() {
+      _isLoadingBrands = true;
+    });
+
+    try {
+      // Ensure repository is initialized (safe to call multiple times)
+      await CarBrandsRepository.instance.init();
+
+      // Get the cached brands data from repository
+      final brandsData = CarBrandsRepository.instance.brands;
+
+      if (mounted) {
+        setState(() {
+          // Sort brands alphabetically by name
+          _carBrandsData = List<Map<String, dynamic>>.from(brandsData);
+          _carBrandsData.sort((a, b) {
+            final nameA = a['name']?.toString() ?? '';
+            final nameB = b['name']?.toString() ?? '';
+            return nameA.compareTo(nameB);
+          });
+
+          _isLoadingBrands = false;
+        });
+        debugPrint(
+          'Loaded ${_carBrandsData.length} car brands from repository',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _carBrandsData = [];
+          _isLoadingBrands = false;
+        });
+      }
+      debugPrint('Error loading car brands from repository: $e');
+    }
+  }
+
+  /// Updates available models when a make is selected
+  void _onMakeSelected(String? make) {
+    setState(() {
+      _selectedMake = make;
+      _isMakeOthers = make == 'Others';
+
+      if (_isMakeOthers) {
+        // Clear make controller when switching to "Others"
+        _vehicleMakeController.clear();
+        _availableModels = [];
+      } else if (make != null) {
+        // Set make controller with selected value
+        _vehicleMakeController.text = make;
+
+        // Find the brand and get its models
+        final brand = _carBrandsData.firstWhere(
+          (b) => b['name'] == make,
+          orElse: () => {'models': []},
+        );
+        _availableModels = List<Map<String, dynamic>>.from(
+          brand['models'] ?? [],
+        );
+
+        // Sort models alphabetically by model_name
+        _availableModels.sort((a, b) {
+          final nameA = a['model_name']?.toString() ?? '';
+          final nameB = b['model_name']?.toString() ?? '';
+          return nameA.compareTo(nameB);
+        });
+      }
+
+      // Reset model and year when make changes
+      _selectedModel = null;
+      _isModelOthers = false;
+      _vehicleModelController.clear();
+      _vehicleYearController.clear();
+    });
+  }
+
+  /// Updates year when a model is selected
+  void _onModelSelected(String? model) {
+    setState(() {
+      _selectedModel = model;
+      _isModelOthers = model == 'Others';
+
+      if (_isModelOthers) {
+        // Clear model and year when switching to "Others"
+        _vehicleModelController.clear();
+        _vehicleYearController.clear();
+      } else if (model != null) {
+        // Set model controller with selected value
+        _vehicleModelController.text = model;
+
+        // Find the model and get its year
+        final modelData = _availableModels.firstWhere(
+          (m) => m['model_name'] == model,
+          orElse: () => {},
+        );
+        if (modelData['year'] != null) {
+          _vehicleYearController.text = modelData['year'].toString();
+        }
+      } else {
+        _vehicleYearController.clear();
+      }
+    });
   }
 
   /// Fetches pricing data for all detected damages when the screen opens
@@ -521,32 +642,15 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           SizedBox(height: 30.h),
 
           // Vehicle Make
-          _buildVehicleInputField(
-            controller: _vehicleMakeController,
-            label: 'Vehicle Make',
-            hint: 'e.g., Toyota, Honda, Ford',
-            icon: Icons.business,
-          ),
+          _buildVehicleMakeDropdown(),
           SizedBox(height: 16.h),
 
           // Vehicle Model
-          _buildVehicleInputField(
-            controller: _vehicleModelController,
-            label: 'Vehicle Model',
-            hint: 'e.g., Camry, Civic, Mustang',
-            icon: Icons.directions_car_filled,
-          ),
+          _buildVehicleModelDropdown(),
           SizedBox(height: 16.h),
 
           // Vehicle Year
-          _buildVehicleInputField(
-            controller: _vehicleYearController,
-            label: 'Vehicle Year',
-            hint: 'e.g., 2020, 2018, 2022',
-            icon: Icons.calendar_today,
-            keyboardType: TextInputType.number,
-            maxLength: 4,
-          ),
+          _buildVehicleYearField(),
           SizedBox(height: 16.h),
 
           // Plate Number
@@ -619,6 +723,427 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
               borderSide: BorderSide(color: Colors.white.withAlpha(76)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: BorderSide(
+                color: GlobalStyles.primaryColor.withAlpha(153),
+                width: 2,
+              ),
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 12.w,
+              vertical: 12.h,
+            ),
+            counterText: '', // Hide character counter
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVehicleMakeDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.business, color: GlobalStyles.primaryColor, size: 16.sp),
+            SizedBox(width: 8.w),
+            Text(
+              'Vehicle Make',
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+                color: const Color(0x992A2A2A),
+              ),
+            ),
+            Text(
+              ' *',
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8.h),
+        if (_isMakeOthers)
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _vehicleMakeController,
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF2A2A2A),
+                    fontSize: 14.sp,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Enter vehicle make',
+                    hintStyle: GoogleFonts.inter(
+                      color: const Color(0x992A2A2A),
+                      fontSize: 14.sp,
+                    ),
+                    filled: true,
+                    fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide(color: Colors.white.withAlpha(76)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide(color: Colors.white.withAlpha(76)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide(
+                        color: GlobalStyles.primaryColor.withAlpha(153),
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 12.h,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              // Button to switch back to dropdown
+              Container(
+                height: 48.h,
+                decoration: BoxDecoration(
+                  color: GlobalStyles.primaryColor,
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _isMakeOthers = false;
+                      _selectedMake = null;
+                      _vehicleMakeController.clear();
+                    });
+                  },
+                  icon: Icon(Icons.list, color: Colors.white, size: 20.sp),
+                  tooltip: 'Switch to dropdown',
+                ),
+              ),
+            ],
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.black12.withAlpha((0.04 * 255).toInt()),
+              borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: Colors.white.withAlpha(76)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedMake,
+                hint: Padding(
+                  padding: EdgeInsets.only(left: 12.w),
+                  child: Text(
+                    _isLoadingBrands ? 'Loading...' : 'Select a make/brand',
+                    style: GoogleFonts.inter(
+                      color: const Color(0x992A2A2A),
+                      fontSize: 14.sp,
+                    ),
+                  ),
+                ),
+                isExpanded: true,
+                icon: Padding(
+                  padding: EdgeInsets.only(right: 12.w),
+                  child: Icon(
+                    Icons.arrow_drop_down,
+                    color: const Color(0x992A2A2A),
+                  ),
+                ),
+                dropdownColor: Colors.white,
+                items: [
+                  ..._carBrandsData.map((brand) {
+                    return DropdownMenuItem<String>(
+                      value: brand['name'],
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 12.w),
+                        child: Text(
+                          brand['name'],
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF2A2A2A),
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  DropdownMenuItem<String>(
+                    value: 'Others',
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 12.w),
+                      child: Text(
+                        'Others',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF2A2A2A),
+                          fontSize: 14.sp,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                onChanged: _isLoadingBrands ? null : _onMakeSelected,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildVehicleModelDropdown() {
+    final bool isDisabled = _selectedMake == null || _isMakeOthers;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.directions_car_filled,
+              color: GlobalStyles.primaryColor,
+              size: 16.sp,
+            ),
+            SizedBox(width: 8.w),
+            Text(
+              'Vehicle Model',
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+                color: const Color(0x992A2A2A),
+              ),
+            ),
+            Text(
+              ' *',
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8.h),
+        if (_isModelOthers)
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _vehicleModelController,
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF2A2A2A),
+                    fontSize: 14.sp,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Enter vehicle model',
+                    hintStyle: GoogleFonts.inter(
+                      color: const Color(0x992A2A2A),
+                      fontSize: 14.sp,
+                    ),
+                    filled: true,
+                    fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide(color: Colors.white.withAlpha(76)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide(color: Colors.white.withAlpha(76)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide(
+                        color: GlobalStyles.primaryColor.withAlpha(153),
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 12.h,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              // Button to switch back to dropdown
+              Container(
+                height: 48.h,
+                decoration: BoxDecoration(
+                  color: GlobalStyles.primaryColor,
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _isModelOthers = false;
+                      _selectedModel = null;
+                      _vehicleModelController.clear();
+                      _vehicleYearController.clear();
+                    });
+                  },
+                  icon: Icon(Icons.list, color: Colors.white, size: 20.sp),
+                  tooltip: 'Switch to dropdown',
+                ),
+              ),
+            ],
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color:
+                  isDisabled
+                      ? Colors.grey.withAlpha(51)
+                      : Colors.black12.withAlpha((0.04 * 255).toInt()),
+              borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: Colors.white.withAlpha(76)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedModel,
+                hint: Padding(
+                  padding: EdgeInsets.only(left: 12.w),
+                  child: Text(
+                    isDisabled ? 'Select a make first' : 'Select a model',
+                    style: GoogleFonts.inter(
+                      color: const Color(0x992A2A2A),
+                      fontSize: 14.sp,
+                    ),
+                  ),
+                ),
+                isExpanded: true,
+                icon: Padding(
+                  padding: EdgeInsets.only(right: 12.w),
+                  child: Icon(
+                    Icons.arrow_drop_down,
+                    color: const Color(0x992A2A2A),
+                  ),
+                ),
+                dropdownColor: Colors.white,
+                items:
+                    isDisabled
+                        ? null
+                        : [
+                          ..._availableModels.map((model) {
+                            return DropdownMenuItem<String>(
+                              value: model['model_name'],
+                              child: Padding(
+                                padding: EdgeInsets.only(left: 12.w),
+                                child: Text(
+                                  model['model_name'],
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFF2A2A2A),
+                                    fontSize: 14.sp,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                          DropdownMenuItem<String>(
+                            value: 'Others',
+                            child: Padding(
+                              padding: EdgeInsets.only(left: 12.w),
+                              child: Text(
+                                'Others',
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFF2A2A2A),
+                                  fontSize: 14.sp,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                onChanged: isDisabled ? null : _onModelSelected,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildVehicleYearField() {
+    final bool isDisabled =
+        (_selectedMake == null || _selectedModel == null) &&
+        !(_isMakeOthers || _isModelOthers);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.calendar_today,
+              color: GlobalStyles.primaryColor,
+              size: 16.sp,
+            ),
+            SizedBox(width: 8.w),
+            Text(
+              'Vehicle Year',
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+                color: const Color(0x992A2A2A),
+              ),
+            ),
+            Text(
+              ' *',
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8.h),
+        TextFormField(
+          controller: _vehicleYearController,
+          enabled: !isDisabled || _isMakeOthers || _isModelOthers,
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          style: GoogleFonts.inter(
+            color: const Color(0xFF2A2A2A),
+            fontSize: 14.sp,
+          ),
+          decoration: InputDecoration(
+            hintText:
+                isDisabled
+                    ? 'Select make and model first'
+                    : 'e.g., 2020, 2018, 2022',
+            hintStyle: GoogleFonts.inter(
+              color: const Color(0x992A2A2A),
+              fontSize: 14.sp,
+            ),
+            filled: true,
+            fillColor:
+                (isDisabled && !(_isMakeOthers || _isModelOthers))
+                    ? Colors.grey.withAlpha(51)
+                    : Colors.black12.withAlpha((0.04 * 255).toInt()),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: BorderSide(
+                color: Colors.black12.withAlpha((0.04 * 255).toInt()),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: BorderSide(
+                color: Colors.black12.withAlpha((0.04 * 255).toInt()),
+              ),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: BorderSide(
+                color: Colors.black12.withAlpha((0.04 * 255).toInt()),
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
@@ -2183,28 +2708,105 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                   borderRadius: BorderRadius.circular(12.r),
                 ),
               ),
-              child:
-                  _isUploading
-                      ? SizedBox(
-                        height: 20.h,
-                        width: 20.w,
-                        child: const CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                      : Text(
-                        'Submit Insurance Claim',
-                        style: GoogleFonts.inter(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+              child: Text(
+                'Submit Insurance Claim',
+                style: GoogleFonts.inter(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  void _showUploadProgressModal() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withAlpha(178),
+      builder:
+          (context) => PopScope(
+            canPop: false,
+            child: Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(24.w),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Progress indicator
+                    SizedBox(
+                      width: 60.w,
+                      height: 60.w,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 4,
+                        color: GlobalStyles.primaryColor,
+                      ),
+                    ),
+                    SizedBox(height: 24.h),
+
+                    // Title
+                    Text(
+                      'Uploading Documents',
+                      style: GoogleFonts.inter(
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF2A2A2A),
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+
+                    // Description
+                    Text(
+                      'Please wait while we upload your documents and process your insurance claim.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        color: const Color(0x992A2A2A),
+                        height: 1.5,
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+
+                    // Info message
+                    Container(
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: GlobalStyles.primaryColor.withAlpha(25),
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: GlobalStyles.primaryColor,
+                            size: 16.sp,
+                          ),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: Text(
+                              'This may take a few moments',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                color: GlobalStyles.primaryColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
     );
   }
 
@@ -2439,14 +3041,17 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   }
 
   Future<void> _submitClaim() async {
-    setState(() {
-      _isUploading = true;
-    });
+    // Show upload progress modal
+    _showUploadProgressModal();
 
     try {
       // Get current user
       final currentUser = SupabaseService.currentUser;
       if (currentUser == null) {
+        // Close upload modal
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
         _showErrorMessage('Please sign in to submit a claim');
         return;
       }
@@ -2665,6 +3270,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       }
 
       if (claim == null) {
+        // Close upload modal
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
         _showErrorMessage('Failed to create claim. Please try again.');
         return;
       }
@@ -2716,6 +3325,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       debugPrint('Total files uploaded: $totalUploaded');
 
       if (!allUploadsSuccessful) {
+        // Close upload modal
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
         _showErrorMessage('Some documents failed to upload. Please try again.');
         return;
       }
@@ -2724,6 +3337,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       final submitSuccess = await ClaimsService.submitClaim(claim.id);
 
       if (!submitSuccess) {
+        // Close upload modal
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
         _showErrorMessage(
           'Claim created but submission failed. Please try again.',
         );
@@ -2731,16 +3348,17 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       }
 
       if (mounted) {
+        // Close upload modal
+        Navigator.of(context, rootNavigator: true).pop();
+        // Show success dialog
         _showSuccessDialog(claimNumber: claim.claimNumber);
       }
     } catch (e) {
       debugPrint('Error submitting claim: $e');
       _showErrorMessage('Error submitting claim: ${e.toString()}');
-    } finally {
+      // Close upload modal on error
       if (mounted) {
-        setState(() {
-          _isUploading = false;
-        });
+        Navigator.of(context, rootNavigator: true).pop();
       }
     }
   }
@@ -2822,7 +3440,8 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop(); // Close dialog
-                  Navigator.of(context).pop(); // Go back to previous screen
+                  // Navigate back to home by popping all screens
+                  Navigator.of(context).popUntil((route) => route.isFirst);
                 },
                 child: Text(
                   'OK',

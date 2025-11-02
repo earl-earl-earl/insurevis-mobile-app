@@ -13,16 +13,19 @@ import 'package:insurevis/other-screens/terms_of_service_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:insurevis/services/user_device_service.dart';
 import 'package:insurevis/config/supabase_config.dart';
 import 'package:insurevis/services/prices_repository.dart';
+import 'package:insurevis/services/car_brands_repository.dart';
 import 'package:insurevis/login-signup/signin.dart';
 import 'package:insurevis/login-signup/signup.dart';
 import 'package:insurevis/login-signup/app_initializer.dart';
 import 'package:insurevis/main-screens/main_container.dart';
 import 'package:insurevis/onboarding/app_onboarding_page.dart';
 import 'package:insurevis/other-screens/camera.dart';
+import 'package:insurevis/other-screens/notification_center.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
 import 'package:insurevis/providers/notification_provider.dart';
 import 'package:insurevis/providers/user_provider.dart';
@@ -82,6 +85,16 @@ void main() async {
     }
   });
 
+  // Initialize car brands cache in background thread
+  Future.microtask(() async {
+    try {
+      await CarBrandsRepository.instance.init();
+    } catch (e, st) {
+      // Don't block app start on car brands init failures
+      debugPrint('CarBrandsRepository init failed: $e\n$st');
+    }
+  });
+
   // Force portrait orientation
   // For Vulkan/OpenGL settings, configure in Android manifest instead
   if (Platform.isAndroid) {
@@ -109,6 +122,10 @@ void main() async {
 
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
+
+  // Global key for navigation
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
@@ -156,25 +173,38 @@ class MainApp extends StatelessWidget {
                     notificationProvider.refreshNotifications();
                   };
 
-                  // When user opens app from notification
+                  // When user opens app from notification (app in background or foreground)
                   FirebaseMsg.onMessageOpenedCallback = (message) {
-                    // Only refresh from database and handle navigation
-                    // Don't show additional local notification
+                    // Refresh from database
                     notificationProvider.refreshNotifications();
 
-                    // TODO: Handle navigation to specific screen based on message data
-                    // You can access message.data here to navigate to specific screens
-                    // For example:
-                    // if (message.data['screen'] == 'claims') {
-                    //   Navigator.of(context).pushNamed('/claims');
-                    // }
+                    // Navigate to notification center using global navigator key
+                    MainApp.navigatorKey.currentState?.pushNamed(
+                      '/notifications',
+                    );
                   };
+
+                  // Handle initial message when app is opened from terminated state
+                  FirebaseMessaging.instance.getInitialMessage().then((
+                    message,
+                  ) {
+                    if (message != null) {
+                      debugPrint(
+                        'App opened from terminated state via notification',
+                      );
+                      notificationProvider.refreshNotifications();
+
+                      // Set a flag to navigate after app initialization completes
+                      AppInitializerState.shouldNavigateToNotifications = true;
+                    }
+                  });
                 } catch (e) {
                   print('Error registering FCM callbacks: $e');
                 }
               });
               return MaterialApp(
                 title: 'InsureVis',
+                navigatorKey: MainApp.navigatorKey,
                 theme: themeProvider.lightTheme,
                 // Keep darkTheme available but force the app to light mode
                 darkTheme: themeProvider.darkTheme,
@@ -186,6 +216,7 @@ class MainApp extends StatelessWidget {
                   '/signup': (context) => const SignUp(),
                   '/app_onboarding': (context) => const AppOnboardingScreen(),
                   '/home': (context) => const MainContainer(),
+                  '/notifications': (context) => const NotificationCenter(),
                   // Claims list screen
                   ClaimsScreen.routeName: (context) => const ClaimsScreen(),
                   // Claim creation / document upload flow - provide empty defaults when navigating by name

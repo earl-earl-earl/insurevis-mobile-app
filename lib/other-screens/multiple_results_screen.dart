@@ -29,7 +29,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   final Map<String, bool> _expandedCards =
       {}; // Track expanded state for each card
   final Map<String, Widget> _cachedImages = {}; // Cache for image widgets
-  bool _isUploading = false;
+
   @override
   void initState() {
     super.initState();
@@ -74,47 +74,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       bottomNavigationBar: null,
       body: SizedBox(
         height: double.infinity,
-        child: SafeArea(
-          child:
-              _isUploading
-                  ? _buildLoadingView()
-                  : _buildResultsViewWithFixedButtons(anyUploading),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoadingView() {
-    final completedCount =
-        _uploadResults.values.where((r) => r != 'uploading').length;
-    final totalCount = widget.imagePaths.length;
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
-            color: GlobalStyles.primaryColor,
-            strokeWidth: 3,
-          ),
-          SizedBox(height: 20.h),
-          Text(
-            'Analyzing images...',
-            style: GoogleFonts.inter(
-              color: const Color(0xFF2A2A2A),
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 10.h),
-          Text(
-            '$completedCount of $totalCount completed',
-            style: GoogleFonts.inter(
-              color: const Color(0x992A2A2A),
-              fontSize: 14.sp,
-            ),
-          ),
-        ],
+        child: SafeArea(child: _buildResultsViewWithFixedButtons(anyUploading)),
       ),
     );
   }
@@ -159,7 +119,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                       ),
                       SizedBox(width: 8.w),
                       Text(
-                        'Analyzing new image(s)...',
+                        'Analyzing image(s)...',
                         style: GoogleFonts.inter(
                           fontSize: 12.sp,
                           color: GlobalStyles.primaryColor,
@@ -330,6 +290,8 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     Map<String, dynamic>? apiResponse,
   ) {
     final bool isUploading = status == 'uploading';
+    final bool isQueued = status == null; // Queued images have no status yet
+    final bool showLoader = isUploading || isQueued;
     Color borderColor = Colors.white.withAlpha(76);
     Widget statusWidget = Container();
     bool canTap = false;
@@ -535,8 +497,8 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
 
     return Stack(
       children: [
-        Opacity(opacity: isUploading ? 0.5 : 1.0, child: cardContent),
-        if (isUploading)
+        Opacity(opacity: showLoader ? 0.5 : 1.0, child: cardContent),
+        if (showLoader)
           Positioned.fill(
             child: IgnorePointer(
               child: Center(
@@ -752,10 +714,6 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   }
 
   Future<void> _uploadAllImages() async {
-    setState(() {
-      _isUploading = true;
-    });
-
     final assessmentProvider = Provider.of<AssessmentProvider>(
       context,
       listen: false,
@@ -793,10 +751,6 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
         });
       }
     }
-
-    setState(() {
-      _isUploading = false;
-    });
   }
 
   Future<Map<String, dynamic>?> _sendImageToAPI(String imagePath) async {

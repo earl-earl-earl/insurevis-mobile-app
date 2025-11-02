@@ -2188,6 +2188,73 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
 
                   SizedBox(height: 16.h),
 
+                  // Notes section
+                  if ((claim.carCompanyApprovalNotes != null &&
+                          claim.carCompanyApprovalNotes!.trim().isNotEmpty) ||
+                      (claim.insuranceCompanyApprovalNotes != null &&
+                          claim.insuranceCompanyApprovalNotes!
+                              .trim()
+                              .isNotEmpty)) ...[
+                    Text(
+                      'Rejection Notes',
+                      style: GoogleFonts.inter(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: Colors.red[200]!, width: 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 18.sp,
+                                color: Colors.red[700],
+                              ),
+                              SizedBox(width: 6.w),
+                              Text(
+                                claim.carCompanyApprovalNotes != null &&
+                                        claim.carCompanyApprovalNotes!
+                                            .trim()
+                                            .isNotEmpty
+                                    ? 'Car Company Rejection'
+                                    : 'Insurance Company Rejection',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.red[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            claim.carCompanyApprovalNotes?.trim().isNotEmpty ==
+                                    true
+                                ? claim.carCompanyApprovalNotes!
+                                : claim.insuranceCompanyApprovalNotes ?? '',
+                            style: GoogleFonts.inter(
+                              fontSize: 14.sp,
+                              color: Colors.grey[700],
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                  ],
+
                   // Documents header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
