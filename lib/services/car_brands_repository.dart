@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Singleton repository that fetches car brands once and keeps them in memory.
 /// Similar to PricesRepository but for car brands/models data.
@@ -16,7 +17,7 @@ class CarBrandsRepository {
   bool _initialized = false;
 
   static const String _apiUrl =
-      'https://insurevis-car-database-api.onrender.com/api/brands';
+      'https://vvnsludqdidnqpbzzgeb.supabase.co/functions/v1/car-database/api/brands';
   static const String _cacheKey = 'car_brands_cache';
   static const String _cacheTimestampKey = 'car_brands_cache_timestamp';
   static const Duration _cacheValidity = Duration(days: 7); // Cache for 7 days
@@ -106,12 +107,41 @@ class CarBrandsRepository {
   Future<void> _fetchFromApi() async {
     try {
       debugPrint('CarBrandsRepository: Fetching car brands from API...');
+      debugPrint('CarBrandsRepository: API URL: $_apiUrl');
+
+      // Get access token for authentication
+      String? accessToken;
+      try {
+        final session = Supabase.instance.client.auth.currentSession;
+        accessToken = session?.accessToken;
+        debugPrint(
+          'CarBrandsRepository: Auth token ${accessToken != null ? "present" : "missing"}',
+        );
+      } catch (_) {
+        accessToken = null;
+        debugPrint('CarBrandsRepository: Could not get auth token');
+      }
+
+      // Build headers with authentication
+      final headers = {
+        'Content-Type': 'application/json',
+        if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+      };
+
+      debugPrint(
+        'CarBrandsRepository: Request headers: ${headers.keys.toList()}',
+      );
+
       final response = await http
-          .get(
-            Uri.parse(_apiUrl),
-            headers: {'Content-Type': 'application/json'},
-          )
+          .get(Uri.parse(_apiUrl), headers: headers)
           .timeout(const Duration(seconds: 15));
+
+      debugPrint(
+        'CarBrandsRepository: Response status: ${response.statusCode}',
+      );
+      debugPrint(
+        'CarBrandsRepository: Response body length: ${response.body.length}',
+      );
 
       if (response.statusCode == 200) {
         // Decode in background thread using compute
@@ -126,12 +156,14 @@ class CarBrandsRepository {
           // Save to cache for future use
           await _saveToCache(_brandsData);
         } else {
-          debugPrint('CarBrandsRepository: API returned empty data');
+          debugPrint(
+            'CarBrandsRepository: API returned empty data or parsing failed',
+          );
           _brandsData = [];
         }
       } else {
         debugPrint(
-          'CarBrandsRepository: Failed to load car brands: ${response.statusCode}',
+          'CarBrandsRepository: Failed to load car brands: ${response.statusCode} ${response.body}',
         );
         // Keep empty list on error
         _brandsData = [];
@@ -165,13 +197,43 @@ class CarBrandsRepository {
   /// Static helper function to parse API response in background isolate.
   static List<Map<String, dynamic>>? _parseApiResponse(String responseBody) {
     try {
+      debugPrint('CarBrandsRepository: Raw response body: $responseBody');
       final data = json.decode(responseBody);
-      if (data['brands'] != null) {
+      debugPrint('CarBrandsRepository: Decoded data type: ${data.runtimeType}');
+      debugPrint(
+        'CarBrandsRepository: Decoded data keys: ${data is Map ? data.keys.toList() : "not a map"}',
+      );
+
+      // Handle different response formats
+      // Try 'brands' key first (old Flask format)
+      if (data is Map && data['brands'] != null) {
+        debugPrint(
+          'CarBrandsRepository: Found brands key with ${data['brands'].length} items',
+        );
         return List<Map<String, dynamic>>.from(data['brands']);
       }
+
+      // Try direct array response (Deno might return array directly)
+      if (data is List) {
+        debugPrint(
+          'CarBrandsRepository: Response is direct array with ${data.length} items',
+        );
+        return List<Map<String, dynamic>>.from(data);
+      }
+
+      // Try 'data' key (common alternative)
+      if (data is Map && data['data'] != null) {
+        debugPrint(
+          'CarBrandsRepository: Found data key with ${data['data'].length} items',
+        );
+        return List<Map<String, dynamic>>.from(data['data']);
+      }
+
+      debugPrint('CarBrandsRepository: No recognized data format found');
       return null;
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('Error parsing API response in background: $e');
+      debugPrint('Stack trace: $st');
       return null;
     }
   }

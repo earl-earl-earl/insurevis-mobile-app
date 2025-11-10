@@ -406,6 +406,23 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     return capitalizedWords.join(' ');
   }
 
+  // Helper method to validate pricing data based on option type
+  bool _hasValidPricingData(
+    Map<String, dynamic> apiPricing,
+    String selectedOption,
+  ) {
+    if (selectedOption == 'replace') {
+      // For replace (body-paint data), check for srp_insurance
+      return apiPricing['srp_insurance'] != null &&
+          (apiPricing['srp_insurance'] as num) > 0;
+    } else {
+      // For repair (thinsmith data), check for insurance and success
+      return apiPricing['success'] == true &&
+          apiPricing['insurance'] != null &&
+          (apiPricing['insurance'] as num) > 0;
+    }
+  }
+
   // Helper to format labels for UI dropdowns (nicer display)
   String _formatLabel(String raw) {
     if (raw.isEmpty) return raw;
@@ -932,7 +949,8 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           ],
         ),
         SizedBox(height: 8.h),
-        if (_isModelOthers)
+        // Show text field if make is "Others" or if model is "Others"
+        if (_isMakeOthers || _isModelOthers)
           Row(
             children: [
               Expanded(
@@ -972,27 +990,29 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                   ),
                 ),
               ),
-              SizedBox(width: 8.w),
-              // Button to switch back to dropdown
-              Container(
-                height: 48.h,
-                decoration: BoxDecoration(
-                  color: GlobalStyles.primaryColor,
-                  borderRadius: BorderRadius.circular(8.r),
+              // Only show the switch button if model is "Others" but make is not "Others"
+              if (_isModelOthers && !_isMakeOthers) ...[
+                SizedBox(width: 8.w),
+                Container(
+                  height: 48.h,
+                  decoration: BoxDecoration(
+                    color: GlobalStyles.primaryColor,
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _isModelOthers = false;
+                        _selectedModel = null;
+                        _vehicleModelController.clear();
+                        _vehicleYearController.clear();
+                      });
+                    },
+                    icon: Icon(Icons.list, color: Colors.white, size: 20.sp),
+                    tooltip: 'Switch to dropdown',
+                  ),
                 ),
-                child: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _isModelOthers = false;
-                      _selectedModel = null;
-                      _vehicleModelController.clear();
-                      _vehicleYearController.clear();
-                    });
-                  },
-                  icon: Icon(Icons.list, color: Colors.white, size: 20.sp),
-                  tooltip: 'Switch to dropdown',
-                ),
-              ),
+              ],
             ],
           )
         else
@@ -2051,6 +2071,63 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               ),
             ],
           ),
+
+          // Add pricing display section for manual damages
+          SizedBox(height: 12.h),
+          if (_isLoadingPricing[globalIndex] == true)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.h),
+                child: const CircularProgressIndicator(
+                  color: GlobalStyles.primaryColor,
+                ),
+              ),
+            )
+          else if ((selectedOption == 'repair' &&
+                  _repairPricingData[globalIndex] != null &&
+                  _hasValidPricingData(
+                    _repairPricingData[globalIndex]!,
+                    selectedOption,
+                  )) ||
+              (selectedOption == 'replace' &&
+                  _replacePricingData[globalIndex] != null &&
+                  _hasValidPricingData(
+                    _replacePricingData[globalIndex]!,
+                    selectedOption,
+                  ))) ...[
+            _buildApiCostBreakdown(
+              selectedOption,
+              selectedOption == 'repair'
+                  ? _repairPricingData[globalIndex]!
+                  : _replacePricingData[globalIndex]!,
+              selectedOption == 'replace'
+                  ? _repairPricingData[globalIndex]
+                  : null,
+            ),
+          ] else
+            Container(
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: Colors.orange.withAlpha(25),
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: Colors.orange.withAlpha(76)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.orange, size: 20.sp),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      '${selectedOption == 'repair' ? 'Repair' : 'Replace'} option is not applicable for ${_formatLabel(damagedPart)}',
+                      style: GoogleFonts.inter(
+                        color: Colors.orange,
+                        fontSize: 12.sp,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -2216,6 +2293,65 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               ),
             ],
           ),
+
+          // Add pricing display section
+          if (selectedOption != 'repair' && selectedOption != 'replace') ...[
+            // No option selected yet - do nothing
+          ] else ...[
+            SizedBox(height: 12.h),
+            if (_isLoadingPricing[index] == true)
+              Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.h),
+                  child: const CircularProgressIndicator(
+                    color: GlobalStyles.primaryColor,
+                  ),
+                ),
+              )
+            else if ((selectedOption == 'repair' &&
+                    _repairPricingData[index] != null &&
+                    _hasValidPricingData(
+                      _repairPricingData[index]!,
+                      selectedOption,
+                    )) ||
+                (selectedOption == 'replace' &&
+                    _replacePricingData[index] != null &&
+                    _hasValidPricingData(
+                      _replacePricingData[index]!,
+                      selectedOption,
+                    ))) ...[
+              _buildApiCostBreakdown(
+                selectedOption,
+                selectedOption == 'repair'
+                    ? _repairPricingData[index]!
+                    : _replacePricingData[index]!,
+                selectedOption == 'replace' ? _repairPricingData[index] : null,
+              ),
+            ] else
+              Container(
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withAlpha(25),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: Colors.orange.withAlpha(76)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.orange, size: 20.sp),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: Text(
+                        '${selectedOption == 'repair' ? 'Repair' : 'Replace'} option is not applicable for ${_formatLabel(damagedPart)}',
+                        style: GoogleFonts.inter(
+                          color: Colors.orange,
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -2324,6 +2460,148 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildApiCostBreakdown(
+    String option,
+    Map<String, dynamic> apiPricing,
+    Map<String, dynamic>?
+    bodyPaintPricing, // Add body-paint pricing for replace
+  ) {
+    double laborFee = 0.0;
+    double finalPrice = 0.0;
+    double bodyPaintPrice = 0.0;
+    double thinsmithPrice = 0.0;
+
+    if (option == 'replace') {
+      // Replace: apiPricing has thinsmith (replacePricing), bodyPaintPricing has body-paint (repairPricing)
+      thinsmithPrice = (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0;
+      laborFee =
+          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ??
+          (bodyPaintPricing?['cost_installation_personal'] as num?)
+              ?.toDouble() ??
+          0.0;
+      if (bodyPaintPricing != null) {
+        bodyPaintPrice =
+            (bodyPaintPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+      }
+      finalPrice = thinsmithPrice + bodyPaintPrice;
+    } else {
+      // Repair: apiPricing has body-paint (repairPricing)
+      laborFee =
+          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
+      bodyPaintPrice = (apiPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+      finalPrice = bodyPaintPrice;
+    }
+
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: GlobalStyles.primaryColor.withAlpha(25),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                '${option.toUpperCase()} PRICING',
+                style: GoogleFonts.inter(
+                  color: GlobalStyles.primaryColor,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          _buildCostItem('Labor Fee', laborFee),
+          if (option == 'repair') ...[
+            SizedBox(height: 8.h),
+            _buildCostItem('Paint Price', bodyPaintPrice),
+          ] else if (option == 'replace') ...[
+            SizedBox(height: 8.h),
+            // For replace, show both thinsmith and body paint
+            _buildCostItem('Part Price', thinsmithPrice),
+            _buildCostItem('Paint Price', bodyPaintPrice),
+          ],
+          Divider(color: Colors.grey.withAlpha(76), height: 20.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Text(
+                  option == 'replace' ? 'TOTAL PRICE' : 'TOTAL REPAIR PRICE',
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Text(
+                // Display total including labor fee
+                _currencyFormat.format(finalPrice + laborFee),
+                style: GoogleFonts.inter(
+                  color: GlobalStyles.primaryColor,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          if (option == 'replace') ...[
+            SizedBox(height: 8.h),
+            Text(
+              'Total includes thinsmith work, body paint costs, and labor',
+              style: GoogleFonts.inter(
+                color: Colors.black.withAlpha(178),
+                fontSize: 12.sp,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ] else if (option == 'repair' && bodyPaintPricing != null) ...[
+            SizedBox(height: 8.h),
+            Text(
+              'Total includes part price, paint/materials, and labor',
+              style: GoogleFonts.inter(
+                color: Colors.black.withAlpha(178),
+                fontSize: 12.sp,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCostItem(String label, double amount) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              color: Colors.black.withAlpha(178),
+              fontSize: 13.sp,
+            ),
+          ),
+          Text(
+            _currencyFormat.format(amount),
+            style: GoogleFonts.inter(
+              color: Colors.black,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

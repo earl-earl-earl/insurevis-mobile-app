@@ -624,7 +624,7 @@ class PDFService {
             child: pw.Row(
               children: [
                 pw.Expanded(
-                  flex: 3,
+                  flex: 4,
                   child: pw.Text(
                     'Damage Type',
                     style: pw.TextStyle(
@@ -635,7 +635,7 @@ class PDFService {
                   ),
                 ),
                 pw.Expanded(
-                  flex: 3,
+                  flex: 4,
                   child: pw.Text(
                     'Damaged Part',
                     style: pw.TextStyle(
@@ -646,19 +646,7 @@ class PDFService {
                   ),
                 ),
                 pw.Expanded(
-                  flex: 2,
-                  child: pw.Text(
-                    'Severity',
-                    style: pw.TextStyle(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.white,
-                    ),
-                    textAlign: pw.TextAlign.center,
-                  ),
-                ),
-                pw.Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: pw.Text(
                     'Cost',
                     style: pw.TextStyle(
@@ -686,7 +674,6 @@ class PDFService {
                   damage['damage_type']?.toString() ??
                   damage['damaged_part']?.toString() ??
                   'Unknown';
-              severity = damage['severity']?.toString() ?? '';
               damagePart = damage['damaged_part']?.toString() ?? '';
 
               // Extract cost for this specific damage
@@ -711,7 +698,7 @@ class PDFService {
                   final parsed = double.tryParse(dc);
                   if (parsed != null) {
                     final formatter = NumberFormat('#,##0.00', 'en_US');
-                    cost = '₱${formatter.format(parsed)}';
+                    cost = 'PHP ${formatter.format(parsed)}';
                   } else {
                     cost = damageCost;
                   }
@@ -737,14 +724,14 @@ class PDFService {
               child: pw.Row(
                 children: [
                   pw.Expanded(
-                    flex: 3,
+                    flex: 4,
                     child: pw.Text(
                       damageType,
                       style: const pw.TextStyle(fontSize: 11),
                     ),
                   ),
                   pw.Expanded(
-                    flex: 3,
+                    flex: 4,
                     child: pw.Text(
                       damagePart,
                       style: pw.TextStyle(
@@ -755,37 +742,7 @@ class PDFService {
                     ),
                   ),
                   pw.Expanded(
-                    flex: 2,
-                    child: pw.Center(
-                      child:
-                          severity.isNotEmpty
-                              ? pw.Container(
-                                padding: const pw.EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: pw.BoxDecoration(
-                                  color: _getSeverityColor(severity),
-                                  borderRadius: const pw.BorderRadius.all(
-                                    pw.Radius.circular(4),
-                                  ),
-                                ),
-                                child: pw.Text(
-                                  _capitalizeFirst(severity),
-                                  style: const pw.TextStyle(
-                                    fontSize: 9,
-                                    color: PdfColors.white,
-                                  ),
-                                ),
-                              )
-                              : pw.Text(
-                                '-',
-                                style: const pw.TextStyle(fontSize: 11),
-                              ),
-                    ),
-                  ),
-                  pw.Expanded(
-                    flex: 2,
+                    flex: 3,
                     child: pw.Text(
                       cost,
                       style: pw.TextStyle(
@@ -818,7 +775,7 @@ class PDFService {
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Text(
-                  'Total for this image:',
+                  isManual ? 'Total for this damage:' : 'Total for this image:',
                   style: pw.TextStyle(
                     fontSize: 13,
                     fontWeight: pw.FontWeight.bold,
@@ -1060,19 +1017,6 @@ class PDFService {
       print('Error saving PDF with file picker: $e');
       print('Falling back to default save location...');
       return await _savePDF(pdf, suggestedFileName);
-    }
-  }
-
-  static PdfColor _getSeverityColor(String severity) {
-    switch (severity.toLowerCase()) {
-      case 'low':
-        return PdfColors.green;
-      case 'medium':
-        return PdfColors.orange;
-      case 'high':
-        return PdfColors.red;
-      default:
-        return PdfColors.grey;
     }
   }
 

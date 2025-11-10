@@ -604,6 +604,40 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildPasswordRequirement(String requirement, bool isMet) {
+    return Padding(
+      padding: EdgeInsets.only(left: 8.w, bottom: 2.h),
+      child: Row(
+        children: [
+          Icon(
+            isMet ? Icons.check_circle : Icons.circle,
+            size: isMet ? 14.sp : 6.sp,
+            color: isMet ? Colors.green : Color(0x992A2A2A),
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              requirement,
+              style: GoogleFonts.inter(
+                color: isMet ? Colors.green : Color(0x992A2A2A),
+                fontSize: 11.sp,
+                fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Password requirement checkers
+  bool _hasMinLength() => _passwordController.text.length >= 8;
+  bool _hasUppercase() => _passwordController.text.contains(RegExp(r'[A-Z]'));
+  bool _hasLowercase() => _passwordController.text.contains(RegExp(r'[a-z]'));
+  bool _hasNumber() => _passwordController.text.contains(RegExp(r'[0-9]'));
+  bool _hasSpecialChar() =>
+      _passwordController.text.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+
   Widget _buildTextFormField({
     required TextEditingController controller,
     required FocusNode focusNode,
@@ -758,7 +792,43 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
             },
           ),
         ),
-        SizedBox(height: 20.h),
+        SizedBox(height: 8.h),
+        // Password Requirements Hint
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Password must contain:",
+                style: GoogleFonts.inter(
+                  color: Color(0x992A2A2A),
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 4.h),
+              _buildPasswordRequirement(
+                "At least 8 characters",
+                _hasMinLength(),
+              ),
+              _buildPasswordRequirement(
+                "One uppercase letter",
+                _hasUppercase(),
+              ),
+              _buildPasswordRequirement(
+                "One lowercase letter",
+                _hasLowercase(),
+              ),
+              _buildPasswordRequirement("One number", _hasNumber()),
+              _buildPasswordRequirement(
+                "One special character (!@#\$%^&*)",
+                _hasSpecialChar(),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 12.h),
 
         _buildInputLabel("Confirm Password ", "*"),
         SizedBox(height: 8.h),
