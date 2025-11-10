@@ -2677,7 +2677,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         _buildDocumentCategory(
           'Pictures of Damage',
           'damage_photos',
-          'Assessment photos are already included. You can add more damage photos if needed.',
+          'Assessment photos are already included. You can add more damage photos or PDF documents if needed.',
         ),
         SizedBox(
           height: 16.h,

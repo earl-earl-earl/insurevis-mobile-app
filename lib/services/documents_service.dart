@@ -332,8 +332,8 @@ class DocumentService {
         }
         break;
       case DocumentType.damagePhotos:
-        if (!format.isImage) {
-          errors.add('Damage photos must be image files');
+        if (!format.isImage && format != DocumentFormat.pdf) {
+          errors.add('Damage photos must be image or PDF files');
         }
         break;
       case DocumentType.ltoOR:
