@@ -2123,7 +2123,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                   _hasValidPricingData(
                     _replacePricingData[globalIndex]!,
                     selectedOption,
-                  ))) ...[
+                  )))
             _buildApiCostBreakdown(
               selectedOption,
               selectedOption == 'repair'
@@ -2132,30 +2132,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               selectedOption == 'replace'
                   ? _repairPricingData[globalIndex]
                   : null,
-            ),
-          ] else
-            Container(
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: Colors.orange.withAlpha(25),
-                borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: Colors.orange.withAlpha(76)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.warning, color: Colors.orange, size: 20.sp),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: Text(
-                      '${selectedOption == 'repair' ? 'Repair' : 'Replace'} option is not applicable for ${_formatLabel(damagedPart)}',
-                      style: GoogleFonts.inter(
-                        color: Colors.orange,
-                        fontSize: 12.sp,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
         ],
       ),
@@ -2348,37 +2324,13 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                     _hasValidPricingData(
                       _replacePricingData[index]!,
                       selectedOption,
-                    ))) ...[
+                    )))
               _buildApiCostBreakdown(
                 selectedOption,
                 selectedOption == 'repair'
                     ? _repairPricingData[index]!
                     : _replacePricingData[index]!,
                 selectedOption == 'replace' ? _repairPricingData[index] : null,
-              ),
-            ] else
-              Container(
-                padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withAlpha(25),
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: Colors.orange.withAlpha(76)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning, color: Colors.orange, size: 20.sp),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: Text(
-                        '${selectedOption == 'repair' ? 'Repair' : 'Replace'} option is not applicable for ${_formatLabel(damagedPart)}',
-                        style: GoogleFonts.inter(
-                          color: Colors.orange,
-                          fontSize: 12.sp,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
           ],
         ],
