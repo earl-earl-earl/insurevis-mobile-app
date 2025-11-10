@@ -1908,8 +1908,96 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       final Map<String, Map<String, dynamic>> pdfResponses = {};
       final apiResponsesForPdf =
           widget.apiResponses ?? <String, Map<String, dynamic>>{};
-      apiResponsesForPdf.forEach((key, value) {
-        pdfResponses[key] = Map<String, dynamic>.from(value);
+
+      // Process API responses and add individual damage costs
+      apiResponsesForPdf.forEach((imagePath, response) {
+        final copiedResponse = Map<String, dynamic>.from(response);
+
+        // Get damage indices for this image
+        final damageIndices = _imageToDamageIndices[imagePath] ?? [];
+
+        // If there are damages, add cost information to each damage
+        if (copiedResponse['damages'] is List) {
+          final damages = copiedResponse['damages'] as List;
+          final updatedDamages = <Map<String, dynamic>>[];
+
+          for (int i = 0; i < damages.length; i++) {
+            final damage =
+                damages[i] is Map<String, dynamic>
+                    ? Map<String, dynamic>.from(
+                      damages[i] as Map<String, dynamic>,
+                    )
+                    : <String, dynamic>{};
+
+            // Get the global damage index for this damage
+            final globalDamageIndex =
+                i < damageIndices.length ? damageIndices[i] : -1;
+
+            if (globalDamageIndex >= 0) {
+              final selectedOption = _selectedRepairOptions[globalDamageIndex];
+
+              // Calculate individual damage cost based on selected option
+              double damageCost = 0.0;
+
+              if (selectedOption == 'repair') {
+                final repairData = _repairPricingData[globalDamageIndex];
+                if (repairData != null) {
+                  final repoTotal =
+                      (repairData['total_with_labor'] as num?)?.toDouble();
+                  if (repoTotal != null) {
+                    damageCost = repoTotal;
+                  } else {
+                    final double bodyPaint =
+                        (repairData['srp_insurance'] as num?)?.toDouble() ??
+                        0.0;
+                    final double labor =
+                        (repairData['cost_installation_personal'] as num?)
+                            ?.toDouble() ??
+                        0.0;
+                    damageCost = bodyPaint + labor;
+                  }
+                }
+              } else if (selectedOption == 'replace') {
+                final replacePricing = _replacePricingData[globalDamageIndex];
+                final repairData = _repairPricingData[globalDamageIndex];
+                if (replacePricing != null || repairData != null) {
+                  final repoTotal =
+                      (replacePricing?['total_with_labor'] as num?)
+                          ?.toDouble() ??
+                      (repairData?['total_with_labor'] as num?)?.toDouble();
+                  if (repoTotal != null) {
+                    damageCost = repoTotal;
+                  } else {
+                    final double thinsmith =
+                        (replacePricing?['insurance'] as num?)?.toDouble() ??
+                        0.0;
+                    final double bodyPaint =
+                        (repairData?['srp_insurance'] as num?)?.toDouble() ??
+                        0.0;
+                    final double labor =
+                        (replacePricing?['cost_installation_personal'] as num?)
+                            ?.toDouble() ??
+                        (repairData?['cost_installation_personal'] as num?)
+                            ?.toDouble() ??
+                        0.0;
+                    damageCost = thinsmith + bodyPaint + labor;
+                  }
+                }
+              }
+
+              // Add cost to damage item
+              if (damageCost > 0.0) {
+                damage['cost'] = _formatCurrency(damageCost);
+              }
+            }
+
+            updatedDamages.add(damage);
+          }
+
+          copiedResponse['damages'] = updatedDamages;
+        }
+
+        pdfResponses[imagePath] = copiedResponse;
       });
 
       // --- FIX: Correctly structure manual damages for the PDF service ---
@@ -1917,11 +2005,66 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         // Since there's no single API response to hold all manual damages,
         // we create one synthetic entry for the whole report.
         List<Map<String, dynamic>> manualDamagesForPdf = [];
-        for (final m in _manualDamages) {
-          manualDamagesForPdf.add({
+        for (int i = 0; i < _manualDamages.length; i++) {
+          final m = _manualDamages[i];
+          final globalIndex = -(i + 1);
+          final selectedOption = _selectedRepairOptions[globalIndex];
+
+          double damageCost = 0.0;
+
+          if (selectedOption == 'repair') {
+            final repairData = _repairPricingData[globalIndex];
+            if (repairData != null) {
+              final repoTotal =
+                  (repairData['total_with_labor'] as num?)?.toDouble();
+              if (repoTotal != null) {
+                damageCost = repoTotal;
+              } else {
+                final double bodyPaint =
+                    (repairData['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+                final double labor =
+                    (repairData['cost_installation_personal'] as num?)
+                        ?.toDouble() ??
+                    0.0;
+                damageCost = bodyPaint + labor;
+              }
+            }
+          } else if (selectedOption == 'replace') {
+            final replacePricing = _replacePricingData[globalIndex];
+            final repairData = _repairPricingData[globalIndex];
+            if (replacePricing != null || repairData != null) {
+              final repoTotal =
+                  (replacePricing?['total_with_labor'] as num?)?.toDouble() ??
+                  (repairData?['total_with_labor'] as num?)?.toDouble();
+              if (repoTotal != null) {
+                damageCost = repoTotal;
+              } else {
+                final double thinsmith =
+                    (replacePricing?['insurance'] as num?)?.toDouble() ?? 0.0;
+                final double bodyPaint =
+                    (repairData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+                final double labor =
+                    (replacePricing?['cost_installation_personal'] as num?)
+                        ?.toDouble() ??
+                    (repairData?['cost_installation_personal'] as num?)
+                        ?.toDouble() ??
+                    0.0;
+                damageCost = thinsmith + bodyPaint + labor;
+              }
+            }
+          }
+
+          final damageMap = <String, dynamic>{
             'type': m['damaged_part'], // Key 'type' is read by the PDF service
+            'damaged_part': m['damaged_part'],
             'severity': '', // No severity for manual damages
-          });
+          };
+
+          if (damageCost > 0.0) {
+            damageMap['cost'] = _formatCurrency(damageCost);
+          }
+
+          manualDamagesForPdf.add(damageMap);
         }
 
         pdfResponses['manual_report_1'] = {

@@ -607,11 +607,79 @@ class PDFService {
               color: PdfColors.blueGrey800,
             ),
           ),
-          pw.SizedBox(height: 10),
-          ...damages.map((damage) {
+          pw.SizedBox(height: 15),
+          // Header row for damage items
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.blueGrey700,
+              borderRadius: const pw.BorderRadius.only(
+                topLeft: pw.Radius.circular(6),
+                topRight: pw.Radius.circular(6),
+              ),
+            ),
+            child: pw.Row(
+              children: [
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Text(
+                    'Damage Type',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.white,
+                    ),
+                  ),
+                ),
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Text(
+                    'Damaged Part',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.white,
+                    ),
+                  ),
+                ),
+                pw.Expanded(
+                  flex: 2,
+                  child: pw.Text(
+                    'Severity',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.white,
+                    ),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                ),
+                pw.Expanded(
+                  flex: 2,
+                  child: pw.Text(
+                    'Cost',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.white,
+                    ),
+                    textAlign: pw.TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...damages.asMap().entries.map((entry) {
+            final index = entry.key;
+            final damage = entry.value;
             String damageType = 'Unknown';
             String damagePart = '';
             String severity = '';
+            String cost = 'N/A';
+
             if (damage is Map<String, dynamic>) {
               damageType =
                   damage['type']?.toString() ??
@@ -620,61 +688,154 @@ class PDFService {
                   'Unknown';
               severity = damage['severity']?.toString() ?? '';
               damagePart = damage['damaged_part']?.toString() ?? '';
+
+              // Extract cost for this specific damage
+              final damageCost =
+                  damage['cost']?.toString() ??
+                  damage['estimated_cost']?.toString() ??
+                  '';
+              if (damageCost.isNotEmpty && damageCost != 'Not available') {
+                try {
+                  var dc = damageCost.trim();
+                  if (dc.startsWith('₱')) {
+                    dc = dc.substring(1).trim();
+                  } else if (dc.toUpperCase().startsWith('PHP')) {
+                    dc = dc.substring(3).trim();
+                    if (dc.startsWith(':') ||
+                        dc.startsWith('-') ||
+                        dc.startsWith('.')) {
+                      dc = dc.substring(1).trim();
+                    }
+                  }
+                  dc = dc.replaceAll(',', '');
+                  final parsed = double.tryParse(dc);
+                  if (parsed != null) {
+                    final formatter = NumberFormat('#,##0.00', 'en_US');
+                    cost = '₱${formatter.format(parsed)}';
+                  } else {
+                    cost = damageCost;
+                  }
+                } catch (e) {
+                  cost = damageCost;
+                }
+              }
             } else if (damage is String) {
               damageType = damage;
             }
+
             return pw.Container(
-              margin: const pw.EdgeInsets.only(bottom: 8),
-              padding: const pw.EdgeInsets.all(12),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               decoration: pw.BoxDecoration(
-                color: PdfColors.grey100,
-                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                color: index % 2 == 0 ? PdfColors.grey100 : PdfColors.white,
+                border: pw.Border(
+                  bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
+                ),
               ),
               child: pw.Row(
                 children: [
                   pw.Expanded(
-                    child: pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text(
-                          damageType,
-                          style: const pw.TextStyle(fontSize: 12),
-                        ),
-                        pw.Text(
-                          damagePart,
-                          style: pw.TextStyle(
-                            fontSize: 12,
-                            fontStyle: pw.FontStyle.italic,
-                            color: PdfColors.grey600,
-                          ),
-                        ),
-                      ],
+                    flex: 3,
+                    child: pw.Text(
+                      damageType,
+                      style: const pw.TextStyle(fontSize: 11),
                     ),
                   ),
-                  if (severity.isNotEmpty)
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: pw.BoxDecoration(
-                        color: _getSeverityColor(severity),
-                        borderRadius: const pw.BorderRadius.all(
-                          pw.Radius.circular(4),
-                        ),
-                      ),
-                      child: pw.Text(
-                        _capitalizeFirst(severity),
-                        style: const pw.TextStyle(
-                          fontSize: 10,
-                          color: PdfColors.white,
-                        ),
+                  pw.Expanded(
+                    flex: 3,
+                    child: pw.Text(
+                      damagePart,
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        fontStyle: pw.FontStyle.italic,
+                        color: PdfColors.grey700,
                       ),
                     ),
+                  ),
+                  pw.Expanded(
+                    flex: 2,
+                    child: pw.Center(
+                      child:
+                          severity.isNotEmpty
+                              ? pw.Container(
+                                padding: const pw.EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: pw.BoxDecoration(
+                                  color: _getSeverityColor(severity),
+                                  borderRadius: const pw.BorderRadius.all(
+                                    pw.Radius.circular(4),
+                                  ),
+                                ),
+                                child: pw.Text(
+                                  _capitalizeFirst(severity),
+                                  style: const pw.TextStyle(
+                                    fontSize: 9,
+                                    color: PdfColors.white,
+                                  ),
+                                ),
+                              )
+                              : pw.Text(
+                                '-',
+                                style: const pw.TextStyle(fontSize: 11),
+                              ),
+                    ),
+                  ),
+                  pw.Expanded(
+                    flex: 2,
+                    child: pw.Text(
+                      cost,
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blueGrey800,
+                      ),
+                      textAlign: pw.TextAlign.right,
+                    ),
+                  ),
                 ],
               ),
             );
           }).toList(),
+          // Total row for this image
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.blueGrey100,
+              borderRadius: const pw.BorderRadius.only(
+                bottomLeft: pw.Radius.circular(6),
+                bottomRight: pw.Radius.circular(6),
+              ),
+              border: pw.Border.all(color: PdfColors.blueGrey300, width: 1),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'Total for this image:',
+                  style: pw.TextStyle(
+                    fontSize: 13,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.blueGrey800,
+                  ),
+                ),
+                pw.Text(
+                  formattedCost,
+                  style: pw.TextStyle(
+                    fontSize: 13,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.blueGrey900,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ],
     );

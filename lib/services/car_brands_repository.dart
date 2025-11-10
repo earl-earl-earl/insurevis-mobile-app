@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Singleton repository that fetches car brands once and keeps them in memory.
 /// Similar to PricesRepository but for car brands/models data.
+/// Now with background threading and local caching support.
 class CarBrandsRepository {
   CarBrandsRepository._privateConstructor();
 
@@ -15,15 +17,93 @@ class CarBrandsRepository {
 
   static const String _apiUrl =
       'https://insurevis-car-database-api.onrender.com/api/brands';
+  static const String _cacheKey = 'car_brands_cache';
+  static const String _cacheTimestampKey = 'car_brands_cache_timestamp';
+  static const Duration _cacheValidity = Duration(days: 7); // Cache for 7 days
 
   bool get isInitialized => _initialized;
   List<Map<String, dynamic>> get brands => _brandsData;
 
   /// Initialize the repository by fetching car brands data.
   /// Safe to call multiple times - will skip if already initialized.
+  /// First tries to load from cache, then fetches from API if cache is invalid/missing.
   Future<void> init() async {
     if (_initialized) return;
 
+    try {
+      // Try to load from cache first
+      final cachedData = await _loadFromCache();
+      if (cachedData != null) {
+        _brandsData = cachedData;
+        debugPrint(
+          'CarBrandsRepository: Loaded ${_brandsData.length} car brands from cache',
+        );
+        _initialized = true;
+        return;
+      }
+
+      // Cache miss or expired - fetch from API
+      await _fetchFromApi();
+    } catch (e, st) {
+      debugPrint('CarBrandsRepository: Error during initialization: $e');
+      debugPrint('Stack trace: $st');
+      // Keep empty list on error
+      _brandsData = [];
+    }
+
+    _initialized = true;
+  }
+
+  /// Load brands data from shared preferences cache.
+  /// Returns null if cache is invalid, expired, or doesn't exist.
+  Future<List<Map<String, dynamic>>?> _loadFromCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString(_cacheKey);
+      final timestamp = prefs.getInt(_cacheTimestampKey);
+
+      if (cachedJson == null || timestamp == null) {
+        debugPrint('CarBrandsRepository: No cache found');
+        return null;
+      }
+
+      final cacheAge = DateTime.now().millisecondsSinceEpoch - timestamp;
+      if (cacheAge > _cacheValidity.inMilliseconds) {
+        debugPrint('CarBrandsRepository: Cache expired');
+        return null;
+      }
+
+      // Decode in background thread using compute
+      final data = await compute(_decodeJsonInBackground, cachedJson);
+      return data;
+    } catch (e) {
+      debugPrint('CarBrandsRepository: Error loading from cache: $e');
+      return null;
+    }
+  }
+
+  /// Save brands data to shared preferences cache.
+  Future<void> _saveToCache(List<Map<String, dynamic>> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Encode in background thread using compute
+      final jsonString = await compute(_encodeJsonInBackground, data);
+
+      await prefs.setString(_cacheKey, jsonString);
+      await prefs.setInt(
+        _cacheTimestampKey,
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      debugPrint('CarBrandsRepository: Saved ${data.length} brands to cache');
+    } catch (e) {
+      debugPrint('CarBrandsRepository: Error saving to cache: $e');
+      // Non-fatal - continue without caching
+    }
+  }
+
+  /// Fetch brands data from the API and save to cache.
+  Future<void> _fetchFromApi() async {
     try {
       debugPrint('CarBrandsRepository: Fetching car brands from API...');
       final response = await http
@@ -34,12 +114,20 @@ class CarBrandsRepository {
           .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['brands'] != null) {
-          _brandsData = List<Map<String, dynamic>>.from(data['brands']);
+        // Decode in background thread using compute
+        final data = await compute(_parseApiResponse, response.body);
+
+        if (data != null && data.isNotEmpty) {
+          _brandsData = data;
           debugPrint(
-            'CarBrandsRepository: Successfully loaded ${_brandsData.length} car brands',
+            'CarBrandsRepository: Successfully loaded ${_brandsData.length} car brands from API',
           );
+
+          // Save to cache for future use
+          await _saveToCache(_brandsData);
+        } else {
+          debugPrint('CarBrandsRepository: API returned empty data');
+          _brandsData = [];
         }
       } else {
         debugPrint(
@@ -54,14 +142,56 @@ class CarBrandsRepository {
       // Keep empty list on error
       _brandsData = [];
     }
-
-    _initialized = true;
   }
 
   /// Force refresh the brands data from the API.
+  /// Clears cache and fetches fresh data.
   Future<void> refresh() async {
     _initialized = false;
+
+    // Clear cache
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_cacheKey);
+      await prefs.remove(_cacheTimestampKey);
+      debugPrint('CarBrandsRepository: Cache cleared');
+    } catch (e) {
+      debugPrint('CarBrandsRepository: Error clearing cache: $e');
+    }
+
     await init();
+  }
+
+  /// Static helper function to parse API response in background isolate.
+  static List<Map<String, dynamic>>? _parseApiResponse(String responseBody) {
+    try {
+      final data = json.decode(responseBody);
+      if (data['brands'] != null) {
+        return List<Map<String, dynamic>>.from(data['brands']);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error parsing API response in background: $e');
+      return null;
+    }
+  }
+
+  /// Static helper function to decode JSON string in background isolate.
+  static List<Map<String, dynamic>>? _decodeJsonInBackground(
+    String jsonString,
+  ) {
+    try {
+      final decoded = json.decode(jsonString);
+      return List<Map<String, dynamic>>.from(decoded);
+    } catch (e) {
+      debugPrint('Error decoding JSON in background: $e');
+      return null;
+    }
+  }
+
+  /// Static helper function to encode data to JSON string in background isolate.
+  static String _encodeJsonInBackground(List<Map<String, dynamic>> data) {
+    return json.encode(data);
   }
 
   /// Find a brand by name (case-insensitive).
