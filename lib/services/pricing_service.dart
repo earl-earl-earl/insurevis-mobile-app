@@ -1,26 +1,60 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PricingService {
-  static const String _baseUrl = 'https://insurevis-price-api.onrender.com';
+  static const String _baseUrl =
+      'https://vvnsludqdidnqpbzzgeb.supabase.co/functions/v1/car-prices';
+
+  /// Get authorization headers for Supabase function calls
+  static Map<String, String> _getHeaders() {
+    String? accessToken;
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      accessToken = session?.accessToken;
+      debugPrint(
+        'PricingService: Auth token ${accessToken != null ? "present" : "missing"}',
+      );
+    } catch (_) {
+      accessToken = null;
+      debugPrint('PricingService: Could not get auth token');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+    };
+  }
 
   // Fetch thinsmith parts pricing data
   static Future<List<Map<String, dynamic>>> getThinsmithParts() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/thinsmith'),
-        headers: {'Content-Type': 'application/json'},
-      );
+      debugPrint('PricingService: Fetching thinsmith parts from API...');
+
+      final response = await http
+          .get(Uri.parse('$_baseUrl/thinsmith'), headers: _getHeaders())
+          .timeout(const Duration(seconds: 15));
+
+      debugPrint('PricingService: Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
+        debugPrint(
+          'PricingService: Successfully loaded ${data.length} thinsmith parts',
+        );
         return data.cast<Map<String, dynamic>>();
       } else {
+        debugPrint(
+          'PricingService: Failed to load thinsmith parts: ${response.statusCode} ${response.body}',
+        );
         throw Exception(
           'Failed to load thinsmith parts: ${response.statusCode}',
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('PricingService: Error fetching thinsmith parts: $e');
+      debugPrint('Stack trace: $st');
       throw Exception('Error fetching thinsmith parts: $e');
     }
   }
@@ -28,20 +62,31 @@ class PricingService {
   // Fetch body paint parts pricing data
   static Future<List<Map<String, dynamic>>> getBodyPaintParts() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/body-paint'),
-        headers: {'Content-Type': 'application/json'},
-      );
+      debugPrint('PricingService: Fetching body paint parts from API...');
+
+      final response = await http
+          .get(Uri.parse('$_baseUrl/body-paint'), headers: _getHeaders())
+          .timeout(const Duration(seconds: 15));
+
+      debugPrint('PricingService: Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
+        debugPrint(
+          'PricingService: Successfully loaded ${data.length} body paint parts',
+        );
         return data.cast<Map<String, dynamic>>();
       } else {
+        debugPrint(
+          'PricingService: Failed to load body paint parts: ${response.statusCode} ${response.body}',
+        );
         throw Exception(
           'Failed to load body paint parts: ${response.statusCode}',
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('PricingService: Error fetching body paint parts: $e');
+      debugPrint('Stack trace: $st');
       throw Exception('Error fetching body paint parts: $e');
     }
   }
@@ -76,8 +121,9 @@ class PricingService {
       }
 
       return null;
-    } catch (e) {
-      print('Error finding thinsmith part: $e');
+    } catch (e, st) {
+      debugPrint('PricingService: Error finding thinsmith part: $e');
+      debugPrint('Stack trace: $st');
       return null;
     }
   }
@@ -112,8 +158,9 @@ class PricingService {
       }
 
       return null;
-    } catch (e) {
-      print('Error finding body paint part: $e');
+    } catch (e, st) {
+      debugPrint('PricingService: Error finding body paint part: $e');
+      debugPrint('Stack trace: $st');
       return null;
     }
   }
@@ -480,12 +527,17 @@ class PricingService {
   // Check API health
   static Future<bool> checkApiHealth() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/health'),
-        headers: {'Content-Type': 'application/json'},
-      );
+      debugPrint('PricingService: Checking API health...');
+
+      final response = await http
+          .get(Uri.parse('$_baseUrl/health'), headers: _getHeaders())
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint('PricingService: Health check status: ${response.statusCode}');
       return response.statusCode == 200;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('PricingService: Error checking API health: $e');
+      debugPrint('Stack trace: $st');
       return false;
     }
   }

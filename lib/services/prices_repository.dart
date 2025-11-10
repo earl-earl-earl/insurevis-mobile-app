@@ -1,6 +1,10 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:insurevis/services/pricing_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Singleton repository that fetches pricing lists once and keeps them in memory.
+/// Now with SharedPreferences caching support similar to CarBrandsRepository.
 class PricesRepository {
   PricesRepository._privateConstructor();
 
@@ -12,16 +16,146 @@ class PricesRepository {
 
   bool _initialized = false;
 
+  static const String _thinsmithCacheKey = 'thinsmith_parts_cache';
+  static const String _bodyPaintCacheKey = 'body_paint_parts_cache';
+  static const String _cacheTimestampKey = 'prices_cache_timestamp';
+  static const Duration _cacheValidity = Duration(days: 7); // Cache for 7 days
+
   bool get isInitialized => _initialized;
 
   /// Initialize the repository by fetching both parts lists. Safe to call multiple times.
+  /// First tries to load from cache, then fetches from API if cache is invalid/missing.
   Future<void> init() async {
-    if (_initialized) return;
+    if (_initialized &&
+        _thinsmithParts.isNotEmpty &&
+        _bodyPaintParts.isNotEmpty)
+      return;
 
     try {
+      // Try to load from cache first
+      final cachedData = await _loadFromCache();
+      if (cachedData != null) {
+        _thinsmithParts = cachedData['thinsmith'] ?? [];
+        _bodyPaintParts = cachedData['bodyPaint'] ?? [];
+
+        if (_thinsmithParts.isNotEmpty || _bodyPaintParts.isNotEmpty) {
+          debugPrint(
+            'PricesRepository: Loaded ${_thinsmithParts.length} thinsmith parts and ${_bodyPaintParts.length} body paint parts from cache',
+          );
+          _initialized = true;
+          return;
+        }
+      }
+
+      // Cache miss or expired - fetch from API
+      await _fetchFromApi();
+
+      // Only mark as initialized if we successfully got data
+      if (_thinsmithParts.isNotEmpty || _bodyPaintParts.isNotEmpty) {
+        _initialized = true;
+        debugPrint(
+          'PricesRepository: Successfully initialized with ${_thinsmithParts.length} thinsmith parts and ${_bodyPaintParts.length} body paint parts',
+        );
+      } else {
+        debugPrint(
+          'PricesRepository: Initialization completed but no data available',
+        );
+      }
+    } catch (e, st) {
+      debugPrint('PricesRepository: Error during initialization: $e');
+      debugPrint('Stack trace: $st');
+      // Keep empty lists on error
+      _thinsmithParts = [];
+      _bodyPaintParts = [];
+      // Don't mark as initialized if we failed
+    }
+  }
+
+  /// Load pricing data from shared preferences cache.
+  /// Returns null if cache is invalid, expired, or doesn't exist.
+  Future<Map<String, List<Map<String, dynamic>>>?> _loadFromCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final thinsmithJson = prefs.getString(_thinsmithCacheKey);
+      final bodyPaintJson = prefs.getString(_bodyPaintCacheKey);
+      final timestamp = prefs.getInt(_cacheTimestampKey);
+
+      if ((thinsmithJson == null && bodyPaintJson == null) ||
+          timestamp == null) {
+        debugPrint('PricesRepository: No cache found');
+        return null;
+      }
+
+      final cacheAge = DateTime.now().millisecondsSinceEpoch - timestamp;
+      if (cacheAge > _cacheValidity.inMilliseconds) {
+        debugPrint('PricesRepository: Cache expired');
+        return null;
+      }
+
+      // Decode in background thread using compute
+      final thinsmithData =
+          thinsmithJson != null
+              ? await compute(_decodeJsonInBackground, thinsmithJson)
+              : <Map<String, dynamic>>[];
+      final bodyPaintData =
+          bodyPaintJson != null
+              ? await compute(_decodeJsonInBackground, bodyPaintJson)
+              : <Map<String, dynamic>>[];
+
+      return {
+        'thinsmith': thinsmithData ?? [],
+        'bodyPaint': bodyPaintData ?? [],
+      };
+    } catch (e) {
+      debugPrint('PricesRepository: Error loading from cache: $e');
+      return null;
+    }
+  }
+
+  /// Save pricing data to shared preferences cache.
+  Future<void> _saveToCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Encode in background thread using compute
+      if (_thinsmithParts.isNotEmpty) {
+        final thinsmithJson = await compute(
+          _encodeJsonInBackground,
+          _thinsmithParts,
+        );
+        await prefs.setString(_thinsmithCacheKey, thinsmithJson);
+      }
+
+      if (_bodyPaintParts.isNotEmpty) {
+        final bodyPaintJson = await compute(
+          _encodeJsonInBackground,
+          _bodyPaintParts,
+        );
+        await prefs.setString(_bodyPaintCacheKey, bodyPaintJson);
+      }
+
+      await prefs.setInt(
+        _cacheTimestampKey,
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      debugPrint(
+        'PricesRepository: Saved ${_thinsmithParts.length} thinsmith parts and ${_bodyPaintParts.length} body paint parts to cache',
+      );
+    } catch (e) {
+      debugPrint('PricesRepository: Error saving to cache: $e');
+      // Non-fatal - continue without caching
+    }
+  }
+
+  /// Fetch pricing data from the API and save to cache.
+  Future<void> _fetchFromApi() async {
+    try {
+      debugPrint('PricesRepository: Fetching pricing data from API...');
+
       final thins = await PricingService.getThinsmithParts();
       _thinsmithParts = List<Map<String, dynamic>>.from(thins);
     } catch (e) {
+      debugPrint('PricesRepository: Error fetching thinsmith parts: $e');
       // keep empty list on error
       _thinsmithParts = [];
     }
@@ -30,15 +164,50 @@ class PricesRepository {
       final body = await PricingService.getBodyPaintParts();
       _bodyPaintParts = List<Map<String, dynamic>>.from(body);
     } catch (e) {
+      debugPrint('PricesRepository: Error fetching body paint parts: $e');
       _bodyPaintParts = [];
     }
 
-    _initialized = true;
+    // Save to cache for future use
+    if (_thinsmithParts.isNotEmpty || _bodyPaintParts.isNotEmpty) {
+      await _saveToCache();
+    }
+  }
+
+  /// Static helper function to decode JSON string in background isolate.
+  static List<Map<String, dynamic>>? _decodeJsonInBackground(
+    String jsonString,
+  ) {
+    try {
+      final decoded = json.decode(jsonString);
+      return List<Map<String, dynamic>>.from(decoded);
+    } catch (e) {
+      debugPrint('Error decoding JSON in background: $e');
+      return null;
+    }
+  }
+
+  /// Static helper function to encode data to JSON string in background isolate.
+  static String _encodeJsonInBackground(List<Map<String, dynamic>> data) {
+    return json.encode(data);
   }
 
   /// Force refresh both lists from the API.
+  /// Clears cache and fetches fresh data.
   Future<void> refresh() async {
     _initialized = false;
+
+    // Clear cache
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_thinsmithCacheKey);
+      await prefs.remove(_bodyPaintCacheKey);
+      await prefs.remove(_cacheTimestampKey);
+      debugPrint('PricesRepository: Cache cleared');
+    } catch (e) {
+      debugPrint('PricesRepository: Error clearing cache: $e');
+    }
+
     await init();
   }
 
