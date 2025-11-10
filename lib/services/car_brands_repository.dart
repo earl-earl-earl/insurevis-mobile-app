@@ -29,12 +29,12 @@ class CarBrandsRepository {
   /// Safe to call multiple times - will skip if already initialized.
   /// First tries to load from cache, then fetches from API if cache is invalid/missing.
   Future<void> init() async {
-    if (_initialized) return;
+    if (_initialized && _brandsData.isNotEmpty) return;
 
     try {
       // Try to load from cache first
       final cachedData = await _loadFromCache();
-      if (cachedData != null) {
+      if (cachedData != null && cachedData.isNotEmpty) {
         _brandsData = cachedData;
         debugPrint(
           'CarBrandsRepository: Loaded ${_brandsData.length} car brands from cache',
@@ -45,14 +45,25 @@ class CarBrandsRepository {
 
       // Cache miss or expired - fetch from API
       await _fetchFromApi();
+
+      // Only mark as initialized if we successfully got data
+      if (_brandsData.isNotEmpty) {
+        _initialized = true;
+        debugPrint(
+          'CarBrandsRepository: Successfully initialized with ${_brandsData.length} brands',
+        );
+      } else {
+        debugPrint(
+          'CarBrandsRepository: Initialization completed but no data available',
+        );
+      }
     } catch (e, st) {
       debugPrint('CarBrandsRepository: Error during initialization: $e');
       debugPrint('Stack trace: $st');
       // Keep empty list on error
       _brandsData = [];
+      // Don't mark as initialized if we failed
     }
-
-    _initialized = true;
   }
 
   /// Load brands data from shared preferences cache.

@@ -170,6 +170,28 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       // Get the cached brands data from repository
       final brandsData = CarBrandsRepository.instance.brands;
 
+      if (brandsData.isEmpty) {
+        debugPrint('CarBrands data is empty after init, retrying once...');
+        // Try one more time with a force refresh
+        await CarBrandsRepository.instance.refresh();
+        final retryData = CarBrandsRepository.instance.brands;
+
+        if (retryData.isEmpty) {
+          debugPrint('CarBrands still empty after retry');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Unable to load car brands. Please check your internet connection and try again.',
+                ),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
+
       if (mounted) {
         setState(() {
           // Sort brands alphabetically by name
@@ -192,6 +214,13 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           _carBrandsData = [];
           _isLoadingBrands = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading car brands: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
       debugPrint('Error loading car brands from repository: $e');
     }
