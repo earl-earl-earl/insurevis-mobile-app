@@ -24,7 +24,7 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 
-class _HomeState extends State<Home> {
+class _HomeState extends State<Home> with WidgetsBindingObserver {
   List<ClaimModel> _recentClaims = [];
   bool _isLoading = false;
   Timer? _refreshTimer;
@@ -38,13 +38,39 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeHomeClaims();
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Refresh claims when app resumes
+    if (state == AppLifecycleState.resumed && SupabaseService.isSignedIn) {
+      _syncWithServer();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh claims when returning to this screen
+    final route = ModalRoute.of(context);
+    if (route != null && route.isCurrent && SupabaseService.isSignedIn) {
+      // Small delay to ensure navigation is complete
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && SupabaseService.isSignedIn) {
+          _syncWithServer();
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _authStreamSub?.cancel();
     _claimsStreamSub?.cancel();

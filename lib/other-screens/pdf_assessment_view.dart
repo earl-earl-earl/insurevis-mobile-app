@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:insurevis/utils/file_writer.dart';
+import 'package:insurevis/other-screens/insurance_document_upload.dart';
 
 class PDFAssessmentView extends StatefulWidget {
   final List<String>? imagePaths;
@@ -174,6 +175,23 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
             color: Color(0xFF2A2A2A),
           ),
         ),
+        actions: [
+          IconButton(
+            onPressed: _isSaving ? null : _savePDF,
+            icon:
+                _isSaving
+                    ? SizedBox(
+                      width: 20.sp,
+                      height: 20.sp,
+                      child: const CircularProgressIndicator(
+                        color: Color(0xFF2A2A2A),
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : const Icon(Icons.download, color: Color(0xFF2A2A2A)),
+            tooltip: 'Save PDF Report',
+          ),
+        ],
       ),
       body: SafeArea(
         child: SizedBox(
@@ -185,8 +203,8 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 20.w),
         child: SizedBox(
           height: 60.h,
-          child: ElevatedButton.icon(
-            onPressed: _isSaving ? null : _savePDF,
+          child: ElevatedButton(
+            onPressed: _proceedToClaimInsurance,
             style: ElevatedButton.styleFrom(
               backgroundColor: GlobalStyles.primaryColor,
               shape: RoundedRectangleBorder(
@@ -194,19 +212,8 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               ),
               padding: EdgeInsets.symmetric(vertical: 12.h),
             ),
-            icon:
-                _isSaving
-                    ? SizedBox(
-                      width: 20.w,
-                      height: 20.h,
-                      child: const CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                    : const Icon(Icons.save, color: Colors.white),
-            label: Text(
-              _isSaving ? 'Generating PDF...' : 'Save PDF Report',
+            child: Text(
+              'Proceed to Claim Insurance',
               style: GoogleFonts.inter(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
@@ -2001,9 +2008,8 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       });
 
       // --- FIX: Correctly structure manual damages for the PDF service ---
-      if (apiResponsesForPdf.isEmpty && _manualDamages.isNotEmpty) {
-        // Since there's no single API response to hold all manual damages,
-        // we create one synthetic entry for the whole report.
+      // Add manual damages as a separate entry if they exist
+      if (_manualDamages.isNotEmpty) {
         List<Map<String, dynamic>> manualDamagesForPdf = [];
         for (int i = 0; i < _manualDamages.length; i++) {
           final m = _manualDamages[i];
@@ -2067,10 +2073,59 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
           manualDamagesForPdf.add(damageMap);
         }
 
+        // Calculate total cost for manual damages only
+        double manualDamagesTotalCost = 0.0;
+        for (int i = 0; i < _manualDamages.length; i++) {
+          final globalIndex = -(i + 1);
+          final selectedOption = _selectedRepairOptions[globalIndex];
+
+          if (selectedOption == 'repair') {
+            final repairData = _repairPricingData[globalIndex];
+            if (repairData != null) {
+              final repoTotal =
+                  (repairData['total_with_labor'] as num?)?.toDouble();
+              if (repoTotal != null) {
+                manualDamagesTotalCost += repoTotal;
+              } else {
+                final double bodyPaint =
+                    (repairData['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+                final double labor =
+                    (repairData['cost_installation_personal'] as num?)
+                        ?.toDouble() ??
+                    0.0;
+                manualDamagesTotalCost += (bodyPaint + labor);
+              }
+            }
+          } else if (selectedOption == 'replace') {
+            final replacePricing = _replacePricingData[globalIndex];
+            final repairData = _repairPricingData[globalIndex];
+            if (replacePricing != null || repairData != null) {
+              final repoTotal =
+                  (replacePricing?['total_with_labor'] as num?)?.toDouble() ??
+                  (repairData?['total_with_labor'] as num?)?.toDouble();
+              if (repoTotal != null) {
+                manualDamagesTotalCost += repoTotal;
+              } else {
+                final double thinsmith =
+                    (replacePricing?['insurance'] as num?)?.toDouble() ?? 0.0;
+                final double bodyPaint =
+                    (repairData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+                final double labor =
+                    (replacePricing?['cost_installation_personal'] as num?)
+                        ?.toDouble() ??
+                    (repairData?['cost_installation_personal'] as num?)
+                        ?.toDouble() ??
+                    0.0;
+                manualDamagesTotalCost += (thinsmith + bodyPaint + labor);
+              }
+            }
+          }
+        }
+
         pdfResponses['manual_report_1'] = {
           'overall_severity': 'Manual Assessment',
           'damages': manualDamagesForPdf,
-          'total_cost': _formatCurrency(_calculateTotalFromPricingData()),
+          'total_cost': _formatCurrency(manualDamagesTotalCost),
         };
       }
 
@@ -2280,6 +2335,33 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         setState(() => _isSaving = false);
       }
     }
+  }
+
+  void _proceedToClaimInsurance() {
+    // Navigate to Insurance Document Upload with selected repair options and pricing data
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => InsuranceDocumentUpload(
+              imagePaths: widget.imagePaths ?? const <String>[],
+              apiResponses:
+                  widget.apiResponses ?? <String, Map<String, dynamic>>{},
+              assessmentIds: widget.assessmentIds ?? <String, String>{},
+              selectedRepairOptions: Map<int, String>.from(
+                _selectedRepairOptions,
+              ),
+              repairPricingData: Map<int, Map<String, dynamic>>.from(
+                _repairPricingData.map((k, v) => MapEntry(k, v ?? {})),
+              ),
+              replacePricingData: Map<int, Map<String, dynamic>>.from(
+                _replacePricingData.map((k, v) => MapEntry(k, v ?? {})),
+              ),
+              manualDamages: List<Map<String, String>>.from(_manualDamages),
+              estimatedDamageCost: _estimatedDamageCost,
+            ),
+      ),
+    );
   }
 
   Future<void> _sharePDF(String filePath) async {

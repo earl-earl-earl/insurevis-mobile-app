@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/other-screens/result_screen.dart';
 import 'package:insurevis/other-screens/pdf_assessment_view.dart';
-import 'package:insurevis/other-screens/insurance_document_upload.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
@@ -188,97 +187,45 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   }
 
   Widget _buildActionButtons(bool anyUploading) {
-    return Column(
-      children: [
-        // View Assessment Button (top)
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed:
-                anyUploading
-                    ? null
-                    : () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => PDFAssessmentView(
-                                imagePaths: widget.imagePaths,
-                                apiResponses: _apiResponses,
-                                assessmentIds: _assessmentIds,
-                              ),
-                        ),
-                      );
-                    },
-            style: ButtonStyle(
-              elevation: const WidgetStatePropertyAll(0),
-              backgroundColor: WidgetStatePropertyAll(
-                GlobalStyles.primaryColor.withValues(alpha: 0.2),
-              ),
-              padding: const WidgetStatePropertyAll(
-                EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-              ),
-              shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            child: Text(
-              "View Assessment",
-              style: GoogleFonts.inter(
-                color:
-                    anyUploading
-                        ? GlobalStyles.primaryColor.withAlpha(120)
-                        : GlobalStyles.primaryColor,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed:
+            anyUploading
+                ? null
+                : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => PDFAssessmentView(
+                            imagePaths: widget.imagePaths,
+                            apiResponses: _apiResponses,
+                            assessmentIds: _assessmentIds,
+                          ),
+                    ),
+                  );
+                },
+        style: ButtonStyle(
+          backgroundColor: WidgetStatePropertyAll(
+            anyUploading ? Colors.grey : GlobalStyles.primaryColor,
+          ),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
-
-        SizedBox(height: 12.h), // Space between buttons
-        // Proceed to Claim Insurance Button (bottom, accent)
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed:
-                anyUploading
-                    ? null
-                    : () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => InsuranceDocumentUpload(
-                                imagePaths: widget.imagePaths,
-                                apiResponses: _apiResponses,
-                                assessmentIds: _assessmentIds,
-                              ),
-                        ),
-                      );
-                    },
-            style: ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(
-                anyUploading ? Colors.grey : GlobalStyles.primaryColor,
-              ),
-              padding: const WidgetStatePropertyAll(
-                EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-              ),
-              shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            child: Text(
-              "Proceed to Claim Insurance",
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+        child: Text(
+          "View Assessment Report",
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w600,
           ),
         ),
-      ],
+      ),
     );
   }
 
