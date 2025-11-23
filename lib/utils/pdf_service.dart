@@ -16,31 +16,39 @@ class PDFService {
     return pw.Container(
       alignment: pw.Alignment.centerLeft,
       margin: const pw.EdgeInsets.only(bottom: 20.0),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      child: pw.Column(
         children: [
-          pw.Text(
-            'InsureVis',
-            style: pw.TextStyle(
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 24,
-              color: PdfColors.blueGrey800,
-            ),
-          ),
-          pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.end,
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Text(
-                'Vehicle Damage Assessment',
-                style: pw.TextStyle(fontSize: 14, color: PdfColors.blueGrey600),
+                'InsureVis',
+                style: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 24,
+                  color: PdfColors.black,
+                ),
               ),
-              pw.Text(
-                'contact@insurevis.com',
-                style: pw.TextStyle(fontSize: 12),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  pw.Text(
+                    'Vehicle Damage Assessment',
+                    style: pw.TextStyle(fontSize: 11, color: PdfColors.black),
+                  ),
+                  pw.Text(
+                    'contact@insurevis.com',
+                    style: pw.TextStyle(fontSize: 11, color: PdfColors.black),
+                  ),
+                  pw.Text(
+                    '+1 234 567 890',
+                    style: pw.TextStyle(fontSize: 11, color: PdfColors.black),
+                  ),
+                ],
               ),
-              pw.Text('+1 234 567 890', style: pw.TextStyle(fontSize: 12)),
             ],
           ),
+          pw.Divider(),
         ],
       ),
     );
@@ -136,25 +144,19 @@ class PDFService {
         }
       }
 
-      // Add summary page at the beginning
-      pdf.addPage(
-        pw.MultiPage(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(32),
-          header: _buildHeader,
-          footer: _buildFooter,
-          build:
-              (pw.Context context) => [
-                _buildSummaryPage(
-                  responseEntries.length,
-                  totalEstimatedCost,
-                  hasAnySevere,
-                ),
-              ],
+      // Build all content widgets (summary + assessments)
+      final List<pw.Widget> allContent = [];
+
+      // Add summary page content
+      allContent.add(
+        _buildSummaryPage(
+          responseEntries.length,
+          totalEstimatedCost,
+          hasAnySevere,
         ),
       );
 
-      // Add individual damage assessment pages
+      // Add individual assessment widgets
       for (var i = 0; i < responseEntries.length; i++) {
         final entry = responseEntries[i];
         final responseKey = entry.key;
@@ -167,20 +169,22 @@ class PDFService {
                 ? responseKey
                 : ''; // Pass empty path for manual
 
-        // --- FIX: Use the reusable header and footer for EVERY page ---
-        pdf.addPage(
-          pw.MultiPage(
-            pageFormat: PdfPageFormat.a4,
-            margin: const pw.EdgeInsets.all(32),
-            header: _buildHeader, // CONSISTENT HEADER
-            footer: _buildFooter, // CONSISTENT FOOTER
-            build:
-                (pw.Context context) => [
-                  _buildIndividualResult(i + 1, imagePathForPage, apiResponse),
-                ],
-          ),
+        allContent.add(pw.SizedBox(height: 30));
+        allContent.add(
+          _buildIndividualResult(i + 1, imagePathForPage, apiResponse),
         );
       }
+
+      // Add everything in a single MultiPage to allow natural page breaks
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          header: _buildHeader,
+          footer: _buildFooter,
+          build: (pw.Context context) => allContent,
+        ),
+      );
 
       return pdf;
     } catch (e) {
@@ -243,138 +247,57 @@ class PDFService {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.SizedBox(height: 40),
         pw.Center(
           child: pw.Text(
             'Vehicle Damage Assessment Report',
             style: pw.TextStyle(
-              fontSize: 28,
+              fontSize: 22,
               fontWeight: pw.FontWeight.bold,
-              color: PdfColors.blueGrey800,
+              color: PdfColors.black,
             ),
           ),
         ),
-        pw.SizedBox(height: 10),
-        pw.Center(
-          child: pw.Text(
-            'Summary',
-            style: pw.TextStyle(
-              fontSize: 20,
-              fontWeight: pw.FontWeight.normal,
-              color: PdfColors.blueGrey600,
-            ),
-          ),
+        pw.SizedBox(height: 15),
+
+        // Report details - simple text format
+        pw.Text(
+          'Report Date: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}',
+          style: pw.TextStyle(fontSize: 12, color: PdfColors.black),
         ),
-        pw.SizedBox(height: 50),
-        pw.Divider(height: 2, color: PdfColors.blueGrey300),
-        pw.SizedBox(height: 40),
-
-        // Report details
-        pw.Container(
-          padding: const pw.EdgeInsets.all(20),
-          decoration: pw.BoxDecoration(
-            color: PdfColors.blueGrey50,
-            border: pw.Border.all(color: PdfColors.blueGrey200),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-          ),
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text(
-                    'Report Date:',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.blueGrey800,
-                    ),
-                  ),
-                  pw.Text(
-                    DateTime.now().toString().split(' ')[0],
-                    style: const pw.TextStyle(
-                      fontSize: 14,
-                      color: PdfColors.blueGrey800,
-                    ),
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 15),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text(
-                    'Total Assessments:',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.blueGrey800,
-                    ),
-                  ),
-                  pw.Text(
-                    '$totalAssessments',
-                    style: const pw.TextStyle(
-                      fontSize: 14,
-                      color: PdfColors.blueGrey800,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        pw.SizedBox(height: 5),
+        pw.Text(
+          'Total Assessments: $totalAssessments',
+          style: pw.TextStyle(fontSize: 12, color: PdfColors.black),
         ),
+        pw.SizedBox(height: 20),
 
-        pw.SizedBox(height: 40),
-
-        // Total estimated cost - prominent display
+        // Total estimated cost box
         pw.Container(
           width: double.infinity,
-          padding: const pw.EdgeInsets.all(30),
+          padding: const pw.EdgeInsets.symmetric(vertical: 20, horizontal: 20),
           decoration: pw.BoxDecoration(
-            color: hasAnySevere ? PdfColors.red50 : PdfColors.blue50,
-            border: pw.Border.all(
-              color: hasAnySevere ? PdfColors.red200 : PdfColors.blue200,
-              width: 2,
-            ),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+            border: pw.Border.all(color: PdfColors.black, width: 2),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
           ),
           child: pw.Column(
             children: [
               pw.Text(
                 'Total Estimated Cost',
-                style: pw.TextStyle(
-                  fontSize: 18,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.blueGrey700,
-                ),
+                style: pw.TextStyle(fontSize: 14, color: PdfColors.black),
               ),
-              pw.SizedBox(height: 15),
+              pw.SizedBox(height: 10),
               pw.Text(
                 formattedTotal,
                 style: pw.TextStyle(
-                  fontSize: 36,
+                  fontSize: 26,
                   fontWeight: pw.FontWeight.bold,
-                  color: hasAnySevere ? PdfColors.red800 : PdfColors.blue800,
+                  color: PdfColors.black,
                 ),
               ),
-              if (hasAnySevere) ...[
-                pw.SizedBox(height: 10),
-                pw.Text(
-                  'Severe damage detected - professional assessment required',
-                  style: const pw.TextStyle(
-                    fontSize: 12,
-                    color: PdfColors.red700,
-                  ),
-                  textAlign: pw.TextAlign.center,
-                ),
-              ],
             ],
           ),
         ),
 
-        pw.SizedBox(height: 40),
-        pw.Divider(height: 2, color: PdfColors.blueGrey300),
         pw.SizedBox(height: 20),
 
         pw.Text(
@@ -382,15 +305,15 @@ class PDFService {
           style: pw.TextStyle(
             fontSize: 16,
             fontWeight: pw.FontWeight.bold,
-            color: PdfColors.blueGrey800,
+            color: PdfColors.black,
           ),
         ),
         pw.SizedBox(height: 10),
         pw.Text(
           'This report contains $totalAssessments detailed damage assessment(s). '
           'Each assessment includes information about detected damages, severity levels, '
-          'and individual cost estimates. Please review each section carefully.',
-          style: const pw.TextStyle(fontSize: 12, color: PdfColors.blueGrey600),
+          'and individual cost estimates. Please review each section carefully',
+          style: const pw.TextStyle(fontSize: 12, color: PdfColors.black),
         ),
       ],
     );
@@ -479,317 +402,290 @@ class PDFService {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Header(
-          level: 0,
-          child: pw.Text(
-            imagePath.isNotEmpty
-                ? 'Image $entryNumber Analysis'
-                : 'Manual Damage Entry #$entryNumber',
-            style: pw.TextStyle(
-              fontSize: 20,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.blueGrey800,
-            ),
+        pw.Text(
+          isManual ? 'Added Manual Damages' : 'Image $entryNumber Analysis',
+          style: pw.TextStyle(
+            fontSize: 16,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.black,
           ),
         ),
-        pw.SizedBox(height: 20),
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Text(
-              'Report Date: ${DateTime.now().toString().split(' ')[0]}',
-              style: const pw.TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
-        pw.Divider(height: 30),
+        pw.SizedBox(height: 15),
 
         if (image != null) ...[
-          pw.Container(
-            alignment: pw.Alignment.center,
-            child: pw.Column(
-              children: [
-                pw.Text(
-                  'Analyzed Image',
-                  style: pw.TextStyle(
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.blueGrey600,
-                  ),
-                ),
-                pw.SizedBox(height: 10),
-                pw.Container(
-                  height: 160,
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.grey, width: 1),
-                    borderRadius: pw.BorderRadius.circular(5),
-                  ),
-                  child: pw.Image(image, fit: pw.BoxFit.contain),
-                ),
-              ],
+          pw.Center(
+            child: pw.Container(
+              width: 150,
+              height: 150,
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey400),
+              ),
+              child: pw.Image(image, fit: pw.BoxFit.contain),
             ),
           ),
-          pw.SizedBox(height: 30),
+          pw.SizedBox(height: 20),
         ],
 
-        pw.Container(
-          padding: const pw.EdgeInsets.all(16),
-          decoration: pw.BoxDecoration(
-            color: PdfColors.blueGrey50,
-            border: pw.Border.all(color: PdfColors.blueGrey200),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-          ),
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                'Assessment Summary',
-                style: pw.TextStyle(
-                  fontSize: 18,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.blueGrey800,
-                ),
-              ),
-              pw.SizedBox(height: 15),
-              pw.Row(
-                children: [
-                  pw.Expanded(
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          'Overall Severity',
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        pw.SizedBox(height: 5),
-                        pw.Text(
-                          _capitalizeFirst(overallSeverity),
-                          style: const pw.TextStyle(fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  pw.Expanded(
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          'Estimated Cost',
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        pw.SizedBox(height: 5),
-                        pw.Text(
-                          formattedCost,
-                          style: const pw.TextStyle(fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        pw.SizedBox(height: 20),
-
-        if (damages.isNotEmpty && !isSevere) ...[
-          pw.Text(
-            isManual ? 'Manual Damages' : 'Detected Damages',
-            style: pw.TextStyle(
-              fontSize: 18,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.blueGrey800,
-            ),
-          ),
-          pw.SizedBox(height: 15),
-          // Header row for damage items
+        // Assessment Summary section - only show for non-manual entries
+        if (!isManual) ...[
           pw.Container(
-            padding: const pw.EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
+            padding: const pw.EdgeInsets.all(16),
             decoration: pw.BoxDecoration(
-              color: PdfColors.blueGrey700,
-              borderRadius: const pw.BorderRadius.only(
-                topLeft: pw.Radius.circular(6),
-                topRight: pw.Radius.circular(6),
-              ),
+              border: pw.Border.all(color: PdfColors.black, width: 1.5),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
             ),
-            child: pw.Row(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Expanded(
-                  flex: 4,
-                  child: pw.Text(
-                    'Damage Type',
-                    style: pw.TextStyle(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.white,
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Assessment Summary',
+                      style: pw.TextStyle(
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.black,
+                      ),
                     ),
-                  ),
+                    pw.Text(
+                      'Damage Detected: ${damages.length}',
+                      style: pw.TextStyle(fontSize: 12, color: PdfColors.black),
+                    ),
+                  ],
                 ),
-                pw.Expanded(
-                  flex: 4,
-                  child: pw.Text(
-                    'Damaged Part',
-                    style: pw.TextStyle(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.white,
+                pw.Divider(color: PdfColors.black),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Expanded(
+                      flex: 2,
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'Damaged Part:',
+                            style: pw.TextStyle(
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.black,
+                            ),
+                          ),
+                          pw.SizedBox(height: 5),
+                          pw.Text(
+                            damages.isNotEmpty
+                                ? _capitalizeFirst(
+                                  damages[0]['label']?.toString() ??
+                                      damages[0]['damage_type']?.toString() ??
+                                      damages[0]['damaged_part']?.toString() ??
+                                      'Unknown',
+                                )
+                                : 'N/A',
+                            style: pw.TextStyle(
+                              fontSize: 12,
+                              color: PdfColors.black,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-                pw.Expanded(
-                  flex: 3,
-                  child: pw.Text(
-                    'Cost',
-                    style: pw.TextStyle(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.white,
+                    pw.Expanded(
+                      flex: 2,
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'Severity:',
+                            style: pw.TextStyle(
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.black,
+                            ),
+                          ),
+                          pw.SizedBox(height: 5),
+                          pw.Text(
+                            _capitalizeFirst(overallSeverity),
+                            style: pw.TextStyle(
+                              fontSize: 12,
+                              color: PdfColors.black,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    textAlign: pw.TextAlign.right,
-                  ),
+                    pw.Expanded(
+                      flex: 1,
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.end,
+                        children: [
+                          pw.Text(
+                            'Damage Type:',
+                            style: pw.TextStyle(
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.black,
+                            ),
+                          ),
+                          pw.SizedBox(height: 5),
+                          pw.Text(
+                            damages.isNotEmpty
+                                ? _capitalizeFirst(
+                                  damages[0]['damage_category']?.toString() ??
+                                      damages[0]['class']?.toString() ??
+                                      damages[0]['type']?.toString() ??
+                                      'Scratch / Paint Wear',
+                                )
+                                : 'N/A',
+                            style: pw.TextStyle(
+                              fontSize: 12,
+                              color: PdfColors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          ...damages.asMap().entries.map((entry) {
-            final index = entry.key;
-            final damage = entry.value;
-            String damageType = 'Unknown';
-            String damagePart = '';
-            String severity = '';
-            String cost = 'N/A';
+        ],
+        pw.SizedBox(height: 15),
 
-            if (damage is Map<String, dynamic>) {
-              damageType =
-                  damage['type']?.toString() ??
-                  damage['damage_type']?.toString() ??
-                  damage['damaged_part']?.toString() ??
-                  'Unknown';
-              damagePart = damage['damaged_part']?.toString() ?? '';
-
-              // Extract cost for this specific damage
-              final damageCost =
-                  damage['cost']?.toString() ??
-                  damage['estimated_cost']?.toString() ??
-                  '';
-              if (damageCost.isNotEmpty && damageCost != 'Not available') {
-                try {
-                  var dc = damageCost.trim();
-                  if (dc.startsWith('₱')) {
-                    dc = dc.substring(1).trim();
-                  } else if (dc.toUpperCase().startsWith('PHP')) {
-                    dc = dc.substring(3).trim();
-                    if (dc.startsWith(':') ||
-                        dc.startsWith('-') ||
-                        dc.startsWith('.')) {
-                      dc = dc.substring(1).trim();
-                    }
-                  }
-                  dc = dc.replaceAll(',', '');
-                  final parsed = double.tryParse(dc);
-                  if (parsed != null) {
-                    final formatter = NumberFormat('#,##0.00', 'en_US');
-                    cost = 'PHP ${formatter.format(parsed)}';
-                  } else {
-                    cost = damageCost;
-                  }
-                } catch (e) {
-                  cost = damageCost;
-                }
-              }
-            } else if (damage is String) {
-              damageType = damage;
-            }
-
-            return pw.Container(
-              padding: const pw.EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              decoration: pw.BoxDecoration(
-                color: index % 2 == 0 ? PdfColors.grey100 : PdfColors.white,
-                border: pw.Border(
-                  bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
-                ),
-              ),
-              child: pw.Row(
-                children: [
-                  pw.Expanded(
-                    flex: 4,
-                    child: pw.Text(
-                      damageType,
-                      style: const pw.TextStyle(fontSize: 11),
-                    ),
-                  ),
-                  pw.Expanded(
-                    flex: 4,
-                    child: pw.Text(
-                      damagePart,
-                      style: pw.TextStyle(
-                        fontSize: 11,
-                        fontStyle: pw.FontStyle.italic,
-                        color: PdfColors.grey700,
-                      ),
-                    ),
-                  ),
-                  pw.Expanded(
-                    flex: 3,
-                    child: pw.Text(
-                      cost,
-                      style: pw.TextStyle(
-                        fontSize: 11,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blueGrey800,
-                      ),
-                      textAlign: pw.TextAlign.right,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-          // Total row for this image
+        // Cost Estimation section for non-severe damages (both image-based and manual)
+        if (damages.isNotEmpty && !isSevere) ...[
           pw.Container(
-            padding: const pw.EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
-            ),
+            padding: const pw.EdgeInsets.all(16),
             decoration: pw.BoxDecoration(
-              color: PdfColors.blueGrey100,
-              borderRadius: const pw.BorderRadius.only(
-                bottomLeft: pw.Radius.circular(6),
-                bottomRight: pw.Radius.circular(6),
-              ),
-              border: pw.Border.all(color: PdfColors.blueGrey300, width: 1),
+              border: pw.Border.all(color: PdfColors.black, width: 1.5),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
             ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  isManual ? 'Total for this damage:' : 'Total for this image:',
+                  'Cost Estimation',
                   style: pw.TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.blueGrey800,
+                    color: PdfColors.black,
                   ),
                 ),
-                pw.Text(
-                  formattedCost,
-                  style: pw.TextStyle(
-                    fontSize: 13,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.blueGrey900,
-                  ),
+                pw.Divider(color: PdfColors.black),
+                // Header row
+                pw.Row(
+                  children: [
+                    pw.Expanded(
+                      flex: 2,
+                      child: pw.Text(
+                        'Damaged Part:',
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.black,
+                        ),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 2,
+                      child: pw.Text(
+                        'Action:',
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.black,
+                        ),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 1,
+                      child: pw.Text(
+                        'Cost:',
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.black,
+                        ),
+                        textAlign: pw.TextAlign.right,
+                      ),
+                    ),
+                  ],
                 ),
+                pw.SizedBox(height: 10),
+                ...damages.asMap().entries.map((entry) {
+                  final damage = entry.value;
+                  final label =
+                      damage['label']?.toString() ??
+                      damage['damage_type']?.toString() ??
+                      damage['damaged_part']?.toString() ??
+                      'Unknown';
+                  final action =
+                      damage['recommended_action']?.toString() ??
+                      damage['action']?.toString() ??
+                      'Repair';
+                  final cost =
+                      damage['cost']?.toString() ??
+                      damage['estimated_cost']?.toString() ??
+                      '0';
+
+                  String formattedItemCost = 'PHP 0.00';
+                  try {
+                    var costStr = cost.trim();
+                    if (costStr.startsWith('₱')) {
+                      costStr = costStr.substring(1).trim();
+                    } else if (costStr.toUpperCase().startsWith('PHP')) {
+                      costStr = costStr.substring(3).trim();
+                    }
+                    costStr = costStr.replaceAll(',', '');
+                    final parsed = double.tryParse(costStr);
+                    if (parsed != null) {
+                      final formatter = NumberFormat('#,##0.00', 'en_US');
+                      formattedItemCost = 'PHP ${formatter.format(parsed)}';
+                    }
+                  } catch (e) {
+                    formattedItemCost = cost;
+                  }
+
+                  return pw.Padding(
+                    padding: const pw.EdgeInsets.only(bottom: 8),
+                    child: pw.Row(
+                      children: [
+                        pw.Expanded(
+                          flex: 2,
+                          child: pw.Text(
+                            _capitalizeFirst(label),
+                            style: pw.TextStyle(
+                              fontSize: 11,
+                              color: PdfColors.black,
+                            ),
+                          ),
+                        ),
+                        pw.Expanded(
+                          flex: 2,
+                          child: pw.Text(
+                            _capitalizeFirst(action),
+                            style: pw.TextStyle(
+                              fontSize: 11,
+                              color: PdfColors.black,
+                            ),
+                          ),
+                        ),
+                        pw.Expanded(
+                          flex: 1,
+                          child: pw.Text(
+                            formattedItemCost,
+                            style: pw.TextStyle(
+                              fontSize: 11,
+                              color: PdfColors.black,
+                            ),
+                            textAlign: pw.TextAlign.right,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
               ],
             ),
           ),

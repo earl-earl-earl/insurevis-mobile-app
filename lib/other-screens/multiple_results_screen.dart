@@ -89,7 +89,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Analysis Complete',
+                  anyUploading ? 'Analyzing Images...' : 'Analysis Complete',
                   style: GoogleFonts.inter(
                     fontSize: 24.sp,
                     fontWeight: FontWeight.bold,
@@ -98,35 +98,14 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                 ),
                 SizedBox(height: 8.h),
                 Text(
-                  '${widget.imagePaths.length} images analyzed',
+                  anyUploading
+                      ? '${_uploadResults.values.where((s) => s == 'success').length} of ${widget.imagePaths.length} images analyzed'
+                      : '${widget.imagePaths.length} images analyzed',
                   style: GoogleFonts.inter(
                     fontSize: 14.sp,
                     color: const Color(0x992A2A2A),
                   ),
                 ),
-                if (anyUploading) ...[
-                  SizedBox(height: 6.h),
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 14.sp,
-                        height: 14.sp,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: GlobalStyles.primaryColor,
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        'Analyzing image(s)...',
-                        style: GoogleFonts.inter(
-                          fontSize: 12.sp,
-                          color: GlobalStyles.primaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
                 SizedBox(height: 8.h),
 
                 // Disclaimer: AI can make mistakes (orange)

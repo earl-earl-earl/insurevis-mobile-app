@@ -401,10 +401,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           Padding(
             padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 12.h),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                SizedBox(height: 8.h),
-
                 // Material feature card
                 _buildActionButton(
                   icon: Icons.photo_rounded,
@@ -415,18 +413,18 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   },
                 ),
                 SizedBox(width: 15.w),
+                // _buildActionButton(
+                //   icon: Icons.description_rounded,
+                //   label: "File Claim",
+                //   iconColor: Colors.green,
+                //   onPressed: () {
+                //     Navigator.pushNamed(context, '/claim_create');
+                //   },
+                // ),
+                // SizedBox(width: 15.w),
                 _buildActionButton(
-                  icon: Icons.description_rounded,
-                  label: "File Claim",
-                  iconColor: Colors.green,
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/claim_create');
-                  },
-                ),
-                SizedBox(width: 15.w),
-                _buildActionButton(
-                  icon: Icons.picture_as_pdf_rounded,
-                  label: "Make PDF",
+                  icon: Icons.assessment,
+                  label: "Make Assessment",
                   iconColor: Colors.purple,
                   onPressed: () {
                     Navigator.pushNamed(context, '/assessment_report');
@@ -748,7 +746,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                       ),
                     ),
                     Text(
-                      DateFormat.yMMMd().format(claim.incidentDate),
+                      DateFormat.yMMMd().format(claim.createdAt),
                       style: GoogleFonts.inter(
                         color: Colors.grey[600],
                         fontSize: 11.sp,

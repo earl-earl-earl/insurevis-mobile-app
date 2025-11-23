@@ -188,7 +188,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                         strokeWidth: 2,
                       ),
                     )
-                    : const Icon(Icons.download, color: Color(0xFF2A2A2A)),
+                    : const Icon(Icons.save_rounded, color: Color(0xFF2A2A2A)),
             tooltip: 'Save PDF Report',
           ),
         ],
@@ -896,144 +896,97 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
             ],
           ),
           SizedBox(height: 12.h),
-          Container(
-            margin: EdgeInsets.only(bottom: 20.h),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Estimated Total',
-                  style: GoogleFonts.inter(
-                    color: Color(0x992A2A2A),
-                    fontSize: 14.sp,
+          // Show pricing breakdown
+          Builder(
+            builder: (context) {
+              final isLoading = _isLoadingPricing[index] ?? false;
+              final repairData = _repairPricingData[index];
+              final replacePricing = _replacePricingData[index];
+
+              if (isLoading) {
+                return Center(
+                  child: CircularProgressIndicator(
+                    color: GlobalStyles.primaryColor,
                   ),
-                ),
-                Builder(
-                  builder: (context) {
-                    final isLoading = _isLoadingPricing[index] ?? false;
-                    final repairData = _repairPricingData[index];
-                    final replacePricing = _replacePricingData[index];
-                    if (isLoading) {
-                      return Row(
-                        children: [
-                          SizedBox(
-                            width: 16.w,
-                            height: 16.h,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: GlobalStyles.primaryColor,
+                );
+              }
+
+              if (selectedOption == 'repair') {
+                if (repairData != null &&
+                    _hasValidPricingData(repairData, 'repair')) {
+                  return _buildApiCostBreakdown(
+                    'repair',
+                    repairData,
+                    damage,
+                    null,
+                  );
+                } else {
+                  return Container(
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: Colors.orange.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning, color: Colors.orange, size: 20.sp),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Text(
+                            'Repair option is not applicable for $damagedPart',
+                            style: GoogleFonts.inter(
+                              color: Colors.orange,
+                              fontSize: 12.sp,
                             ),
                           ),
-                          SizedBox(width: 8.w),
-                          Text(
-                            'Loading...',
-                            style: GoogleFonts.inter(color: Color(0x992A2A2A)),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              } else if (selectedOption == 'replace') {
+                if (replacePricing != null &&
+                    _hasValidPricingData(replacePricing, 'replace')) {
+                  return _buildApiCostBreakdown(
+                    'replace',
+                    replacePricing,
+                    damage,
+                    repairData,
+                  );
+                } else {
+                  return Container(
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: Colors.orange.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning, color: Colors.orange, size: 20.sp),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Text(
+                            'Replace option is not applicable for $damagedPart',
+                            style: GoogleFonts.inter(
+                              color: Colors.orange,
+                              fontSize: 12.sp,
+                            ),
                           ),
-                        ],
-                      );
-                    }
-
-                    if (selectedOption == 'repair') {
-                      // Repair: uses only body-paint data from repairData
-                      final double bodyPaint =
-                          (repairData?['srp_insurance'] as num?)?.toDouble() ??
-                          0.0;
-                      final double labor =
-                          (repairData?['cost_installation_personal'] as num?)
-                              ?.toDouble() ??
-                          0.0;
-                      // Prefer comprehensive total
-                      final repoTotal =
-                          (repairData?['total_with_labor'] as num?)?.toDouble();
-                      if (bodyPaint == 0.0) {
-                        return Row(
-                          children: [
-                            const Icon(
-                              Icons.info_outline,
-                              color: Colors.orange,
-                              size: 18,
-                            ),
-                            SizedBox(width: 8.w),
-                            Text(
-                              '${_capitalizeOption(selectedOption ?? 'repair')} option is not applicable for $damagedPart',
-                              style: GoogleFonts.inter(
-                                color: Colors.orange,
-                                fontSize: 13.sp,
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-                      final total = repoTotal ?? (bodyPaint + labor);
-                      return Text(
-                        _formatCurrency(total),
-                        style: GoogleFonts.inter(
-                          color: Color(0xFF2A2A2A),
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.bold,
                         ),
-                      );
-                    }
+                      ],
+                    ),
+                  );
+                }
+              }
 
-                    if (selectedOption == 'replace') {
-                      // Replace: uses both thinsmith (replacePricing) and body-paint (repairData)
-                      final double thinsmith =
-                          (replacePricing?['insurance'] as num?)?.toDouble() ??
-                          0.0;
-                      final double bodyPaint =
-                          (repairData?['srp_insurance'] as num?)?.toDouble() ??
-                          0.0;
-                      final double labor =
-                          (replacePricing?['cost_installation_personal']
-                                  as num?)
-                              ?.toDouble() ??
-                          (repairData?['cost_installation_personal'] as num?)
-                              ?.toDouble() ??
-                          0.0;
-                      final repoTotalReplace =
-                          (replacePricing?['total_with_labor'] as num?)
-                              ?.toDouble() ??
-                          (repairData?['total_with_labor'] as num?)?.toDouble();
-                      final displayedReplace =
-                          repoTotalReplace ?? (thinsmith + bodyPaint + labor);
-                      if (displayedReplace == 0.0) {
-                        return Row(
-                          children: [
-                            const Icon(
-                              Icons.info_outline,
-                              color: Colors.orange,
-                              size: 18,
-                            ),
-                            SizedBox(width: 8.w),
-                            Text(
-                              '${_capitalizeOption(selectedOption ?? 'replace')} option is not applicable for $damagedPart',
-                              style: GoogleFonts.inter(
-                                color: Colors.orange,
-                                fontSize: 13.sp,
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-                      return Text(
-                        _formatCurrency(displayedReplace),
-                        style: GoogleFonts.inter(
-                          color: Color(0xFF2A2A2A),
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      );
-                    }
-
-                    return Text(
-                      '—',
-                      style: GoogleFonts.inter(color: Color(0x992A2A2A)),
-                    );
-                  },
-                ),
-              ],
-            ),
+              return SizedBox.shrink();
+            },
           ),
         ],
       ),
@@ -1343,183 +1296,107 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
           SizedBox(height: 12.h),
           _buildDamageInfo(damagedPart, damageType),
           SizedBox(height: 16.h),
-          Container(
-            padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
-            child: Builder(
-              builder: (context) {
-                final isLoading = _isLoadingPricing[globalIndex] ?? false;
-                final repairData = _repairPricingData[globalIndex];
-                final replacePricing = _replacePricingData[globalIndex];
-                if (isLoading) {
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Estimated Total',
-                        style: GoogleFonts.inter(
-                          color: Color(0x992A2A2A),
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          SizedBox(
-                            width: 16.w,
-                            height: 16.h,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: GlobalStyles.primaryColor,
-                            ),
-                          ),
-                          SizedBox(width: 8.w),
-                          Text(
-                            'Loading...',
-                            style: GoogleFonts.inter(color: Color(0x992A2A2A)),
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                }
-                // Manual damage estimates
-                // Repair: body-paint only; Replace: thinsmith + body-paint
+          // Show pricing breakdown for manual damages
+          Builder(
+            builder: (context) {
+              final isLoading = _isLoadingPricing[globalIndex] ?? false;
+              final repairData = _repairPricingData[globalIndex];
+              final replacePricing = _replacePricingData[globalIndex];
 
-                if (selectedOption == 'repair') {
-                  final double bodyPaint =
-                      (repairData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-                  final double labor =
-                      (repairData?['cost_installation_personal'] as num?)
-                          ?.toDouble() ??
-                      0.0;
-                  final repoTotal =
-                      (repairData?['total_with_labor'] as num?)?.toDouble();
-                  double totalRepair = repoTotal ?? (bodyPaint + labor);
-
-                  if (totalRepair == 0.0) {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Estimated Total',
-                          style: GoogleFonts.inter(color: Color(0x992A2A2A)),
-                        ),
-                        Row(
-                          children: [
-                            Icon(Icons.info_outline, color: Colors.orange),
-                            SizedBox(width: 8.w),
-                            Text(
-                              'Price unavailable',
-                              style: GoogleFonts.inter(
-                                color: Colors.orange,
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  }
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Estimated Total',
-                        style: GoogleFonts.inter(color: Color(0x992A2A2A)),
-                      ),
-                      Text(
-                        _formatCurrency(totalRepair),
-                        style: GoogleFonts.inter(
-                          color: Color(0xFF2A2A2A),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  );
-                }
-
-                if (selectedOption == 'replace') {
-                  final double thinsmith =
-                      (replacePricing?['insurance'] as num?)?.toDouble() ?? 0.0;
-                  final double bodyPaint =
-                      (repairData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-                  final double labor =
-                      (replacePricing?['cost_installation_personal'] as num?)
-                          ?.toDouble() ??
-                      (repairData?['cost_installation_personal'] as num?)
-                          ?.toDouble() ??
-                      0.0;
-                  final repoTotalReplace =
-                      (replacePricing?['total_with_labor'] as num?)
-                          ?.toDouble() ??
-                      (repairData?['total_with_labor'] as num?)?.toDouble();
-                  final displayedReplacePrice =
-                      repoTotalReplace ?? (thinsmith + bodyPaint + labor);
-
-                  if (displayedReplacePrice == 0.0) {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Estimated Total',
-                          style: GoogleFonts.inter(color: Color(0x992A2A2A)),
-                        ),
-                        Row(
-                          children: [
-                            Icon(Icons.info_outline, color: Colors.orange),
-                            SizedBox(width: 8.w),
-                            Text(
-                              'Price unavailable',
-                              style: GoogleFonts.inter(
-                                color: Colors.orange,
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  }
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Estimated Total',
-                        style: GoogleFonts.inter(color: Color(0x992A2A2A)),
-                      ),
-                      Text(
-                        _formatCurrency(displayedReplacePrice),
-                        style: GoogleFonts.inter(
-                          color: Color(0xFF2A2A2A),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  );
-                }
-
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Estimated Total',
-                      style: GoogleFonts.inter(
-                        color: Color(0x992A2A2A),
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      '—',
-                      style: GoogleFonts.inter(color: Color(0x992A2A2A)),
-                    ),
-                  ],
+              if (isLoading) {
+                return Center(
+                  child: CircularProgressIndicator(
+                    color: GlobalStyles.primaryColor,
+                  ),
                 );
-              },
-            ),
+              }
+
+              if (selectedOption == 'repair') {
+                if (repairData != null &&
+                    _hasValidPricingData(repairData, 'repair')) {
+                  // Create a dummy damage map for manual damage
+                  final manualDamageMap = {
+                    'damaged_part': damagedPart,
+                    'damage_type': damageType,
+                  };
+                  return _buildApiCostBreakdown(
+                    'repair',
+                    repairData,
+                    manualDamageMap,
+                    null,
+                  );
+                } else {
+                  return Container(
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: Colors.orange.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning, color: Colors.orange, size: 20.sp),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Text(
+                            'Repair option is not applicable for $damagedPart',
+                            style: GoogleFonts.inter(
+                              color: Colors.orange,
+                              fontSize: 12.sp,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              } else if (selectedOption == 'replace') {
+                if (replacePricing != null &&
+                    _hasValidPricingData(replacePricing, 'replace')) {
+                  // Create a dummy damage map for manual damage
+                  final manualDamageMap = {
+                    'damaged_part': damagedPart,
+                    'damage_type': damageType,
+                  };
+                  return _buildApiCostBreakdown(
+                    'replace',
+                    replacePricing,
+                    manualDamageMap,
+                    repairData,
+                  );
+                } else {
+                  return Container(
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: Colors.orange.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning, color: Colors.orange, size: 20.sp),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Text(
+                            'Replace option is not applicable for $damagedPart',
+                            style: GoogleFonts.inter(
+                              color: Colors.orange,
+                              fontSize: 12.sp,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              }
+
+              return SizedBox.shrink();
+            },
           ),
           SizedBox(height: 12.h),
           Row(
@@ -1612,6 +1489,141 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildApiCostBreakdown(
+    String option,
+    Map<String, dynamic> apiPricing,
+    Map<String, dynamic> damage, // Add damage parameter
+    Map<String, dynamic>? bodyPaintPricing, // Add body-paint pricing for repair
+  ) {
+    double laborFee = 0.0;
+    double finalPrice = 0.0;
+    double bodyPaintPrice = 0.0;
+    double thinsmithPrice = 0.0;
+
+    if (option == 'replace') {
+      // Replace: apiPricing has thinsmith (replacePricing), bodyPaintPricing has body-paint (repairPricing)
+      thinsmithPrice = (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0;
+      laborFee =
+          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ??
+          (bodyPaintPricing?['cost_installation_personal'] as num?)
+              ?.toDouble() ??
+          0.0;
+      if (bodyPaintPricing != null) {
+        bodyPaintPrice =
+            (bodyPaintPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+      }
+      finalPrice = thinsmithPrice + bodyPaintPrice;
+    } else {
+      // Repair: apiPricing has body-paint (repairPricing)
+      laborFee =
+          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
+      bodyPaintPrice = (apiPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+      finalPrice = bodyPaintPrice;
+    }
+
+    return Container(
+      padding: EdgeInsets.all(16.r),
+      decoration: BoxDecoration(
+        color: GlobalStyles.primaryColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                '${option.toUpperCase()} PRICING',
+                style: GoogleFonts.inter(
+                  color: GlobalStyles.primaryColor,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          _buildCostItem('Labor Fee', laborFee),
+          if (option == 'repair') ...[
+            SizedBox(height: 8.h),
+            _buildCostItem('Paint Price', bodyPaintPrice),
+          ] else if (option == 'replace') ...[
+            SizedBox(height: 8.h),
+            // For replace, show both thinsmith and body paint
+            _buildCostItem('Part Price', thinsmithPrice),
+            _buildCostItem('Paint Price', bodyPaintPrice),
+          ],
+          Divider(color: Colors.grey.withValues(alpha: 0.3), height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Text(
+                  option == 'replace' ? 'TOTAL PRICE' : 'TOTAL REPAIR PRICE',
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Text(
+                // Display total including labor fee so UI total matches computed totals
+                _formatCurrency(finalPrice + laborFee),
+                style: GoogleFonts.inter(
+                  color: GlobalStyles.primaryColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _hasValidPricingData(Map<String, dynamic> pricingData, String option) {
+    if (option == 'repair') {
+      // For repair, we need body-paint pricing (srp_insurance)
+      final bodyPaintPrice = pricingData['srp_insurance'];
+      return bodyPaintPrice != null && bodyPaintPrice != 0;
+    } else if (option == 'replace') {
+      // For replace, we need thinsmith pricing (insurance)
+      final thinsmithPrice = pricingData['insurance'];
+      return thinsmithPrice != null && thinsmithPrice != 0;
+    }
+    return false;
+  }
+
+  Widget _buildCostItem(String label, double amount) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              color: Color(0x992A2A2A),
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            _formatCurrency(amount),
+            style: GoogleFonts.inter(
+              color: Color(0xFF2A2A2A),
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
