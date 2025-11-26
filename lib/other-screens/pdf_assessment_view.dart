@@ -16,12 +16,14 @@ class PDFAssessmentView extends StatefulWidget {
   final List<String>? imagePaths;
   final Map<String, Map<String, dynamic>>? apiResponses;
   final Map<String, String>? assessmentIds;
+  final Map<String, String>? vehicleData;
 
   const PDFAssessmentView({
     super.key,
     this.imagePaths,
     this.apiResponses,
     this.assessmentIds,
+    this.vehicleData,
   });
 
   @override
@@ -2008,6 +2010,14 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               if (damageCost > 0.0) {
                 damage['cost'] = _formatCurrency(damageCost);
               }
+
+              // Update action based on user selection
+              if (selectedOption != null) {
+                damage['action'] = _capitalizeOption(selectedOption);
+                damage['recommended_action'] = _capitalizeOption(
+                  selectedOption,
+                );
+              }
             }
 
             updatedDamages.add(damage);
@@ -2080,6 +2090,11 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
 
           if (damageCost > 0.0) {
             damageMap['cost'] = _formatCurrency(damageCost);
+          }
+
+          if (selectedOption != null) {
+            damageMap['action'] = _capitalizeOption(selectedOption);
+            damageMap['recommended_action'] = _capitalizeOption(selectedOption);
           }
 
           manualDamagesForPdf.add(damageMap);
@@ -2371,6 +2386,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               ),
               manualDamages: List<Map<String, String>>.from(_manualDamages),
               estimatedDamageCost: _estimatedDamageCost,
+              vehicleData: widget.vehicleData,
             ),
       ),
     );

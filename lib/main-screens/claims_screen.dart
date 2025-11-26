@@ -302,10 +302,10 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
 
     switch (_currentSort) {
       case SortOption.dateNewest:
-        sortedClaims.sort((a, b) => b.incidentDate.compareTo(a.incidentDate));
+        sortedClaims.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         break;
       case SortOption.dateOldest:
-        sortedClaims.sort((a, b) => a.incidentDate.compareTo(b.incidentDate));
+        sortedClaims.sort((a, b) => a.createdAt.compareTo(b.createdAt));
         break;
       case SortOption.amountHighest:
         sortedClaims.sort(
@@ -643,7 +643,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                         ),
                       ),
                       Text(
-                        DateFormat.yMMMd().format(claim.incidentDate),
+                        DateFormat.yMMMd().format(claim.createdAt),
                         style: GoogleFonts.inter(
                           color: Colors.grey,
                           fontSize: 12.sp,

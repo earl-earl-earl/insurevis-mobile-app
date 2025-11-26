@@ -425,9 +425,9 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 _buildActionButton(
                   icon: Icons.assessment,
                   label: "Make Assessment",
-                  iconColor: Colors.purple,
+                  iconColor: Colors.green,
                   onPressed: () {
-                    Navigator.pushNamed(context, '/assessment_report');
+                    Navigator.pushNamed(context, '/vehicle_info');
                   },
                 ),
                 SizedBox(width: 15.w),

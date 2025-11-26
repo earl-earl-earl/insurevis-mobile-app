@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/other-screens/result_screen.dart';
-import 'package:insurevis/other-screens/pdf_assessment_view.dart';
+import 'package:insurevis/other-screens/vehicle_information_form.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
@@ -177,7 +177,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
                     context,
                     MaterialPageRoute(
                       builder:
-                          (context) => PDFAssessmentView(
+                          (context) => VehicleInformationForm(
                             imagePaths: widget.imagePaths,
                             apiResponses: _apiResponses,
                             assessmentIds: _assessmentIds,

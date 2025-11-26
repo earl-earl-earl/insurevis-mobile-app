@@ -12,7 +12,6 @@ import 'package:insurevis/services/claims_service.dart';
 import 'package:insurevis/services/documents_service.dart';
 import 'package:insurevis/models/document_model.dart';
 import 'package:insurevis/services/prices_repository.dart';
-import 'package:insurevis/services/car_brands_repository.dart';
 
 class InsuranceDocumentUpload extends StatefulWidget {
   final List<String> imagePaths;
@@ -23,6 +22,7 @@ class InsuranceDocumentUpload extends StatefulWidget {
   final Map<int, Map<String, dynamic>>? replacePricingData;
   final List<Map<String, String>>? manualDamages;
   final double? estimatedDamageCost;
+  final Map<String, String>? vehicleData;
 
   const InsuranceDocumentUpload({
     super.key,
@@ -34,6 +34,7 @@ class InsuranceDocumentUpload extends StatefulWidget {
     this.replacePricingData,
     this.manualDamages,
     this.estimatedDamageCost,
+    this.vehicleData,
   });
 
   @override
@@ -44,25 +45,6 @@ class InsuranceDocumentUpload extends StatefulWidget {
 class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   final ImagePicker _picker = ImagePicker();
   final DocumentService _documentService = DocumentService();
-
-  // Vehicle information controllers
-  final TextEditingController _vehicleMakeController = TextEditingController();
-  final TextEditingController _vehicleModelController = TextEditingController();
-  final TextEditingController _vehicleYearController = TextEditingController();
-  final TextEditingController _plateNumberController = TextEditingController();
-
-  // Car brands and models data from API
-  List<Map<String, dynamic>> _carBrandsData = [];
-  bool _isLoadingBrands = false;
-
-  // Selected values for dropdowns
-  String? _selectedMake;
-  String? _selectedModel;
-  bool _isMakeOthers = false;
-  bool _isModelOthers = false;
-
-  // Available models for selected make
-  List<Map<String, dynamic>> _availableModels = [];
 
   // Incident information controllers
   final TextEditingController _incidentLocationController =
@@ -83,34 +65,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   // Manual damages added by user via "Add Damage" UI
   final List<Map<String, String>> _manualDamages = [];
-  bool _showAddDamageForm = false;
-  String? _newDamagePart;
-  String _newSelectedOption = 'repair';
-
-  // Car parts and damage types for dropdowns
-  final List<String> _carParts = [
-    "Back-bumper",
-    "Back-door",
-    "Back-wheel",
-    "Back-window",
-    "Back-windshield",
-    "Fender",
-    "Front-bumper",
-    "Front-door",
-    "Front-wheel",
-    "Front-window",
-    "Grille",
-    "Headlight",
-    "Hood",
-    "License-plate",
-    "Mirror",
-    "Quarter-panel",
-    "Rocker-panel",
-    "Roof",
-    "Tail-light",
-    "Trunk",
-    "Windshield",
-  ];
 
   // Note: Manual entry does not capture a specific damage type at this time.
 
@@ -186,143 +140,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     if (widget.selectedRepairOptions == null) {
       _fetchAllPricingData();
     }
-    _fetchCarBrands();
-  }
-
-  /// Fetches car brands data from the repository (which handles caching)
-  Future<void> _fetchCarBrands() async {
-    setState(() {
-      _isLoadingBrands = true;
-    });
-
-    try {
-      // Ensure repository is initialized (safe to call multiple times)
-      await CarBrandsRepository.instance.init();
-
-      // Get the cached brands data from repository
-      final brandsData = CarBrandsRepository.instance.brands;
-
-      if (brandsData.isEmpty) {
-        debugPrint('CarBrands data is empty after init, retrying once...');
-        // Try one more time with a force refresh
-        await CarBrandsRepository.instance.refresh();
-        final retryData = CarBrandsRepository.instance.brands;
-
-        if (retryData.isEmpty) {
-          debugPrint('CarBrands still empty after retry');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Unable to load car brands. Please check your internet connection and try again.',
-                ),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 3),
-              ),
-            );
-          }
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          // Sort brands alphabetically by name
-          _carBrandsData = List<Map<String, dynamic>>.from(brandsData);
-          _carBrandsData.sort((a, b) {
-            final nameA = a['name']?.toString() ?? '';
-            final nameB = b['name']?.toString() ?? '';
-            return nameA.compareTo(nameB);
-          });
-
-          _isLoadingBrands = false;
-        });
-        debugPrint(
-          'Loaded ${_carBrandsData.length} car brands from repository',
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _carBrandsData = [];
-          _isLoadingBrands = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading car brands: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-      debugPrint('Error loading car brands from repository: $e');
-    }
-  }
-
-  /// Updates available models when a make is selected
-  void _onMakeSelected(String? make) {
-    setState(() {
-      _selectedMake = make;
-      _isMakeOthers = make == 'Others';
-
-      if (_isMakeOthers) {
-        // Clear make controller when switching to "Others"
-        _vehicleMakeController.clear();
-        _availableModels = [];
-      } else if (make != null) {
-        // Set make controller with selected value
-        _vehicleMakeController.text = make;
-
-        // Find the brand and get its models
-        final brand = _carBrandsData.firstWhere(
-          (b) => b['name'] == make,
-          orElse: () => {'models': []},
-        );
-        _availableModels = List<Map<String, dynamic>>.from(
-          brand['models'] ?? [],
-        );
-
-        // Sort models alphabetically by model_name
-        _availableModels.sort((a, b) {
-          final nameA = a['model_name']?.toString() ?? '';
-          final nameB = b['model_name']?.toString() ?? '';
-          return nameA.compareTo(nameB);
-        });
-      }
-
-      // Reset model and year when make changes
-      _selectedModel = null;
-      _isModelOthers = false;
-      _vehicleModelController.clear();
-      _vehicleYearController.clear();
-    });
-  }
-
-  /// Updates year when a model is selected
-  void _onModelSelected(String? model) {
-    setState(() {
-      _selectedModel = model;
-      _isModelOthers = model == 'Others';
-
-      if (_isModelOthers) {
-        // Clear model and year when switching to "Others"
-        _vehicleModelController.clear();
-        _vehicleYearController.clear();
-      } else if (model != null) {
-        // Set model controller with selected value
-        _vehicleModelController.text = model;
-
-        // Find the model and get its year
-        final modelData = _availableModels.firstWhere(
-          (m) => m['model_name'] == model,
-          orElse: () => {},
-        );
-        if (modelData['year'] != null) {
-          _vehicleYearController.text = modelData['year'].toString();
-        }
-      } else {
-        _vehicleYearController.clear();
-      }
-    });
   }
 
   /// Fetches pricing data for all detected damages when the screen opens
@@ -467,38 +284,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     return capitalizedWords.join(' ');
   }
 
-  // Helper method to validate pricing data based on option type
-  bool _hasValidPricingData(
-    Map<String, dynamic> apiPricing,
-    String selectedOption,
-  ) {
-    if (selectedOption == 'replace') {
-      // For replace (body-paint data), check for srp_insurance
-      return apiPricing['srp_insurance'] != null &&
-          (apiPricing['srp_insurance'] as num) > 0;
-    } else {
-      // For repair (thinsmith data), check for insurance and success
-      return apiPricing['success'] == true &&
-          apiPricing['insurance'] != null &&
-          (apiPricing['insurance'] as num) > 0;
-    }
-  }
-
-  // Helper to format labels for UI dropdowns (nicer display)
-  String _formatLabel(String raw) {
-    if (raw.isEmpty) return raw;
-    String formatted = raw.replaceAll('-', ' ').replaceAll('_', ' ').trim();
-    final words = formatted.split(' ');
-    return words
-        .map(
-          (w) =>
-              w.isEmpty
-                  ? w
-                  : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}',
-        )
-        .join(' ');
-  }
-
   // Method to fetch pricing data for a damaged part
   Future<void> _fetchPricingForDamage(
     int damageIndex,
@@ -560,10 +345,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   @override
   void dispose() {
-    _vehicleMakeController.dispose();
-    _vehicleModelController.dispose();
-    _vehicleYearController.dispose();
-    _plateNumberController.dispose();
     _incidentLocationController.dispose();
     _incidentDateController.dispose();
     super.dispose();
@@ -602,7 +383,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                   children: [
                     _buildInstructions(),
                     SizedBox(height: 40.h),
-                    _buildVehicleInformationSection(),
+                    _buildVehicleInfoSection(),
                     SizedBox(height: 40.h),
                     _buildIncidentInformationSection(),
                     _buildDamageAssessmentImagesSection(),
@@ -636,6 +417,8 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                       ),
                     ),
                     _buildDocumentCategories(),
+                    SizedBox(height: 40.h),
+                    _buildVehicleInfoSection(),
                   ],
                 ),
               ),
@@ -644,6 +427,83 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildVehicleInfoSection() {
+    if (widget.vehicleData == null) return const SizedBox.shrink();
+
+    final make = widget.vehicleData!['make'] ?? 'N/A';
+    final model = widget.vehicleData!['model'] ?? 'N/A';
+    final year = widget.vehicleData!['year'] ?? 'N/A';
+    final plateNumber = widget.vehicleData!['plate_number'] ?? 'N/A';
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Vehicle Information',
+            style: GoogleFonts.inter(
+              fontSize: 24.sp,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF2A2A2A),
+            ),
+          ),
+          SizedBox(height: 16.h),
+          Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(13),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                _buildVehicleInfoRow('Make', make),
+                Divider(height: 24.h, color: Colors.grey.shade100),
+                _buildVehicleInfoRow('Model', model),
+                Divider(height: 24.h, color: Colors.grey.shade100),
+                _buildVehicleInfoRow('Year', year),
+                Divider(height: 24.h, color: Colors.grey.shade100),
+                _buildVehicleInfoRow('Plate Number', plateNumber),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVehicleInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 14.sp,
+            color: const Color(0x992A2A2A),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            fontSize: 14.sp,
+            color: const Color(0xFF2A2A2A),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 
@@ -688,559 +548,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildVehicleInformationSection() {
-    return Container(
-      padding: EdgeInsets.all(16.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Vehicle Information',
-                style: GoogleFonts.inter(
-                  fontSize: 24.sp,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2A2A2A),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8.h),
-          Text(
-            'Please provide your vehicle details for the insurance claim.',
-            style: GoogleFonts.inter(
-              fontSize: 14.sp,
-              color: const Color(0x992A2A2A),
-            ),
-          ),
-          SizedBox(height: 30.h),
-
-          // Vehicle Make
-          _buildVehicleMakeDropdown(),
-          SizedBox(height: 16.h),
-
-          // Vehicle Model
-          _buildVehicleModelDropdown(),
-          SizedBox(height: 16.h),
-
-          // Vehicle Year
-          _buildVehicleYearField(),
-          SizedBox(height: 16.h),
-
-          // Plate Number
-          _buildVehicleInputField(
-            controller: _plateNumberController,
-            label: 'Plate Number',
-            hint: 'e.g., ABC-1234, NCR-123-A',
-            icon: Icons.confirmation_number,
-            maxLength: 8,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVehicleInputField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    TextInputType? keyboardType,
-    int? maxLength,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: GlobalStyles.primaryColor, size: 16.sp),
-            SizedBox(width: 8.w),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-                color: const Color(0x992A2A2A),
-              ),
-            ),
-            Text(
-              ' *',
-              style: GoogleFonts.inter(
-                fontSize: 14.sp,
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 8.h),
-        TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          maxLength: maxLength,
-          style: GoogleFonts.inter(
-            color: const Color(0xFF2A2A2A),
-            fontSize: 14.sp,
-          ),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: GoogleFonts.inter(
-              color: const Color(0x992A2A2A),
-              fontSize: 14.sp,
-            ),
-            filled: true,
-            fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(color: Colors.white.withAlpha(76)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(color: Colors.white.withAlpha(76)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                color: GlobalStyles.primaryColor.withAlpha(153),
-                width: 2,
-              ),
-            ),
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: 12.w,
-              vertical: 12.h,
-            ),
-            counterText: '', // Hide character counter
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVehicleMakeDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.business, color: GlobalStyles.primaryColor, size: 16.sp),
-            SizedBox(width: 8.w),
-            Text(
-              'Vehicle Make',
-              style: GoogleFonts.inter(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-                color: const Color(0x992A2A2A),
-              ),
-            ),
-            Text(
-              ' *',
-              style: GoogleFonts.inter(
-                fontSize: 14.sp,
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 8.h),
-        if (_isMakeOthers)
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _vehicleMakeController,
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF2A2A2A),
-                    fontSize: 14.sp,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Enter vehicle make',
-                    hintStyle: GoogleFonts.inter(
-                      color: const Color(0x992A2A2A),
-                      fontSize: 14.sp,
-                    ),
-                    filled: true,
-                    fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: BorderSide(color: Colors.white.withAlpha(76)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: BorderSide(color: Colors.white.withAlpha(76)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: BorderSide(
-                        color: GlobalStyles.primaryColor.withAlpha(153),
-                        width: 2,
-                      ),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 12.h,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 8.w),
-              // Button to switch back to dropdown
-              Container(
-                height: 48.h,
-                decoration: BoxDecoration(
-                  color: GlobalStyles.primaryColor,
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _isMakeOthers = false;
-                      _selectedMake = null;
-                      _vehicleMakeController.clear();
-                    });
-                  },
-                  icon: Icon(Icons.list, color: Colors.white, size: 20.sp),
-                  tooltip: 'Switch to dropdown',
-                ),
-              ),
-            ],
-          )
-        else
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black12.withAlpha((0.04 * 255).toInt()),
-              borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: Colors.white.withAlpha(76)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedMake,
-                hint: Padding(
-                  padding: EdgeInsets.only(left: 12.w),
-                  child: Text(
-                    _isLoadingBrands ? 'Loading...' : 'Select a make/brand',
-                    style: GoogleFonts.inter(
-                      color: const Color(0x992A2A2A),
-                      fontSize: 14.sp,
-                    ),
-                  ),
-                ),
-                isExpanded: true,
-                icon: Padding(
-                  padding: EdgeInsets.only(right: 12.w),
-                  child: Icon(
-                    Icons.arrow_drop_down,
-                    color: const Color(0x992A2A2A),
-                  ),
-                ),
-                dropdownColor: Colors.white,
-                items: [
-                  ..._carBrandsData.map((brand) {
-                    return DropdownMenuItem<String>(
-                      value: brand['name'],
-                      child: Padding(
-                        padding: EdgeInsets.only(left: 12.w),
-                        child: Text(
-                          brand['name'],
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF2A2A2A),
-                            fontSize: 14.sp,
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                  DropdownMenuItem<String>(
-                    value: 'Others',
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 12.w),
-                      child: Text(
-                        'Others',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFF2A2A2A),
-                          fontSize: 14.sp,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-                onChanged: _isLoadingBrands ? null : _onMakeSelected,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildVehicleModelDropdown() {
-    final bool isDisabled = _selectedMake == null || _isMakeOthers;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.directions_car_filled,
-              color: GlobalStyles.primaryColor,
-              size: 16.sp,
-            ),
-            SizedBox(width: 8.w),
-            Text(
-              'Vehicle Model',
-              style: GoogleFonts.inter(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-                color: const Color(0x992A2A2A),
-              ),
-            ),
-            Text(
-              ' *',
-              style: GoogleFonts.inter(
-                fontSize: 14.sp,
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 8.h),
-        // Show text field if make is "Others" or if model is "Others"
-        if (_isMakeOthers || _isModelOthers)
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _vehicleModelController,
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF2A2A2A),
-                    fontSize: 14.sp,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Enter vehicle model',
-                    hintStyle: GoogleFonts.inter(
-                      color: const Color(0x992A2A2A),
-                      fontSize: 14.sp,
-                    ),
-                    filled: true,
-                    fillColor: Colors.black12.withAlpha((0.04 * 255).toInt()),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: BorderSide(color: Colors.white.withAlpha(76)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: BorderSide(color: Colors.white.withAlpha(76)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: BorderSide(
-                        color: GlobalStyles.primaryColor.withAlpha(153),
-                        width: 2,
-                      ),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 12.h,
-                    ),
-                  ),
-                ),
-              ),
-              // Only show the switch button if model is "Others" but make is not "Others"
-              if (_isModelOthers && !_isMakeOthers) ...[
-                SizedBox(width: 8.w),
-                Container(
-                  height: 48.h,
-                  decoration: BoxDecoration(
-                    color: GlobalStyles.primaryColor,
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _isModelOthers = false;
-                        _selectedModel = null;
-                        _vehicleModelController.clear();
-                        _vehicleYearController.clear();
-                      });
-                    },
-                    icon: Icon(Icons.list, color: Colors.white, size: 20.sp),
-                    tooltip: 'Switch to dropdown',
-                  ),
-                ),
-              ],
-            ],
-          )
-        else
-          Container(
-            decoration: BoxDecoration(
-              color:
-                  isDisabled
-                      ? Colors.grey.withAlpha(51)
-                      : Colors.black12.withAlpha((0.04 * 255).toInt()),
-              borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: Colors.white.withAlpha(76)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedModel,
-                hint: Padding(
-                  padding: EdgeInsets.only(left: 12.w),
-                  child: Text(
-                    isDisabled ? 'Select a make first' : 'Select a model',
-                    style: GoogleFonts.inter(
-                      color: const Color(0x992A2A2A),
-                      fontSize: 14.sp,
-                    ),
-                  ),
-                ),
-                isExpanded: true,
-                icon: Padding(
-                  padding: EdgeInsets.only(right: 12.w),
-                  child: Icon(
-                    Icons.arrow_drop_down,
-                    color: const Color(0x992A2A2A),
-                  ),
-                ),
-                dropdownColor: Colors.white,
-                items:
-                    isDisabled
-                        ? null
-                        : [
-                          ..._availableModels.map((model) {
-                            return DropdownMenuItem<String>(
-                              value: model['model_name'],
-                              child: Padding(
-                                padding: EdgeInsets.only(left: 12.w),
-                                child: Text(
-                                  model['model_name'],
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF2A2A2A),
-                                    fontSize: 14.sp,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                          DropdownMenuItem<String>(
-                            value: 'Others',
-                            child: Padding(
-                              padding: EdgeInsets.only(left: 12.w),
-                              child: Text(
-                                'Others',
-                                style: GoogleFonts.inter(
-                                  color: const Color(0xFF2A2A2A),
-                                  fontSize: 14.sp,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                onChanged: isDisabled ? null : _onModelSelected,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildVehicleYearField() {
-    final bool isDisabled =
-        (_selectedMake == null || _selectedModel == null) &&
-        !(_isMakeOthers || _isModelOthers);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.calendar_today,
-              color: GlobalStyles.primaryColor,
-              size: 16.sp,
-            ),
-            SizedBox(width: 8.w),
-            Text(
-              'Vehicle Year',
-              style: GoogleFonts.inter(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-                color: const Color(0x992A2A2A),
-              ),
-            ),
-            Text(
-              ' *',
-              style: GoogleFonts.inter(
-                fontSize: 14.sp,
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 8.h),
-        TextFormField(
-          controller: _vehicleYearController,
-          enabled: !isDisabled || _isMakeOthers || _isModelOthers,
-          keyboardType: TextInputType.number,
-          maxLength: 4,
-          style: GoogleFonts.inter(
-            color: const Color(0xFF2A2A2A),
-            fontSize: 14.sp,
-          ),
-          decoration: InputDecoration(
-            hintText:
-                isDisabled
-                    ? 'Select make and model first'
-                    : 'e.g., 2020, 2018, 2022',
-            hintStyle: GoogleFonts.inter(
-              color: const Color(0x992A2A2A),
-              fontSize: 14.sp,
-            ),
-            filled: true,
-            fillColor:
-                (isDisabled && !(_isMakeOthers || _isModelOthers))
-                    ? Colors.grey.withAlpha(51)
-                    : Colors.black12.withAlpha((0.04 * 255).toInt()),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                color: Colors.black12.withAlpha((0.04 * 255).toInt()),
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                color: Colors.black12.withAlpha((0.04 * 255).toInt()),
-              ),
-            ),
-            disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                color: Colors.black12.withAlpha((0.04 * 255).toInt()),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(
-                color: GlobalStyles.primaryColor.withAlpha(153),
-                width: 2,
-              ),
-            ),
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: 12.w,
-              vertical: 12.h,
-            ),
-            counterText: '', // Hide character counter
-          ),
-        ),
-      ],
     );
   }
 
@@ -2136,711 +1443,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     );
   }
 
-  Widget _buildAddDamageForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Part dropdown
-        Text(
-          'Detected Damage (Car Part)',
-          style: GoogleFonts.inter(
-            color: const Color(0x992A2A2A),
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        SizedBox(height: 8.h),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w),
-          decoration: BoxDecoration(
-            color: Colors.black12.withAlpha((0.04 * 255).toInt()),
-            borderRadius: BorderRadius.circular(8.r),
-          ),
-          child: DropdownButton<String>(
-            value: _newDamagePart,
-            hint: Text(
-              'Select part',
-              style: GoogleFonts.inter(
-                color: const Color(0x992A2A2A),
-                fontSize: 12.sp,
-              ),
-            ),
-            style: GoogleFonts.inter(
-              color: const Color(0xFF2A2A2A),
-              fontSize: 14.sp,
-            ),
-            isExpanded: true,
-            dropdownColor: Colors.white,
-            underline: const SizedBox.shrink(),
-            items:
-                _carParts
-                    .map(
-                      (p) => DropdownMenuItem<String>(
-                        value: p,
-                        child: Text(
-                          _formatLabel(p),
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF2A2A2A),
-                            fontSize: 14.sp,
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-            onChanged: (val) => setState(() => _newDamagePart = val),
-          ),
-        ),
-        SizedBox(height: 12.h),
-
-        // Damage type removed for manual additions — only part selection is required
-        SizedBox(height: 12.h),
-
-        // Repair/Replace buttons for new damage
-        Row(
-          children: [
-            Expanded(
-              child: _buildOptionButton(
-                'Repair',
-                Icons.build,
-                _newSelectedOption == 'repair',
-                () => setState(() => _newSelectedOption = 'repair'),
-              ),
-            ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: _buildOptionButton(
-                'Replace',
-                Icons.autorenew,
-                _newSelectedOption == 'replace',
-                () => setState(() => _newSelectedOption = 'replace'),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 12.h),
-
-        // Add button
-        SizedBox(
-          width: double.infinity,
-          height: 50.h,
-          child: ElevatedButton(
-            style: ButtonStyle(
-              backgroundColor: WidgetStateColor.resolveWith((states) {
-                if (states.contains(WidgetState.disabled)) {
-                  return Colors.grey; // Disabled background
-                }
-                return GlobalStyles.primaryColor; // Enabled background
-              }),
-              foregroundColor: WidgetStateColor.resolveWith((states) {
-                if (states.contains(WidgetState.disabled)) {
-                  return Colors.white70; // Disabled text color
-                }
-                return Colors.white; // Enabled text color
-              }),
-              side: WidgetStateBorderSide.resolveWith((states) {
-                if (states.contains(WidgetState.disabled)) {
-                  return const BorderSide(
-                    color: Colors.grey,
-                  ); // Disabled border
-                }
-                return BorderSide(
-                  color: GlobalStyles.primaryColor,
-                ); // Enabled border
-              }),
-              shape: WidgetStatePropertyAll<RoundedRectangleBorder>(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-              ),
-            ),
-            onPressed:
-                (_newDamagePart != null)
-                    ? () {
-                      // Add to manual damages list
-                      setState(() {
-                        // compute index for manual damage as negative index to avoid colliding with API indices
-                        final int newGlobalIndex = -(_manualDamages.length + 1);
-
-                        _manualDamages.add({
-                          'damaged_part': _newDamagePart!,
-                          // leave damage_type empty for manual additions
-                          'damage_type': '',
-                        });
-
-                        // Set selected option for this new damage
-                        _selectedRepairOptions[newGlobalIndex] =
-                            _newSelectedOption;
-
-                        // Attempt to fetch pricing for new damage
-                        _fetchPricingForDamage(
-                          newGlobalIndex,
-                          _newDamagePart!,
-                          _newSelectedOption,
-                        );
-
-                        // reset form
-                        _newDamagePart = null;
-                        _newSelectedOption = 'repair';
-                        _showAddDamageForm = false;
-                      });
-                    }
-                    : null,
-            child: Text(
-              'Add Damage',
-              style: GoogleFonts.inter(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildManualDamageRepairOption(
-    int globalIndex,
-    Map<String, String> damage,
-  ) {
-    final damagedPart = damage['damaged_part'] ?? 'Unknown Part';
-    final damageType = damage['damage_type'] ?? 'Unknown Damage';
-
-    String selectedOption = _selectedRepairOptions[globalIndex] ?? 'repair';
-
-    final displayIndex = globalIndex < 0 ? (-globalIndex) - 1 : globalIndex;
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 8.h, bottom: 16.h),
-      decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withAlpha(25),
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Manual Damage ${displayIndex + 1}",
-                style: GoogleFonts.inter(
-                  color: GlobalStyles.secondaryColor,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  // convert globalIndex back to manual list index
-                  final manualIdx =
-                      globalIndex < 0 ? -globalIndex - 1 : globalIndex;
-                  if (manualIdx >= 0 && manualIdx < _manualDamages.length) {
-                    _removeManualDamageAt(manualIdx);
-                  }
-                },
-                icon: Icon(
-                  Icons.remove_circle_rounded,
-                  color: Colors.red,
-                  size: 20.sp,
-                ),
-              ),
-            ],
-          ),
-          _buildDamageInfo(damagedPart, damageType),
-          SizedBox(height: 7.h),
-          Row(
-            children: [
-              Expanded(
-                child: _buildOptionButton(
-                  'Repair',
-                  Icons.build,
-                  selectedOption == 'repair',
-                  () {
-                    setState(() {
-                      _selectedRepairOptions[globalIndex] = 'repair';
-                    });
-                    _fetchPricingForDamage(globalIndex, damagedPart, 'repair');
-                  },
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: _buildOptionButton(
-                  'Replace',
-                  Icons.autorenew,
-                  selectedOption == 'replace',
-                  () {
-                    setState(() {
-                      _selectedRepairOptions[globalIndex] = 'replace';
-                    });
-                    _fetchPricingForDamage(globalIndex, damagedPart, 'replace');
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          // Add pricing display section for manual damages
-          SizedBox(height: 12.h),
-          if (_isLoadingPricing[globalIndex] == true)
-            Center(
-              child: Padding(
-                padding: EdgeInsets.all(16.h),
-                child: const CircularProgressIndicator(
-                  color: GlobalStyles.primaryColor,
-                ),
-              ),
-            )
-          else if ((selectedOption == 'repair' &&
-                  _repairPricingData[globalIndex] != null &&
-                  _hasValidPricingData(
-                    _repairPricingData[globalIndex]!,
-                    selectedOption,
-                  )) ||
-              (selectedOption == 'replace' &&
-                  _replacePricingData[globalIndex] != null &&
-                  _hasValidPricingData(
-                    _replacePricingData[globalIndex]!,
-                    selectedOption,
-                  )))
-            _buildApiCostBreakdown(
-              selectedOption,
-              selectedOption == 'repair'
-                  ? _repairPricingData[globalIndex]!
-                  : _replacePricingData[globalIndex]!,
-              selectedOption == 'replace'
-                  ? _repairPricingData[globalIndex]
-                  : null,
-            ),
-        ],
-      ),
-    );
-  }
-
-  // Removes a manual damage at the given list index and keeps internal maps in sync.
-  void _removeManualDamageAt(int manualIdx) {
-    // Compute the negative key used for this manual damage before removal
-    final int removedKey = -(manualIdx + 1);
-
-    setState(() {
-      // Remove from the manual damages list (affects UI ordering/indices)
-      _manualDamages.removeAt(manualIdx);
-
-      // Clean up selection and pricing entries for the removed key
-      _selectedRepairOptions.remove(removedKey);
-      _repairPricingData.remove(removedKey);
-      _replacePricingData.remove(removedKey);
-      _isLoadingPricing.remove(removedKey);
-
-      // Shift keys for remaining manual items that were after the removed one
-      // For keys less than removedKey (e.g., -4 when removed is -3), add +1 to move them closer to 0
-      Map<int, String> newSelected = {};
-      _selectedRepairOptions.forEach((k, v) {
-        if (k < 0 && k < removedKey) {
-          newSelected[k + 1] = v; // shift
-        } else {
-          newSelected[k] = v; // keep
-        }
-      });
-      _selectedRepairOptions = newSelected;
-
-      Map<int, Map<String, dynamic>?> newRepairPricing = {};
-      _repairPricingData.forEach((k, v) {
-        if (k < 0 && k < removedKey) {
-          newRepairPricing[k + 1] = v;
-        } else {
-          newRepairPricing[k] = v;
-        }
-      });
-      _repairPricingData
-        ..clear()
-        ..addAll(newRepairPricing);
-
-      Map<int, Map<String, dynamic>?> newReplacePricing = {};
-      _replacePricingData.forEach((k, v) {
-        if (k < 0 && k < removedKey) {
-          newReplacePricing[k + 1] = v;
-        } else {
-          newReplacePricing[k] = v;
-        }
-      });
-      _replacePricingData
-        ..clear()
-        ..addAll(newReplacePricing);
-
-      Map<int, bool> newLoading = {};
-      _isLoadingPricing.forEach((k, v) {
-        if (k < 0 && k < removedKey) {
-          newLoading[k + 1] = v;
-        } else {
-          newLoading[k] = v;
-        }
-      });
-      _isLoadingPricing
-        ..clear()
-        ..addAll(newLoading);
-    });
-
-    // Recalculate estimated cost after removal & reindexing
-    _calculateEstimatedDamageCost();
-  }
-
-  Widget _buildDamageRepairOption(int index, Map<String, dynamic> damage) {
-    String damagedPart = 'Unknown Part';
-    String damageType = 'Unknown Damage';
-
-    // Extract damaged part
-    if (damage.containsKey('damaged_part')) {
-      damagedPart = damage['damaged_part']?.toString() ?? 'Unknown Part';
-    }
-
-    // Extract damage type
-    if (damage.containsKey('damage_type')) {
-      final damageTypeValue = damage['damage_type'];
-      if (damageTypeValue is Map && damageTypeValue.containsKey('class_name')) {
-        damageType =
-            damageTypeValue['class_name']?.toString() ?? 'Unknown Damage';
-      } else {
-        damageType = damageTypeValue?.toString() ?? 'Unknown Damage';
-      }
-    }
-
-    String selectedOption = _selectedRepairOptions[index] ?? 'repair';
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withAlpha(25),
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Damage info
-          Row(
-            children: [
-              Text(
-                "Damage ${index + 1}",
-                style: GoogleFonts.inter(
-                  color: GlobalStyles.secondaryColor,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-
-          // Part and damage type info
-          _buildDamageInfo(damagedPart, damageType),
-          SizedBox(height: 7.h),
-
-          // Repair/Replace options
-          Row(
-            children: [
-              Expanded(
-                child: _buildOptionButton(
-                  'Repair',
-                  Icons.build,
-                  selectedOption == 'repair',
-                  () {
-                    setState(() {
-                      _selectedRepairOptions[index] = 'repair';
-                    });
-                    // Always fetch pricing when user explicitly chooses the option
-                    if (damagedPart != 'Unknown Part') {
-                      _fetchPricingForDamage(index, damagedPart, 'repair');
-                    } else {
-                      _calculateEstimatedDamageCost();
-                    }
-                  },
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: _buildOptionButton(
-                  'Replace',
-                  Icons.autorenew,
-                  selectedOption == 'replace',
-                  () {
-                    setState(() {
-                      _selectedRepairOptions[index] = 'replace';
-                    });
-                    // Always fetch pricing when user explicitly chooses the option
-                    if (damagedPart != 'Unknown Part') {
-                      _fetchPricingForDamage(index, damagedPart, 'replace');
-                    } else {
-                      _calculateEstimatedDamageCost();
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          // Add pricing display section
-          if (selectedOption != 'repair' && selectedOption != 'replace') ...[
-            // No option selected yet - do nothing
-          ] else ...[
-            SizedBox(height: 12.h),
-            if (_isLoadingPricing[index] == true)
-              Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.h),
-                  child: const CircularProgressIndicator(
-                    color: GlobalStyles.primaryColor,
-                  ),
-                ),
-              )
-            else if ((selectedOption == 'repair' &&
-                    _repairPricingData[index] != null &&
-                    _hasValidPricingData(
-                      _repairPricingData[index]!,
-                      selectedOption,
-                    )) ||
-                (selectedOption == 'replace' &&
-                    _replacePricingData[index] != null &&
-                    _hasValidPricingData(
-                      _replacePricingData[index]!,
-                      selectedOption,
-                    )))
-              _buildApiCostBreakdown(
-                selectedOption,
-                selectedOption == 'repair'
-                    ? _repairPricingData[index]!
-                    : _replacePricingData[index]!,
-                selectedOption == 'replace' ? _repairPricingData[index] : null,
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDamageInfo(String damagedPart, String damageType) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 12.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.directions_car_filled_rounded,
-                color: Colors.blue,
-                size: 16.sp,
-              ),
-              SizedBox(width: 8.w),
-              Text(
-                'Damaged Part: ',
-                style: GoogleFonts.inter(
-                  color: const Color(0x992A2A2A),
-                  fontSize: 14.sp,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  _formatLabel(damagedPart),
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF2A2A2A),
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (damageType.trim().isNotEmpty) ...[
-            SizedBox(height: 8.h),
-            Row(
-              children: [
-                Icon(
-                  Icons.build_circle_rounded,
-                  color: Colors.orange,
-                  size: 16.sp,
-                ),
-                SizedBox(width: 8.w),
-                Text(
-                  'Damage Type: ',
-                  style: GoogleFonts.inter(
-                    color: const Color(0x992A2A2A),
-                    fontSize: 14.sp,
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    _formatLabel(damageType),
-                    style: GoogleFonts.inter(
-                      color: const Color(0xFF2A2A2A),
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOptionButton(
-    String title,
-    IconData icon,
-    bool isSelected,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.green : Colors.green.withAlpha(38),
-          borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(color: Colors.green, width: 2),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : Colors.green,
-              size: 20.sp,
-            ),
-            SizedBox(width: 8.w),
-            Text(
-              title,
-              style: GoogleFonts.inter(
-                color: isSelected ? Colors.white : Colors.green,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildApiCostBreakdown(
-    String option,
-    Map<String, dynamic> apiPricing,
-    Map<String, dynamic>?
-    bodyPaintPricing, // Add body-paint pricing for replace
-  ) {
-    double laborFee = 0.0;
-    double finalPrice = 0.0;
-    double bodyPaintPrice = 0.0;
-    double thinsmithPrice = 0.0;
-
-    if (option == 'replace') {
-      // Replace: apiPricing has thinsmith (replacePricing), bodyPaintPricing has body-paint (repairPricing)
-      thinsmithPrice = (apiPricing['insurance'] as num?)?.toDouble() ?? 0.0;
-      laborFee =
-          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ??
-          (bodyPaintPricing?['cost_installation_personal'] as num?)
-              ?.toDouble() ??
-          0.0;
-      if (bodyPaintPricing != null) {
-        bodyPaintPrice =
-            (bodyPaintPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-      }
-      finalPrice = thinsmithPrice + bodyPaintPrice;
-    } else {
-      // Repair: apiPricing has body-paint (repairPricing)
-      laborFee =
-          (apiPricing['cost_installation_personal'] as num?)?.toDouble() ?? 0.0;
-      bodyPaintPrice = (apiPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-      finalPrice = bodyPaintPrice;
-    }
-
-    return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withAlpha(25),
-        borderRadius: BorderRadius.circular(8.r),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                '${option.toUpperCase()} PRICING',
-                style: GoogleFonts.inter(
-                  color: GlobalStyles.primaryColor,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8.h),
-          _buildCostItem('Labor Fee', laborFee),
-          if (option == 'repair') ...[
-            SizedBox(height: 8.h),
-            _buildCostItem('Paint Price', bodyPaintPrice),
-          ] else if (option == 'replace') ...[
-            SizedBox(height: 8.h),
-            // For replace, show both thinsmith and body paint
-            _buildCostItem('Part Price', thinsmithPrice),
-            _buildCostItem('Paint Price', bodyPaintPrice),
-          ],
-          Divider(color: Colors.grey.withAlpha(76), height: 20.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                flex: 2,
-                child: Text(
-                  option == 'replace' ? 'TOTAL PRICE' : 'TOTAL REPAIR PRICE',
-                  style: GoogleFonts.inter(
-                    color: Colors.black,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Text(
-                // Display total including labor fee
-                _currencyFormat.format(finalPrice + laborFee),
-                style: GoogleFonts.inter(
-                  color: GlobalStyles.primaryColor,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          if (option == 'replace') ...[
-            SizedBox(height: 8.h),
-            Text(
-              'Total includes thinsmith work, body paint costs, and labor',
-              style: GoogleFonts.inter(
-                color: Colors.black.withAlpha(178),
-                fontSize: 12.sp,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ] else if (option == 'repair' && bodyPaintPricing != null) ...[
-            SizedBox(height: 8.h),
-            Text(
-              'Total includes part price, paint/materials, and labor',
-              style: GoogleFonts.inter(
-                color: Colors.black.withAlpha(178),
-                fontSize: 12.sp,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildCostItem(String label, double amount) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4.h),
@@ -3351,10 +1953,8 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   void _onSubmitPressed() {
     final requiredDocsUploaded = _checkRequiredDocuments();
-    final vehicleInfoFilled = _checkVehicleInformation();
     final incidentInfoFilled = _checkIncidentInformation();
-    final isFormValid =
-        requiredDocsUploaded && vehicleInfoFilled && incidentInfoFilled;
+    final isFormValid = requiredDocsUploaded && incidentInfoFilled;
 
     if (isFormValid) {
       _submitClaim();
@@ -3377,12 +1977,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       } else {
         messages.add('Some required documents are missing');
       }
-    }
-
-    if (!vehicleInfoFilled) {
-      messages.add(
-        'Please complete vehicle information (make, model, year, plate)',
-      );
     }
 
     if (!incidentInfoFilled) {
@@ -3567,13 +2161,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     return true;
   }
 
-  bool _checkVehicleInformation() {
-    return _vehicleMakeController.text.trim().isNotEmpty &&
-        _vehicleModelController.text.trim().isNotEmpty &&
-        _vehicleYearController.text.trim().isNotEmpty &&
-        _plateNumberController.text.trim().isNotEmpty;
-  }
-
   bool _checkIncidentInformation() {
     return _incidentLocationController.text.trim().isNotEmpty &&
         _incidentDateController.text.trim().isNotEmpty;
@@ -3602,10 +2189,16 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       // Build enhanced incident description with vehicle info and repair options
       List<String> descriptionParts = [];
 
-      // Add vehicle information
-      descriptionParts.add(
-        'Vehicle: ${_vehicleMakeController.text.trim()} ${_vehicleModelController.text.trim()} (${_vehicleYearController.text.trim()}) - Plate: ${_plateNumberController.text.trim()}',
-      );
+      // Add vehicle information from passed data
+      if (widget.vehicleData != null) {
+        final vehicleMake = widget.vehicleData!['make'] ?? '';
+        final vehicleModel = widget.vehicleData!['model'] ?? '';
+        final vehicleYear = widget.vehicleData!['year'] ?? '';
+        final plateNumber = widget.vehicleData!['plate_number'] ?? '';
+        descriptionParts.add(
+          'Vehicle: $vehicleMake $vehicleModel ($vehicleYear) - Plate: $plateNumber',
+        );
+      }
 
       // Try to extract meaningful data from API responses
       if (widget.apiResponses.isNotEmpty) {
@@ -3760,10 +2353,12 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       debugPrint('=======================');
 
       debugPrint('=== VEHICLE DATA DEBUG ===');
-      debugPrint('Vehicle Make: "${_vehicleMakeController.text.trim()}"');
-      debugPrint('Vehicle Model: "${_vehicleModelController.text.trim()}"');
-      debugPrint('Vehicle Year: "${_vehicleYearController.text.trim()}"');
-      debugPrint('Plate Number: "${_plateNumberController.text.trim()}"');
+      debugPrint('Vehicle Make: "${widget.vehicleData?['make'] ?? ''}"');
+      debugPrint('Vehicle Model: "${widget.vehicleData?['model'] ?? ''}"');
+      debugPrint('Vehicle Year: "${widget.vehicleData?['year'] ?? ''}"');
+      debugPrint(
+        'Plate Number: "${widget.vehicleData?['plate_number'] ?? ''}"',
+      );
       debugPrint('========================');
 
       // Create claim using ClaimsService
@@ -3778,22 +2373,13 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             incidentDescription.isNotEmpty
                 ? incidentDescription
                 : 'Vehicle damage assessment submitted via InsureVis app',
-        vehicleMake:
-            _vehicleMakeController.text.trim().isNotEmpty
-                ? _vehicleMakeController.text.trim()
-                : null,
-        vehicleModel:
-            _vehicleModelController.text.trim().isNotEmpty
-                ? _vehicleModelController.text.trim()
-                : null,
+        vehicleMake: widget.vehicleData?['make'],
+        vehicleModel: widget.vehicleData?['model'],
         vehicleYear:
-            _vehicleYearController.text.trim().isNotEmpty
-                ? int.tryParse(_vehicleYearController.text.trim())
+            widget.vehicleData?['year'] != null
+                ? int.tryParse(widget.vehicleData!['year']!)
                 : null,
-        vehiclePlateNumber:
-            _plateNumberController.text.trim().isNotEmpty
-                ? _plateNumberController.text.trim()
-                : null,
+        vehiclePlateNumber: widget.vehicleData?['plate_number'],
         estimatedDamageCost: finalEstimatedCost,
         damages: damagesPayload,
       );
@@ -3940,11 +2526,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                       horizontal: 12.w,
                       vertical: 8.h,
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(color: Colors.green.withOpacity(0.3)),
-                    ),
+                    decoration: BoxDecoration(color: Colors.green),
                     child: Row(
                       children: [
                         Icon(

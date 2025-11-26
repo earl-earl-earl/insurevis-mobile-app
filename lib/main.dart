@@ -10,6 +10,7 @@ import 'package:insurevis/other-screens/insurance_document_upload.dart';
 import 'package:insurevis/other-screens/pdf_assessment_view.dart';
 import 'package:insurevis/other-screens/privacy_policy_screen.dart';
 import 'package:insurevis/other-screens/terms_of_service_screen.dart';
+import 'package:insurevis/other-screens/vehicle_information_form.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -233,6 +234,7 @@ class MainApp extends StatelessWidget {
                   '/policy': (context) => const PrivacyPolicyScreen(),
                   '/terms': (context) => const TermsOfServiceScreen(),
                   '/assessment_report': (context) => const PDFAssessmentView(),
+                  '/vehicle_info': (context) => const VehicleInformationForm()
                 },
               );
             },
