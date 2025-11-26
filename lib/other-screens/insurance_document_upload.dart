@@ -2407,43 +2407,62 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       bool allUploadsSuccessful = true;
       int totalUploaded = 0;
 
+      // Collect all files to upload in parallel
+      final List<File> allFiles = [];
+      final List<DocumentType> allTypes = [];
+      final List<String> allDescriptions = [];
+      final List<bool> allIsRequired = [];
+
       for (String docTypeKey in uploadedDocuments.keys) {
         final files = uploadedDocuments[docTypeKey] ?? [];
         if (files.isNotEmpty) {
           debugPrint(
-            'Uploading ${files.length} files for document type: $docTypeKey',
+            'Preparing ${files.length} files for document type: $docTypeKey',
           );
 
           // Convert string key to DocumentType enum
           final DocumentType docType = DocumentType.fromKey(docTypeKey);
 
-          // Upload each file individually using the new DocumentService API
+          // Add files to batch lists
           for (File file in files) {
-            try {
-              final uploadedDocument = await _documentService.uploadDocument(
-                file: file,
-                type: docType,
-                userId: currentUser.id,
-                claimId: claim.id, // Using claim ID for documents table
-                description:
-                    'Document uploaded for insurance claim ${claim.claimNumber}',
-                isRequired: docType.isRequired,
-              );
+            allFiles.add(file);
+            allTypes.add(docType);
+            allDescriptions.add(
+              'Document uploaded for insurance claim ${claim.claimNumber}',
+            );
+            allIsRequired.add(docType.isRequired);
+          }
+        }
+      }
 
-              if (uploadedDocument != null) {
-                debugPrint(
-                  'Successfully uploaded: ${uploadedDocument.fileName}',
-                );
-                totalUploaded++;
-              } else {
-                debugPrint('Failed to upload file: ${file.path}');
-                allUploadsSuccessful = false;
-              }
-            } catch (e) {
-              debugPrint('Error uploading file ${file.path}: $e');
+      // Upload all files in parallel for faster processing
+      if (allFiles.isNotEmpty) {
+        debugPrint('Uploading ${allFiles.length} files in parallel...');
+        try {
+          final uploadResults = await _documentService.uploadMultipleDocuments(
+            files: allFiles,
+            types: allTypes,
+            userId: currentUser.id,
+            claimId: claim.id,
+            descriptions: allDescriptions,
+            isRequiredList: allIsRequired,
+          );
+
+          // Check results
+          for (int i = 0; i < uploadResults.length; i++) {
+            if (uploadResults[i] != null) {
+              debugPrint(
+                'Successfully uploaded: ${uploadResults[i]!.fileName}',
+              );
+              totalUploaded++;
+            } else {
+              debugPrint('Failed to upload file: ${allFiles[i].path}');
               allUploadsSuccessful = false;
             }
           }
+        } catch (e) {
+          debugPrint('Error during parallel upload: $e');
+          allUploadsSuccessful = false;
         }
       }
 

@@ -89,6 +89,45 @@ class DocumentService {
     }
   }
 
+  /// Upload multiple documents concurrently for faster processing
+  Future<List<DocumentModel?>> uploadMultipleDocuments({
+    required List<File> files,
+    required List<DocumentType> types,
+    required String userId,
+    String? claimId,
+    List<String>? descriptions,
+    List<bool>? isRequiredList,
+  }) async {
+    if (files.length != types.length) {
+      throw ArgumentError('Files and types lists must have the same length');
+    }
+
+    // Create list of upload futures
+    final List<Future<DocumentModel?>> uploadFutures = [];
+
+    for (int i = 0; i < files.length; i++) {
+      uploadFutures.add(
+        uploadDocument(
+          file: files[i],
+          type: types[i],
+          userId: userId,
+          claimId: claimId,
+          description:
+              descriptions != null && i < descriptions.length
+                  ? descriptions[i]
+                  : null,
+          isRequired:
+              isRequiredList != null && i < isRequiredList.length
+                  ? isRequiredList[i]
+                  : false,
+        ),
+      );
+    }
+
+    // Wait for all uploads to complete in parallel
+    return await Future.wait(uploadFutures);
+  }
+
   /// Get document with signed URL
   Future<DocumentModel?> getDocumentWithUrl(String documentId) async {
     try {
