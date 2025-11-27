@@ -80,6 +80,7 @@ class NetworkHelper {
     required String filePath,
     required String fileFieldName,
     Map<String, String>? additionalFields,
+    Duration timeout = const Duration(seconds: 60), // Increased for cold starts
   }) async {
     final client = _createHttpClient();
     final uri = Uri.parse(url);
@@ -99,6 +100,6 @@ class NetworkHelper {
       request.fields.addAll(additionalFields);
     }
 
-    return await client.send(request);
+    return await client.send(request).timeout(timeout);
   }
 }

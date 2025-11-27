@@ -18,33 +18,56 @@ class ImageUploadService {
   Future<Map<String, dynamic>?> uploadImageFile({
     required String imagePath,
     String fileFieldName = 'image_file',
+    int maxRetries = 2,
   }) async {
-    try {
-      // Verify if image exists
-      final imageFile = File(imagePath);
-      if (!imageFile.existsSync()) {
-        throw Exception('Image file not found: $imagePath');
+    int attempts = 0;
+    Exception? lastError;
+
+    while (attempts < maxRetries) {
+      try {
+        // Verify if image exists
+        final imageFile = File(imagePath);
+        if (!imageFile.existsSync()) {
+          throw Exception('Image file not found: $imagePath');
+        }
+
+        // Use standard timeout for all attempts
+        final timeout = const Duration(seconds: 60);
+
+        // Use NetworkHelper for sending multipart request
+        final streamedResponse = await NetworkHelper.sendMultipartRequest(
+          url: ApiConfig.predictUrl,
+          filePath: imagePath,
+          fileFieldName: fileFieldName,
+          timeout: timeout,
+        );
+
+        final response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode == 200) {
+          return json.decode(response.body) as Map<String, dynamic>;
+        } else {
+          throw Exception(
+            'API Error: ${response.statusCode} - ${response.body}',
+          );
+        }
+      } catch (e) {
+        lastError = e as Exception;
+        attempts++;
+
+        if (attempts < maxRetries) {
+          // Wait before retry with exponential backoff
+          await Future.delayed(Duration(seconds: attempts * 2));
+          print(
+            'Retrying image upload (attempt ${attempts + 1}/$maxRetries)...',
+          );
+        }
       }
-
-      // Use NetworkHelper for sending multipart request
-      final streamedResponse = await NetworkHelper.sendMultipartRequest(
-        url: ApiConfig.predictUrl,
-        filePath: imagePath,
-        fileFieldName: fileFieldName,
-      );
-
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body) as Map<String, dynamic>;
-      } else {
-        throw Exception('API Error: ${response.statusCode} - ${response.body}');
-      }
-    } catch (e) {
-      // Log error in debug mode
-      // DEBUG: print("Error uploading image: $e");
-      rethrow;
     }
+
+    // All retries failed
+    print('Failed to upload image after $maxRetries attempts: $lastError');
+    throw lastError ?? Exception('Upload failed after $maxRetries attempts');
   }
 
   /// Uploads an XFile (from image picker) to the prediction API

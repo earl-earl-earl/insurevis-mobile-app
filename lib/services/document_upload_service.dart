@@ -8,7 +8,7 @@ class DocumentUploadService {
   final SupabaseClient _supabase = Supabase.instance.client;
   final DocumentRepository _repository = DocumentRepository();
 
-  static const String _bucketName = 'documents';
+  static const String _bucketName = 'insurevis-documents';
 
   /// Upload a document to Supabase Storage
   Future<DocumentUploadResult> uploadDocument(

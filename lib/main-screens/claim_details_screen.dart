@@ -338,6 +338,52 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     });
   }
 
+  bool _hasUnsavedChanges() {
+    // Check if vehicle info has changed
+    if (_vehicleMakeController.text != (widget.claim.vehicleMake ?? ''))
+      return true;
+    if (_vehicleModelController.text != (widget.claim.vehicleModel ?? ''))
+      return true;
+    if (_vehicleYearController.text !=
+        (widget.claim.vehicleYear?.toString() ?? ''))
+      return true;
+    if (_vehiclePlateNumberController.text !=
+        (widget.claim.vehiclePlateNumber ?? ''))
+      return true;
+
+    // Check if any new documents have been added
+    for (var docs in _newCategorizedDocuments.values) {
+      if (docs.isNotEmpty) return true;
+    }
+
+    return false;
+  }
+
+  Future<bool> _showDiscardChangesDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text('Discard Changes?'),
+            content: Text(
+              'You have unsaved changes. Are you sure you want to discard them?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: Text('Discard'),
+              ),
+            ],
+          ),
+    );
+    return result ?? false;
+  }
+
   Future<void> _deleteExistingDocument(DocumentModel doc) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -364,9 +410,9 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     try {
       // Delete from storage
       if (doc.storagePath != null) {
-        await SupabaseService.client.storage.from('documents').remove([
-          doc.storagePath!,
-        ]);
+        await SupabaseService.client.storage.from('insurevis-documents').remove(
+          [doc.storagePath!],
+        );
       }
 
       // Delete from database
@@ -402,6 +448,63 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
   Future<void> _saveClaim() async {
     if (_isSaving) return;
 
+    // Check if there are any changes
+    if (!_hasUnsavedChanges()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isAppeal
+                  ? 'Please make changes to your documents before appealing'
+                  : 'No changes to save',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Validate required documents
+    if (_isAppeal) {
+      final missingDocuments = <String>[];
+
+      for (var entry in _requiredDocuments.entries) {
+        if (entry.value) {
+          // If document is required
+          final category = entry.key;
+          final existingDocs = _categorizedDocuments[category] ?? [];
+          final newDocs = _newCategorizedDocuments[category] ?? [];
+
+          if (existingDocs.isEmpty && newDocs.isEmpty) {
+            // Get display name for the category
+            String displayName = category
+                .replaceAll('_', ' ')
+                .split(' ')
+                .map((word) => word[0].toUpperCase() + word.substring(1))
+                .join(' ');
+            missingDocuments.add(displayName);
+          }
+        }
+      }
+
+      if (missingDocuments.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Please upload all required documents:\n${missingDocuments.join(', ')}',
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
     setState(() {
       _isSaving = true;
     });
@@ -420,7 +523,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
       };
 
       if (_isAppeal) {
-        updates['status'] = 'appeal';
+        updates['status'] = 'appealed';
         updates['is_approved_by_car_company'] = false;
         updates['is_approved_by_insurance_company'] = false;
         updates['car_company_approval_notes'] = null;
@@ -448,7 +551,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
 
           // Upload to Storage
           await SupabaseService.client.storage
-              .from('documents')
+              .from('insurevis-documents')
               .uploadBinary(filePath, bytes);
 
           // Create Document Record
@@ -485,6 +588,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
                   ? 'Appeal submitted successfully'
                   : 'Claim updated successfully',
             ),
+            backgroundColor: Colors.green,
           ),
         );
 
@@ -535,7 +639,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         return Colors.green;
       case 'rejected':
         return Colors.red;
-      case 'appeal':
+      case 'appealed':
         return Colors.purple;
       default:
         return Colors.grey;
@@ -552,7 +656,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         return Icons.check_circle_rounded;
       case 'rejected':
         return Icons.cancel_rounded;
-      case 'appeal':
+      case 'appealed':
         return Icons.replay_rounded;
       default:
         return Icons.info_rounded;
@@ -611,127 +715,159 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         claim.status == 'under_review';
     final isRejected = claim.status == 'rejected';
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: () async {
+        if (_isEditing && _hasUnsavedChanges()) {
+          return await _showDiscardChangesDialog();
+        }
+        return true;
+      },
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          _isEditing
-              ? (_isAppeal ? 'Appeal Claim' : 'Edit Claim')
-              : 'Claim Details',
-          style: GoogleFonts.inter(
-            fontSize: 20.sp,
-            fontWeight: FontWeight.w700,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading:
+              _isEditing
+                  ? IconButton(
+                    icon: Icon(Icons.arrow_back),
+                    onPressed: () async {
+                      if (_hasUnsavedChanges()) {
+                        final discard = await _showDiscardChangesDialog();
+                        if (discard && mounted) {
+                          setState(() {
+                            _isEditing = false;
+                            _isAppeal = false;
+                            _newCategorizedDocuments.clear();
+                            _initializeControllers();
+                          });
+                        }
+                      } else {
+                        setState(() {
+                          _isEditing = false;
+                          _isAppeal = false;
+                        });
+                      }
+                    },
+                  )
+                  : null,
+          title: Text(
+            _isEditing
+                ? (_isAppeal ? 'Appeal Claim' : 'Edit Claim')
+                : 'Claim Details',
+            style: GoogleFonts.inter(
+              fontSize: 20.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        actions: [
-          if (!_isEditing && (canEdit || isRejected))
-            isRejected
-                ? Padding(
-                  padding: EdgeInsets.only(right: 16.w),
-                  child: TextButton.icon(
+          actions: [
+            if (!_isEditing && (canEdit || isRejected))
+              isRejected
+                  ? Padding(
+                    padding: EdgeInsets.only(right: 16.w),
+                    child: TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _isEditing = true;
+                          _isAppeal = isRejected;
+                        });
+                      },
+                      icon: Icon(
+                        Icons.replay_rounded,
+                        size: 18.sp,
+                        color: GlobalStyles.primaryColor,
+                      ),
+                      label: Text(
+                        'Appeal',
+                        style: GoogleFonts.inter(
+                          color: GlobalStyles.primaryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14.sp,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        backgroundColor: GlobalStyles.primaryColor.withOpacity(
+                          0.1,
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 0,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                      ),
+                    ),
+                  )
+                  : IconButton(
+                    icon: Icon(Icons.edit_rounded),
+                    tooltip: 'Edit',
                     onPressed: () {
                       setState(() {
                         _isEditing = true;
                         _isAppeal = isRejected;
                       });
                     },
-                    icon: Icon(
-                      Icons.replay_rounded,
-                      size: 18.sp,
-                      color: GlobalStyles.primaryColor,
-                    ),
-                    label: Text(
-                      'Appeal',
-                      style: GoogleFonts.inter(
-                        color: GlobalStyles.primaryColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14.sp,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      backgroundColor: GlobalStyles.primaryColor.withOpacity(
-                        0.1,
-                      ),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 0,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
+                  ),
+            if (_isEditing)
+              IconButton(
+                icon:
+                    _isSaving
+                        ? SizedBox(
+                          width: 20.w,
+                          height: 20.w,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
+                        )
+                        : Icon(Icons.check_rounded),
+                tooltip: 'Save',
+                onPressed: _isSaving ? null : _saveClaim,
+              ),
+          ],
+        ),
+        bottomNavigationBar:
+            !_isEditing
+                ? SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: GlobalStyles.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Close',
+                          style: GoogleFonts.inter(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 )
-                : IconButton(
-                  icon: Icon(Icons.edit_rounded),
-                  tooltip: 'Edit',
-                  onPressed: () {
-                    setState(() {
-                      _isEditing = true;
-                      _isAppeal = isRejected;
-                    });
-                  },
+                : null,
+        body:
+            _isEditing
+                ? _buildEditForm()
+                : _buildViewLayout(
+                  claim: claim,
+                  buildClaimIcon: buildClaimIcon,
+                  statusColor: statusColor,
+                  formatStatus: formatStatus,
+                  formatCurrency: formatCurrency,
                 ),
-          if (_isEditing)
-            IconButton(
-              icon:
-                  _isSaving
-                      ? SizedBox(
-                        width: 20.w,
-                        height: 20.w,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.black,
-                        ),
-                      )
-                      : Icon(Icons.check_rounded),
-              tooltip: 'Save',
-              onPressed: _isSaving ? null : _saveClaim,
-            ),
-        ],
       ),
-      bottomNavigationBar:
-          !_isEditing
-              ? SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: GlobalStyles.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 16.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        'Close',
-                        style: GoogleFonts.inter(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              )
-              : null,
-      body:
-          _isEditing
-              ? _buildEditForm()
-              : _buildViewLayout(
-                claim: claim,
-                buildClaimIcon: buildClaimIcon,
-                statusColor: statusColor,
-                formatStatus: formatStatus,
-                formatCurrency: formatCurrency,
-              ),
     );
   }
 

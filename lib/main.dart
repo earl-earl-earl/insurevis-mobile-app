@@ -32,6 +32,8 @@ import 'package:insurevis/providers/notification_provider.dart';
 import 'package:insurevis/providers/user_provider.dart';
 import 'package:insurevis/providers/auth_provider.dart';
 import 'package:insurevis/providers/theme_provider.dart';
+import 'package:insurevis/utils/overlay_manager.dart';
+import 'package:insurevis/widgets/global_upload_status.dart';
 // ignore: depend_on_referenced_packages
 import 'dart:io'; // Add this import for Platform
 
@@ -159,6 +161,11 @@ class MainApp extends StatelessWidget {
           ],
           child: Consumer<ThemeProvider>(
             builder: (context, themeProvider, child) {
+              // Initialize overlay manager
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                OverlayManager().initialize(context);
+              });
+
               // Register FCM in-memory callbacks once the widget tree is available
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 try {
@@ -212,6 +219,10 @@ class MainApp extends StatelessWidget {
                 themeMode: ThemeMode.light,
                 debugShowCheckedModeBanner: false,
                 home: const AppInitializer(),
+                builder: (context, child) {
+                  // Wrap all screens with GlobalUploadStatus
+                  return GlobalUploadStatus(child: child ?? const SizedBox());
+                },
                 routes: {
                   '/signin': (context) => const SignIn(),
                   '/signup': (context) => const SignUp(),
@@ -234,7 +245,7 @@ class MainApp extends StatelessWidget {
                   '/policy': (context) => const PrivacyPolicyScreen(),
                   '/terms': (context) => const TermsOfServiceScreen(),
                   '/assessment_report': (context) => const PDFAssessmentView(),
-                  '/vehicle_info': (context) => const VehicleInformationForm()
+                  '/vehicle_info': (context) => const VehicleInformationForm(),
                 },
               );
             },

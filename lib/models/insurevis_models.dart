@@ -399,7 +399,7 @@ enum ClaimStatus {
   pendingDocuments('pending_documents'),
   approved('approved'),
   rejected('rejected'),
-  appeal('appeal');
+  appeal('appealed');
 
   const ClaimStatus(this.value);
   final String value;

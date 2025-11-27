@@ -635,7 +635,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         return Colors.green;
       case 'rejected':
         return Colors.red;
-      case 'appeal':
+      case 'appealed':
         return Colors.purple;
       default:
         return Colors.grey;
@@ -652,7 +652,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         return Icons.check_circle_rounded;
       case 'rejected':
         return Icons.cancel_rounded;
-      case 'appeal':
+      case 'appealed':
         return Icons.replay_rounded;
       default:
         return Icons.info_rounded;
