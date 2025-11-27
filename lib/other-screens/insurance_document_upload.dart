@@ -2186,41 +2186,31 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       String? incidentDescription;
       double? estimatedCost;
 
-      // Build enhanced incident description with vehicle info and repair options
-      List<String> descriptionParts = [];
+      // Build incident description with damage details and repair options
+      List<String> descriptionLines = [];
 
-      // Add vehicle information from passed data
-      if (widget.vehicleData != null) {
-        final vehicleMake = widget.vehicleData!['make'] ?? '';
-        final vehicleModel = widget.vehicleData!['model'] ?? '';
-        final vehicleYear = widget.vehicleData!['year'] ?? '';
-        final plateNumber = widget.vehicleData!['plate_number'] ?? '';
-        descriptionParts.add(
-          'Vehicle: $vehicleMake $vehicleModel ($vehicleYear) - Plate: $plateNumber',
-        );
-      }
-
-      // Try to extract meaningful data from API responses
+      // Try to extract damage data from API responses
       if (widget.apiResponses.isNotEmpty) {
         final firstResponse = widget.apiResponses.values.first;
 
-        // Extract damage information for incident description
+        // Extract damaged areas information
+        List<String> damageDetails = [];
         if (firstResponse['damaged_areas'] != null) {
           final damagedAreas = firstResponse['damaged_areas'] as List;
-          descriptionParts.add(
-            'Detected damage areas: ${damagedAreas.map((area) => area['name'] ?? area.toString()).join(', ')}',
-          );
+
+          for (int i = 0; i < damagedAreas.length; i++) {
+            final area = damagedAreas[i];
+            final areaName = area['name'] ?? area.toString();
+            final repairOption = _selectedRepairOptions[i] ?? 'Not specified';
+            damageDetails.add(
+              'Damage ${i + 1}: $areaName, Option: $repairOption',
+            );
+          }
         }
 
-        // Add repair options if available
-        if (_selectedRepairOptions.isNotEmpty) {
-          List<String> repairChoices = [];
-          _selectedRepairOptions.forEach((index, option) {
-            repairChoices.add('Damage ${index + 1}: $option');
-          });
-          descriptionParts.add(
-            'Repair preferences: ${repairChoices.join(', ')}',
-          );
+        if (damageDetails.isNotEmpty) {
+          descriptionLines.add('Damages: ${damageDetails.length}');
+          descriptionLines.addAll(damageDetails);
         }
 
         // Extract cost estimation
@@ -2229,7 +2219,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         }
       }
 
-      incidentDescription = descriptionParts.join('. ');
+      incidentDescription = descriptionLines.join('\n');
 
       // Parse incident date from the form
       DateTime incidentDate = DateTime.now().subtract(const Duration(days: 1));

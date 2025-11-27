@@ -538,6 +538,8 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
         return Colors.green;
       case 'rejected':
         return Colors.red;
+      case 'appeal':
+        return Colors.purple;
       default:
         return Colors.grey;
     }
@@ -553,6 +555,8 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
         return Icons.check_circle_rounded;
       case 'rejected':
         return Icons.cancel_rounded;
+      case 'appeal':
+        return Icons.replay_rounded;
       default:
         return Icons.info_rounded;
     }

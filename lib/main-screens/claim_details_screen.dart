@@ -420,12 +420,13 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
       };
 
       if (_isAppeal) {
-        updates['status'] = 'submitted';
+        updates['status'] = 'appeal';
         updates['is_approved_by_car_company'] = false;
         updates['is_approved_by_insurance_company'] = false;
         updates['car_company_approval_notes'] = null;
         updates['insurance_company_approval_notes'] = null;
         updates['rejected_at'] = null;
+        updates['created_at'] = DateTime.now().toIso8601String();
       }
 
       await SupabaseService.client
@@ -447,7 +448,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
 
           // Upload to Storage
           await SupabaseService.client.storage
-              .from('claim-documents')
+              .from('documents')
               .uploadBinary(filePath, bytes);
 
           // Create Document Record
@@ -534,6 +535,8 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         return Colors.green;
       case 'rejected':
         return Colors.red;
+      case 'appeal':
+        return Colors.purple;
       default:
         return Colors.grey;
     }
@@ -549,6 +552,8 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         return Icons.check_circle_rounded;
       case 'rejected':
         return Icons.cancel_rounded;
+      case 'appeal':
+        return Icons.replay_rounded;
       default:
         return Icons.info_rounded;
     }
@@ -1344,6 +1349,31 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
 
                 SizedBox(height: 16.h),
 
+                // Approval Status Cards
+                if (claim.status != 'draft') ...[
+                  _buildApprovalStatusCard(
+                    title: 'Car Company Review',
+                    status: claim.carCompanyStatus,
+                    isApproved: claim.isApprovedByCarCompany,
+                    approvalDate: claim.carCompanyApprovalDate,
+                    rejectedDate: claim.rejectedAt,
+                    notes: claim.carCompanyApprovalNotes,
+                  ),
+                  // Only show insurance review if car company hasn't rejected
+                  if (claim.carCompanyStatus != 'rejected') ...[
+                    SizedBox(height: 12.h),
+                    _buildApprovalStatusCard(
+                      title: 'Insurance Company Review',
+                      status: claim.status,
+                      isApproved: claim.isApprovedByInsuranceCompany,
+                      approvalDate: claim.insuranceCompanyApprovalDate,
+                      rejectedDate: claim.rejectedAt,
+                      notes: claim.insuranceCompanyApprovalNotes,
+                    ),
+                  ],
+                  SizedBox(height: 16.h),
+                ],
+
                 // Estimated Cost section
                 Text(
                   'Estimated Cost',
@@ -1418,73 +1448,6 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
                 ),
 
                 SizedBox(height: 16.h),
-
-                // Notes section
-                if ((claim.carCompanyApprovalNotes != null &&
-                        claim.carCompanyApprovalNotes!.trim().isNotEmpty) ||
-                    (claim.insuranceCompanyApprovalNotes != null &&
-                        claim.insuranceCompanyApprovalNotes!
-                            .trim()
-                            .isNotEmpty)) ...[
-                  Text(
-                    'Rejection Notes',
-                    style: GoogleFonts.inter(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  SizedBox(height: 6.h),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(12.w),
-                    decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: Colors.red[200]!, width: 1),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 18.sp,
-                              color: Colors.red[700],
-                            ),
-                            SizedBox(width: 6.w),
-                            Text(
-                              claim.carCompanyApprovalNotes != null &&
-                                      claim.carCompanyApprovalNotes!
-                                          .trim()
-                                          .isNotEmpty
-                                  ? 'Car Company Rejection'
-                                  : 'Insurance Company Rejection',
-                              style: GoogleFonts.inter(
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.red[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8.h),
-                        Text(
-                          claim.carCompanyApprovalNotes?.trim().isNotEmpty ==
-                                  true
-                              ? claim.carCompanyApprovalNotes!
-                              : claim.insuranceCompanyApprovalNotes ?? '',
-                          style: GoogleFonts.inter(
-                            fontSize: 14.sp,
-                            color: Colors.grey[700],
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 16.h),
-                ],
 
                 // Documents header
                 Row(
@@ -1834,6 +1797,134 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApprovalStatusCard({
+    required String title,
+    required String status,
+    required bool isApproved,
+    DateTime? approvalDate,
+    DateTime? rejectedDate,
+    String? notes,
+  }) {
+    // Determine status
+    String statusText;
+    Color statusColor;
+    IconData statusIcon;
+
+    // Use the status field to determine display
+    switch (status.toLowerCase()) {
+      case 'approved':
+        statusText = 'Approved';
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle_rounded;
+        break;
+      case 'rejected':
+        statusText = 'Rejected';
+        statusColor = Colors.red;
+        statusIcon = Icons.cancel_rounded;
+        break;
+      case 'under_review':
+      case 'under review':
+        statusText = 'Under Review';
+        statusColor = Colors.blue;
+        statusIcon = Icons.rate_review_rounded;
+        break;
+      case 'pending':
+      default:
+        statusText = 'Pending';
+        statusColor = Colors.orange;
+        statusIcon = Icons.pending_rounded;
+        break;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(
+          color: statusColor.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(statusIcon, color: statusColor, size: 20.sp),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Text(
+                  statusText,
+                  style: GoogleFonts.inter(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (statusText == 'Rejected' && rejectedDate != null) ...[
+            SizedBox(height: 8.h),
+            Text(
+              'Rejected on: ${DateFormat.yMMMd().add_jm().format(rejectedDate)}',
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                color: Colors.grey[600],
+              ),
+            ),
+          ] else if (approvalDate != null) ...[
+            SizedBox(height: 8.h),
+            Text(
+              'Date: ${DateFormat.yMMMd().add_jm().format(approvalDate)}',
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+          if (notes != null && notes.trim().isNotEmpty) ...[
+            SizedBox(height: 8.h),
+            Text(
+              'Notes:',
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              notes,
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                color: Colors.grey[700],
+                height: 1.4,
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -15,6 +15,7 @@ class ClaimModel {
   final String? vehiclePlateNumber;
   final double? estimatedDamageCost;
   final String status;
+  final String carCompanyStatus;
   final bool isApprovedByCarCompany;
   final DateTime? carCompanyApprovalDate;
   final String? carCompanyApprovalNotes;
@@ -41,6 +42,7 @@ class ClaimModel {
     this.vehiclePlateNumber,
     this.estimatedDamageCost,
     this.status = 'draft',
+    this.carCompanyStatus = 'pending',
     this.isApprovedByCarCompany = false,
     this.carCompanyApprovalDate,
     this.carCompanyApprovalNotes,
@@ -70,6 +72,7 @@ class ClaimModel {
       'vehicle_plate_number': vehiclePlateNumber,
       'estimated_damage_cost': estimatedDamageCost,
       'status': status,
+      'car_company_status': carCompanyStatus,
       'is_approved_by_car_company': isApprovedByCarCompany,
       'car_company_approval_date': carCompanyApprovalDate?.toIso8601String(),
       'car_company_approval_notes': carCompanyApprovalNotes,
@@ -100,6 +103,7 @@ class ClaimModel {
       vehiclePlateNumber: json['vehicle_plate_number'],
       estimatedDamageCost: json['estimated_damage_cost']?.toDouble(),
       status: json['status'] ?? 'draft',
+      carCompanyStatus: json['car_company_status'] ?? 'pending',
       isApprovedByCarCompany: json['is_approved_by_car_company'] ?? false,
       carCompanyApprovalDate:
           json['car_company_approval_date'] != null
@@ -144,6 +148,7 @@ class ClaimModel {
     String? vehiclePlateNumber,
     double? estimatedDamageCost,
     String? status,
+    String? carCompanyStatus,
     bool? isApprovedByCarCompany,
     DateTime? carCompanyApprovalDate,
     String? carCompanyApprovalNotes,
@@ -170,6 +175,7 @@ class ClaimModel {
       vehiclePlateNumber: vehiclePlateNumber ?? this.vehiclePlateNumber,
       estimatedDamageCost: estimatedDamageCost ?? this.estimatedDamageCost,
       status: status ?? this.status,
+      carCompanyStatus: carCompanyStatus ?? this.carCompanyStatus,
       isApprovedByCarCompany:
           isApprovedByCarCompany ?? this.isApprovedByCarCompany,
       carCompanyApprovalDate:
@@ -392,7 +398,8 @@ enum ClaimStatus {
   underReview('under_review'),
   pendingDocuments('pending_documents'),
   approved('approved'),
-  rejected('rejected');
+  rejected('rejected'),
+  appeal('appeal');
 
   const ClaimStatus(this.value);
   final String value;
@@ -418,6 +425,8 @@ enum ClaimStatus {
         return 'Approved';
       case ClaimStatus.rejected:
         return 'Rejected';
+      case ClaimStatus.appeal:
+        return 'Appeal';
     }
   }
 }
