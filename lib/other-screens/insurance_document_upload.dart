@@ -2188,38 +2188,89 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
       // Build incident description with damage details and repair options
       List<String> descriptionLines = [];
+      List<Map<String, dynamic>> allDamages = [];
 
-      // Try to extract damage data from API responses
+      // Extract API-detected damages
       if (widget.apiResponses.isNotEmpty) {
-        final firstResponse = widget.apiResponses.values.first;
-
-        // Extract damaged areas information
-        List<String> damageDetails = [];
-        if (firstResponse['damaged_areas'] != null) {
-          final damagedAreas = firstResponse['damaged_areas'] as List;
-
-          for (int i = 0; i < damagedAreas.length; i++) {
-            final area = damagedAreas[i];
-            final areaName = area['name'] ?? area.toString();
-            final repairOption = _selectedRepairOptions[i] ?? 'Not specified';
-            damageDetails.add(
-              'Damage ${i + 1}: $areaName, Option: $repairOption',
+        for (var response in widget.apiResponses.values) {
+          List<Map<String, dynamic>> damagesList = [];
+          if (response['damages'] is List) {
+            damagesList.addAll(
+              (response['damages'] as List).cast<Map<String, dynamic>>(),
+            );
+          } else if (response['prediction'] is List) {
+            damagesList.addAll(
+              (response['prediction'] as List).cast<Map<String, dynamic>>(),
             );
           }
-        }
 
-        if (damageDetails.isNotEmpty) {
-          descriptionLines.add('Damages: ${damageDetails.length}');
-          descriptionLines.addAll(damageDetails);
-        }
+          for (int i = 0; i < damagesList.length; i++) {
+            final damage = damagesList[i];
+            String damagedPart =
+                damage.containsKey('damaged_part')
+                    ? damage['damaged_part']?.toString() ?? 'Unknown Part'
+                    : 'Unknown Part';
 
-        // Extract cost estimation
-        if (firstResponse['total_cost'] != null) {
-          estimatedCost = (firstResponse['total_cost'] as num).toDouble();
+            String damageType = 'Unknown Damage';
+            if (damage.containsKey('damage_type')) {
+              final dt = damage['damage_type'];
+              if (dt is Map && dt.containsKey('class_name')) {
+                damageType = dt['class_name']?.toString() ?? 'Unknown Damage';
+              } else {
+                damageType = dt?.toString() ?? 'Unknown Damage';
+              }
+            }
+
+            final selectedOption = _selectedRepairOptions[i] ?? 'repair';
+
+            allDamages.add({
+              'part': damagedPart,
+              'type': damageType,
+              'option': selectedOption,
+            });
+          }
+        }
+      }
+
+      // Add manual damages
+      for (int mi = 0; mi < _manualDamages.length; mi++) {
+        final manual = _manualDamages[mi];
+        final globalIndex = -(mi + 1);
+        final damagedPart = manual['damaged_part'] ?? 'Unknown Part';
+        final damageType = manual['damage_type'] ?? 'Unknown Damage';
+        final selectedOption = _selectedRepairOptions[globalIndex] ?? 'repair';
+
+        allDamages.add({
+          'part': damagedPart,
+          'type': damageType,
+          'option': selectedOption,
+        });
+      }
+
+      // Now build description
+      if (allDamages.isNotEmpty) {
+        descriptionLines.add('Total Damages: ${allDamages.length}');
+        for (int i = 0; i < allDamages.length; i++) {
+          final dmg = allDamages[i];
+          final part = dmg['part'];
+          final type = dmg['type'];
+          String option = dmg['option'];
+          option = option[0].toUpperCase() + option.substring(1);
+          descriptionLines.add(
+            'Damage ${i + 1}: $part($type), Option: $option',
+          );
         }
       }
 
       incidentDescription = descriptionLines.join('\n');
+
+      // Extract cost estimation
+      if (widget.apiResponses.isNotEmpty) {
+        final firstResponse = widget.apiResponses.values.first;
+        if (firstResponse['total_cost'] != null) {
+          estimatedCost = (firstResponse['total_cost'] as num).toDouble();
+        }
+      }
 
       // Parse incident date from the form
       DateTime incidentDate = DateTime.now().subtract(const Duration(days: 1));

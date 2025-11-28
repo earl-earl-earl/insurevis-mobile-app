@@ -52,6 +52,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
   // Categorized documents for editing
   final Map<String, List<DocumentModel>> _categorizedDocuments = {};
   final Map<String, List<File>> _newCategorizedDocuments = {};
+  final Set<String> _deletedDocumentIds = {}; // Track deleted document IDs
 
   // Required documents checker
   final Map<String, bool> _requiredDocuments = {
@@ -335,10 +336,10 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         );
       },
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
         decoration: BoxDecoration(
           color: color.withAlpha(30),
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(10.r),
           border: Border.all(color: color.withAlpha(120)),
         ),
         child: Row(
@@ -347,16 +348,16 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
             Text(
               '${isCarCompany ? 'Car Company' : 'Insurance Company'}: $text',
               style: GoogleFonts.inter(
-                fontSize: 11.sp,
+                fontSize: 10.sp,
                 fontWeight: FontWeight.w700,
                 color: color,
               ),
             ),
             if (note != null && note.trim().isNotEmpty) ...[
-              SizedBox(width: 4.w),
+              SizedBox(width: 3.w),
               Icon(
                 Icons.info_outline,
-                size: 12.sp,
+                size: 10.sp,
                 color: color.withAlpha(180),
               ),
             ],
@@ -593,6 +594,9 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
       if (docs.isNotEmpty) return true;
     }
 
+    // Check if any existing documents have been deleted
+    if (_deletedDocumentIds.isNotEmpty) return true;
+
     return false;
   }
 
@@ -656,6 +660,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
       await SupabaseService.client.from('documents').delete().eq('id', doc.id);
 
       setState(() {
+        _deletedDocumentIds.add(doc.id); // Track the deletion
         _documents.removeWhere((d) => d.id == doc.id);
         // Also remove from categorized list
         final type = doc.type.value;
@@ -704,42 +709,40 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     }
 
     // Validate required documents
-    if (_isAppeal) {
-      final missingDocuments = <String>[];
+    final missingDocuments = <String>[];
 
-      for (var entry in _requiredDocuments.entries) {
-        if (entry.value) {
-          // If document is required
-          final category = entry.key;
-          final existingDocs = _categorizedDocuments[category] ?? [];
-          final newDocs = _newCategorizedDocuments[category] ?? [];
+    for (var entry in _requiredDocuments.entries) {
+      if (entry.value) {
+        // If document is required
+        final category = entry.key;
+        final existingDocs = _categorizedDocuments[category] ?? [];
+        final newDocs = _newCategorizedDocuments[category] ?? [];
 
-          if (existingDocs.isEmpty && newDocs.isEmpty) {
-            // Get display name for the category
-            String displayName = category
-                .replaceAll('_', ' ')
-                .split(' ')
-                .map((word) => word[0].toUpperCase() + word.substring(1))
-                .join(' ');
-            missingDocuments.add(displayName);
-          }
+        if (existingDocs.isEmpty && newDocs.isEmpty) {
+          // Get display name for the category
+          String displayName = category
+              .replaceAll('_', ' ')
+              .split(' ')
+              .map((word) => word[0].toUpperCase() + word.substring(1))
+              .join(' ');
+          missingDocuments.add(displayName);
         }
       }
+    }
 
-      if (missingDocuments.isNotEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Please upload all required documents:\n${missingDocuments.join(', ')}',
-              ),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 4),
+    if (missingDocuments.isNotEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Please upload all required documents:\n${missingDocuments.join(', ')}',
             ),
-          );
-        }
-        return;
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
+        );
       }
+      return;
     }
 
     setState(() {
@@ -756,7 +759,6 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         'vehicle_model': _vehicleModelController.text,
         'vehicle_year': int.tryParse(_vehicleYearController.text),
         'vehicle_plate_number': _vehiclePlateNumberController.text,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 
       if (_isAppeal) {
@@ -796,8 +798,6 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
             'format': fileExt,
             'storage_path': filePath,
             'status': 'uploaded',
-            'created_at': DateTime.now().toUtc().toIso8601String(),
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
           });
         }
       }
@@ -834,9 +834,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
                 widget.claim.status.toLowerCase() == 'rejected';
             if (carRejected || insuranceRejected) {
               for (final d in _documents) {
-                final updates = <String, dynamic>{
-                  'updated_at': DateTime.now().toUtc().toIso8601String(),
-                };
+                final updates = <String, dynamic>{};
                 var needsUpdate = false;
                 if (carRejected) {
                   updates['verified_by_car_company'] = false;
@@ -874,8 +872,9 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         setState(() {
           _isEditing = false;
           _isAppeal = false;
-          // Clear new documents
+          // Clear new documents and deleted document tracking
           _newCategorizedDocuments.clear();
+          _deletedDocumentIds.clear();
           // Update controllers with fresh data
           _vehicleMakeController.text = updatedClaim.vehicleMake ?? '';
           _vehicleModelController.text = updatedClaim.vehicleModel ?? '';
@@ -1020,6 +1019,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
                             _isEditing = false;
                             _isAppeal = false;
                             _newCategorizedDocuments.clear();
+                            _deletedDocumentIds.clear();
                             _initializeControllers();
                           });
                         }
@@ -1627,70 +1627,83 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         borderRadius: BorderRadius.circular(6.r),
         border: Border.all(color: borderColor.withAlpha(80)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
         children: [
-          Icon(
-            isImage ? Icons.image_rounded : Icons.description_rounded,
-            color: GlobalStyles.primaryColor,
-            size: 16.sp,
-          ),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fileName,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    color: GlobalStyles.primaryColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+          Row(
+            children: [
+              Icon(
+                isImage ? Icons.image_rounded : Icons.description_rounded,
+                color: GlobalStyles.primaryColor,
+                size: 16.sp,
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fileName,
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        color: GlobalStyles.primaryColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (doc != null) ...[
+                      SizedBox(height: 2.h),
+                      Text(
+                        'Existing Document',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.sp,
+                          color: GlobalStyles.primaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ] else ...[
+                      SizedBox(height: 2.h),
+                      Text(
+                        'New Upload',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.sp,
+                          color: Colors.green,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                if (doc != null) ...[
-                  SizedBox(height: 2.h),
-                  Text(
-                    'Existing Document',
-                    style: GoogleFonts.inter(
-                      fontSize: 10.sp,
-                      color: GlobalStyles.primaryColor,
-                      fontWeight: FontWeight.w500,
-                    ),
+              ),
+              Container(
+                height: 30.h,
+                decoration: BoxDecoration(
+                  color: Colors.red.withAlpha(51),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  onPressed: () {
+                    if (doc != null) {
+                      _deleteExistingDocument(doc);
+                    } else if (file != null) {
+                      _removeFile(category, file);
+                    }
+                  },
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: Colors.red,
+                    size: 16.sp,
                   ),
-                ] else ...[
-                  SizedBox(height: 2.h),
-                  Text(
-                    'New Upload',
-                    style: GoogleFonts.inter(
-                      fontSize: 10.sp,
-                      color: Colors.green,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+                ),
+              ),
+            ],
           ),
-          if (doc != null) Row(children: _buildStatusChips(doc)),
-          Container(
-            height: 30.h,
-            decoration: BoxDecoration(
-              color: Colors.red.withAlpha(51),
-              shape: BoxShape.circle,
+          if (doc != null) ...[
+            SizedBox(height: 6.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: _buildStatusChips(doc),
             ),
-            child: IconButton(
-              onPressed: () {
-                if (doc != null) {
-                  _deleteExistingDocument(doc);
-                } else if (file != null) {
-                  _removeFile(category, file);
-                }
-              },
-              icon: Icon(Icons.close_rounded, color: Colors.red, size: 16.sp),
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -1846,8 +1859,10 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
                   claim.vehiclePlateNumber ?? 'N/A',
                 ),
                 _buildDetailRow(
-                  'Created Date',
-                  DateFormat.yMMMd().add_jm().format(claim.createdAt),
+                  'Updated Date',
+                  DateFormat.yMMMd().add_jm().format(
+                    claim.updatedAt.add(Duration(hours: 8)),
+                  ),
                 ),
 
                 SizedBox(height: 12.h),
@@ -2262,6 +2277,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
               ),
             ),
           ),
+          SizedBox(width: 10.w),
           Expanded(
             child: Text(
               value,

@@ -91,7 +91,6 @@ class ClaimsService {
           .update({
             'status': status,
             // FIX: Convert to UTC here too
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', claimId);
 
@@ -112,7 +111,6 @@ class ClaimsService {
             'status': 'submitted',
             // FIX: Convert to UTC before stringifying
             'submitted_at': DateTime.now().toUtc().toIso8601String(),
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', claimId);
 

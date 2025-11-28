@@ -185,6 +185,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
           .from('claims')
           .stream(primaryKey: ['id'])
           .eq('user_id', user.id)
+          .order('updated_at', ascending: false)
           .listen((List<Map<String, dynamic>> data) {
             // Real-time data received
             _handleRealtimeUpdate(data);
@@ -300,10 +301,10 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
 
     switch (_currentSort) {
       case SortOption.dateNewest:
-        sortedClaims.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        sortedClaims.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
         break;
       case SortOption.dateOldest:
-        sortedClaims.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        sortedClaims.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
         break;
       case SortOption.amountHighest:
         sortedClaims.sort(
@@ -654,7 +655,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                         ),
                       ),
                       Text(
-                        DateFormat.yMMMd().format(claim.createdAt),
+                        DateFormat.yMMMd().format(claim.updatedAt),
                         style: GoogleFonts.inter(
                           color: Colors.grey,
                           fontSize: 12.sp,
