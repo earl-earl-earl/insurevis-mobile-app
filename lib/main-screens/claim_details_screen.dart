@@ -1859,9 +1859,9 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
                   claim.vehiclePlateNumber ?? 'N/A',
                 ),
                 _buildDetailRow(
-                  'Updated Date',
+                  'Created Date',
                   DateFormat.yMMMd().add_jm().format(
-                    claim.updatedAt.add(Duration(hours: 8)),
+                    claim.createdAt.add(Duration(hours: 8)),
                   ),
                 ),
 

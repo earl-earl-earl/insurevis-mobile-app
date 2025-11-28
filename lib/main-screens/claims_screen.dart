@@ -655,7 +655,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                         ),
                       ),
                       Text(
-                        DateFormat.yMMMd().format(claim.updatedAt),
+                        DateFormat.yMMMd().format(claim.createdAt),
                         style: GoogleFonts.inter(
                           color: Colors.grey,
                           fontSize: 12.sp,
