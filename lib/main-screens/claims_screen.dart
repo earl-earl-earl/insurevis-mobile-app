@@ -706,15 +706,6 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
             ),
             tooltip: 'Sort',
           ),
-          SizedBox(width: 4.w),
-          IconButton(
-            icon: Icon(Icons.note_add_rounded),
-            color: GlobalStyles.primaryColor,
-            tooltip: 'Create Claim',
-            onPressed: () {
-              Navigator.pushNamed(context, '/claim_create');
-            },
-          ),
           // Debug menu for development
           // if (kDebugMode) ...[
           //   PopupMenuButton<String>(

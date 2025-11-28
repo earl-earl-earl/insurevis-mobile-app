@@ -418,7 +418,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                     ),
                     _buildDocumentCategories(),
                     SizedBox(height: 40.h),
-                    _buildVehicleInfoSection(),
+                    // Removed duplicate vehicle info section from bottom of the form
                   ],
                 ),
               ),
@@ -2535,19 +2535,22 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                       horizontal: 12.w,
                       vertical: 8.h,
                     ),
-                    decoration: BoxDecoration(color: Colors.green),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.all(Radius.circular(5.r)),
+                    ),
                     child: Row(
                       children: [
                         Icon(
                           Icons.confirmation_number,
-                          color: Colors.green,
+                          color: Colors.white,
                           size: 16.sp,
                         ),
                         SizedBox(width: 8.w),
                         Text(
                           'Claim #: $claimNumber',
                           style: GoogleFonts.inter(
-                            color: Colors.green,
+                            color: Colors.white,
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w600,
                           ),
@@ -2558,7 +2561,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                 ],
                 SizedBox(height: 12.h),
                 Text(
-                  'You will receive a confirmation email shortly.',
+                  'Please be patient when waiting for approval.',
                   style: GoogleFonts.inter(
                     color: Color(0x992A2A2A),
                     fontSize: 12.sp,

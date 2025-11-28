@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:insurevis/services/supabase_service.dart';
+import 'package:insurevis/helpers/appeal_helper.dart';
 import 'package:insurevis/services/storage_service.dart';
 import 'package:insurevis/models/insurevis_models.dart';
 import 'package:insurevis/global_ui_variables.dart';
@@ -64,6 +65,13 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     'damage_photos': true,
     'stencil_strips': true,
     'additional_documents': false,
+  };
+
+  // Documents exclusive to specific companies
+  static const Set<String> _carCompanyOnlyDocuments = {'stencil_strips'};
+  static const Set<String> _insuranceOnlyDocuments = {
+    'insurance_policy',
+    'police_report',
   };
 
   // Editing state
@@ -170,6 +178,235 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
       });
       if (kDebugMode) print('Error loading documents: $e');
     }
+  }
+
+  /// Return status info for a document: status text and color based on verified/rejection flags
+  Map<String, dynamic> _documentStatusInfo(DocumentModel doc) {
+    // Approved only when BOTH car company and insurance have verified the document
+    final isApproved =
+        doc.verifiedByCarCompany && doc.verifiedByInsuranceCompany;
+    final carRejected =
+        (doc.carCompanyVerificationNotes != null &&
+            doc.carCompanyVerificationNotes!.trim().isNotEmpty);
+    final insRejected =
+        (doc.insuranceVerificationNotes != null &&
+            doc.insuranceVerificationNotes!.trim().isNotEmpty);
+    final isRejected = carRejected || insRejected;
+    final isAppealed = doc.status.toLowerCase() == 'appealed';
+
+    // priority: rejected -> appealed -> approved -> pending
+    if (isRejected) {
+      return {'text': 'Rejected', 'color': Colors.red};
+    }
+    if (isAppealed) {
+      return {'text': 'Appealed', 'color': Colors.purple};
+    }
+    if (isApproved) {
+      return {'text': 'Approved', 'color': Colors.green};
+    }
+
+    // Default to pending (orange) if not yet verified by either party
+    return {'text': 'Pending', 'color': Colors.orange};
+  }
+
+  // Kept per-party chip widgets instead of a single status pill.
+
+  Map<String, dynamic> _partyStatusInfo(DocumentModel doc, bool isCar) {
+    if (isCar) {
+      final rejected =
+          doc.carCompanyVerificationNotes != null &&
+          doc.carCompanyVerificationNotes!.trim().isNotEmpty;
+      if (rejected)
+        return {
+          'text': 'Rejected',
+          'color': Colors.red,
+          'note': doc.carCompanyVerificationNotes,
+        };
+      if (doc.verifiedByCarCompany)
+        return {'text': 'Approved', 'color': Colors.green, 'note': null};
+      if (doc.status.toLowerCase() == 'appealed')
+        return {'text': 'Appealed', 'color': Colors.purple, 'note': null};
+      return {'text': 'Pending', 'color': Colors.orange, 'note': null};
+    } else {
+      final rejected =
+          doc.insuranceVerificationNotes != null &&
+          doc.insuranceVerificationNotes!.trim().isNotEmpty;
+      if (rejected)
+        return {
+          'text': 'Rejected',
+          'color': Colors.red,
+          'note': doc.insuranceVerificationNotes,
+        };
+      if (doc.verifiedByInsuranceCompany)
+        return {'text': 'Approved', 'color': Colors.green, 'note': null};
+      if (doc.status.toLowerCase() == 'appealed')
+        return {'text': 'Appealed', 'color': Colors.purple, 'note': null};
+      return {'text': 'Pending', 'color': Colors.orange, 'note': null};
+    }
+  }
+
+  Widget _buildPartyStatusChip(
+    DocumentModel doc, {
+    required bool isCarCompany,
+  }) {
+    final info = _partyStatusInfo(doc, isCarCompany);
+    final color = info['color'] as Color;
+    final text = info['text'] as String;
+    final note = info['note'] as String?;
+
+    return GestureDetector(
+      onTap: () {
+        if (note != null && note.trim().isNotEmpty) {
+          final date =
+              isCarCompany
+                  ? doc.carCompanyVerificationDate
+                  : doc.insuranceVerificationDate;
+          showDialog<void>(
+            context: context,
+            builder:
+                (context) => AlertDialog(
+                  title: Text(
+                    isCarCompany
+                        ? 'Car Company Rejection'
+                        : 'Insurance Rejection',
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (date != null) ...[
+                        Text(
+                          'Rejected on: ${DateFormat.yMMMd().format(date)}',
+                          style: GoogleFonts.inter(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                      ],
+                      Text(
+                        'Reason:',
+                        style: GoogleFonts.inter(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        _formatRejectionNote(note),
+                        style: GoogleFonts.inter(
+                          fontSize: 14.sp,
+                          color: Colors.black87,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text('Close'),
+                    ),
+                  ],
+                ),
+          );
+          return;
+        }
+        // Show a short info dialog when tapped and no rejection notes present
+        showDialog<void>(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: Text(
+                  isCarCompany ? 'Car Company Status' : 'Insurance Status',
+                ),
+                content: Text(
+                  text == 'Pending' ? 'No verification yet.' : 'Status: $text',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('Close'),
+                  ),
+                ],
+              ),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+        decoration: BoxDecoration(
+          color: color.withAlpha(30),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: color.withAlpha(120)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${isCarCompany ? 'Car Company' : 'Insurance Company'}: $text',
+              style: GoogleFonts.inter(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+            if (note != null && note.trim().isNotEmpty) ...[
+              SizedBox(width: 4.w),
+              Icon(
+                Icons.info_outline,
+                size: 12.sp,
+                color: color.withAlpha(180),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Map of rejection reason codes to friendly descriptions
+  static const Map<String, String> _rejectionReasonMap = {
+    'document_illegible': 'Document is illegible or unclear',
+    'document_expired': 'Document is expired',
+    'document_incomplete': 'Document is incomplete',
+    'document_forged': 'Document appears to be forged',
+    'document_wrong_type': 'Wrong document type submitted',
+    'document_mismatch': 'Document information doesn\'t match claim',
+  };
+
+  String _formatRejectionNote(String? note) {
+    if (note == null || note.trim().isEmpty) return '';
+    // Some systems store a single code or a comma/delimited list of codes.
+    final parts =
+        note
+            .split(RegExp(r'[;,|\n]'))
+            .map((p) => p.trim())
+            .where((p) => p.isNotEmpty)
+            .toList();
+    final mapped = parts.map((p) => _rejectionReasonMap[p] ?? p).toList();
+    return mapped.join(', ');
+  }
+
+  List<Widget> _buildStatusChips(DocumentModel doc) {
+    final type = doc.type.value;
+    List<Widget> chips = [];
+    if (!_insuranceOnlyDocuments.contains(type)) {
+      chips.add(_buildPartyStatusChip(doc, isCarCompany: true));
+    }
+    if (!_carCompanyOnlyDocuments.contains(type)) {
+      chips.add(_buildPartyStatusChip(doc, isCarCompany: false));
+    }
+    // Add spacing between chips
+    List<Widget> spaced = [];
+    for (int i = 0; i < chips.length; i++) {
+      spaced.add(chips[i]);
+      if (i < chips.length - 1) {
+        spaced.add(SizedBox(width: 6.w));
+      }
+    }
+    return spaced;
   }
 
   bool _isPdf(DocumentModel doc) {
@@ -519,17 +756,12 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         'vehicle_model': _vehicleModelController.text,
         'vehicle_year': int.tryParse(_vehicleYearController.text),
         'vehicle_plate_number': _vehiclePlateNumberController.text,
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 
       if (_isAppeal) {
-        updates['status'] = 'appealed';
-        updates['is_approved_by_car_company'] = false;
-        updates['is_approved_by_insurance_company'] = false;
-        updates['car_company_approval_notes'] = null;
-        updates['insurance_company_approval_notes'] = null;
-        updates['rejected_at'] = null;
-        updates['created_at'] = DateTime.now().toIso8601String();
+        final appealUpdates = buildAppealUpdates(widget.claim);
+        updates.addAll(appealUpdates);
       }
 
       await SupabaseService.client
@@ -564,8 +796,8 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
             'format': fileExt,
             'storage_path': filePath,
             'status': 'uploaded',
-            'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           });
         }
       }
@@ -591,6 +823,52 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
             backgroundColor: Colors.green,
           ),
         );
+
+        // If this was an appeal, reset verification flags on the document records
+        // for the rejecting party so they can be re-verified.
+        if (_isAppeal) {
+          try {
+            final carRejected =
+                widget.claim.carCompanyStatus.toLowerCase() == 'rejected';
+            final insuranceRejected =
+                widget.claim.status.toLowerCase() == 'rejected';
+            if (carRejected || insuranceRejected) {
+              for (final d in _documents) {
+                final updates = <String, dynamic>{
+                  'updated_at': DateTime.now().toUtc().toIso8601String(),
+                };
+                var needsUpdate = false;
+                if (carRejected) {
+                  updates['verified_by_car_company'] = false;
+                  // Clear rejection notes related to car company
+                  if (d.carCompanyVerificationNotes != null &&
+                      d.carCompanyVerificationNotes!.trim().isNotEmpty) {
+                    updates['car_company_verification_notes'] = null;
+                  }
+                  needsUpdate = true;
+                }
+                if (insuranceRejected) {
+                  updates['verified_by_insurance_company'] = false;
+                  // Clear rejection notes related to insurance
+                  if (d.insuranceVerificationNotes != null &&
+                      d.insuranceVerificationNotes!.trim().isNotEmpty) {
+                    updates['insurance_verification_notes'] = null;
+                  }
+                  needsUpdate = true;
+                }
+                if (needsUpdate) {
+                  await SupabaseService.client
+                      .from('documents')
+                      .update(updates)
+                      .eq('id', d.id);
+                }
+              }
+            }
+          } catch (e) {
+            if (kDebugMode)
+              print('Failed to reset document verification flags: $e');
+          }
+        }
 
         // Exit edit mode and refresh the UI with updated data
         setState(() {
@@ -713,7 +991,10 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         claim.status == 'pending_documents' ||
         claim.status == 'submitted' ||
         claim.status == 'under_review';
-    final isRejected = claim.status == 'rejected';
+    // Consider a claim rejected when either the main insurance status is 'rejected'
+    // or the car company has rejected the claim via 'car_company_status'.
+    final isRejected =
+        claim.status == 'rejected' || claim.carCompanyStatus == 'rejected';
 
     return WillPopScope(
       onWillPop: () async {
@@ -1332,12 +1613,19 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         fileName.toLowerCase().endsWith('.jpeg') ||
         fileName.toLowerCase().endsWith('.png');
 
+    final statusInfo = doc != null ? _documentStatusInfo(doc) : null;
+    final borderColor =
+        statusInfo != null
+            ? (statusInfo['color'] as Color)
+            : Colors.transparent;
+
     return Container(
       margin: EdgeInsets.only(bottom: 8.h),
       padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
         color: GlobalStyles.primaryColor.withAlpha(51),
         borderRadius: BorderRadius.circular(6.r),
+        border: Border.all(color: borderColor.withAlpha(80)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1385,6 +1673,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
               ],
             ),
           ),
+          if (doc != null) Row(children: _buildStatusChips(doc)),
           Container(
             height: 30.h,
             decoration: BoxDecoration(
@@ -1556,6 +1845,10 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
                   'Plate Number',
                   claim.vehiclePlateNumber ?? 'N/A',
                 ),
+                _buildDetailRow(
+                  'Created Date',
+                  DateFormat.yMMMd().add_jm().format(claim.createdAt),
+                ),
 
                 SizedBox(height: 12.h),
                 Text(
@@ -1654,16 +1947,17 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
 
   Widget _buildDocumentTile(DocumentModel doc) {
     final url = _signedUrls[doc.id];
+    final statusInfo = _documentStatusInfo(doc);
+    final borderColor = statusInfo['color'] as Color;
 
     if (_isPdf(doc)) {
       return Padding(
         padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
           decoration: BoxDecoration(
             color: Colors.grey[50],
             borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: Colors.grey[200]!),
+            border: Border.all(color: borderColor.withAlpha(80)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.03),
@@ -1672,74 +1966,91 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
               ),
             ],
           ),
-          child: Row(
+          child: Column(
             children: [
-              Icon(
-                Icons.picture_as_pdf_rounded,
-                color: Colors.red[600],
-                size: 22.sp,
-              ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              // First row: icon, title, filename, buttons
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                child: Row(
                   children: [
-                    Text(
-                      doc.type.displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
+                    Icon(
+                      Icons.picture_as_pdf_rounded,
+                      color: Colors.red[600],
+                      size: 22.sp,
+                    ),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            doc.type.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 2.h),
+                          Text(
+                            doc.fileName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      doc.fileName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 12.sp,
-                        color: Colors.grey[600],
+                    if (_progress[doc.id] != null)
+                      SizedBox(
+                        width: 24.sp,
+                        height: 24.sp,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          value: (_progress[doc.id] ?? 0),
+                          color: GlobalStyles.primaryColor,
+                        ),
+                      )
+                    else
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Open',
+                            onPressed: url == null ? null : () => _openPdf(doc),
+                            icon: Icon(
+                              Icons.open_in_new_rounded,
+                              color: Colors.blueGrey,
+                              size: 22.sp,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Download',
+                            onPressed:
+                                url == null ? null : () => _download(doc),
+                            icon: Icon(
+                              Icons.download_rounded,
+                              color: GlobalStyles.primaryColor,
+                              size: 22.sp,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
                   ],
                 ),
               ),
-              if (_progress[doc.id] != null)
-                SizedBox(
-                  width: 24.sp,
-                  height: 24.sp,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    value: (_progress[doc.id] ?? 0),
-                    color: GlobalStyles.primaryColor,
-                  ),
-                )
-              else
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: 'Open',
-                      onPressed: url == null ? null : () => _openPdf(doc),
-                      icon: Icon(
-                        Icons.open_in_new_rounded,
-                        color: Colors.blueGrey,
-                        size: 22.sp,
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Download',
-                      onPressed: url == null ? null : () => _download(doc),
-                      icon: Icon(
-                        Icons.download_rounded,
-                        color: GlobalStyles.primaryColor,
-                        size: 22.sp,
-                      ),
-                    ),
-                  ],
+              // Second row: status chips
+              Padding(
+                padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: _buildStatusChips(doc),
                 ),
+              ),
             ],
           ),
         ),
@@ -1749,12 +2060,13 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[200]!),
+            border: Border.all(color: borderColor.withAlpha(80)),
             borderRadius: BorderRadius.circular(12.r),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Image preview
               GestureDetector(
                 onTap: () {
                   Navigator.of(context).push(
@@ -1790,6 +2102,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
                   ),
                 ),
               ),
+              // Top row: title, filename, download button
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 child: Row(
@@ -1843,6 +2156,14 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
                   ],
                 ),
               ),
+              // Bottom row: status chips
+              Padding(
+                padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: _buildStatusChips(doc),
+                ),
+              ),
             ],
           ),
         ),
@@ -1851,54 +2172,71 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
       return Padding(
         padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
           decoration: BoxDecoration(
             color: Colors.grey[50],
             borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: Colors.grey[200]!),
+            border: Border.all(color: borderColor.withAlpha(80)),
           ),
-          child: Row(
+          child: Column(
             children: [
-              Icon(
-                Icons.insert_drive_file_rounded,
-                color: Colors.grey[700],
-                size: 22.sp,
-              ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              // Top row: icon, title, filename, download button
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                child: Row(
                   children: [
-                    Text(
-                      doc.type.displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
+                    Icon(
+                      Icons.insert_drive_file_rounded,
+                      color: Colors.grey[700],
+                      size: 22.sp,
+                    ),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            doc.type.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 2.h),
+                          Text(
+                            doc.fileName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      doc.fileName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 12.sp,
-                        color: Colors.grey[600],
+                    IconButton(
+                      tooltip: 'Download',
+                      onPressed:
+                          _signedUrls[doc.id] == null
+                              ? null
+                              : () => _download(doc),
+                      icon: Icon(
+                        Icons.download_rounded,
+                        color: GlobalStyles.primaryColor,
+                        size: 22.sp,
                       ),
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                tooltip: 'Download',
-                onPressed:
-                    _signedUrls[doc.id] == null ? null : () => _download(doc),
-                icon: Icon(
-                  Icons.download_rounded,
-                  color: GlobalStyles.primaryColor,
-                  size: 22.sp,
+              // Bottom row: status chips
+              Padding(
+                padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: _buildStatusChips(doc),
                 ),
               ),
             ],
@@ -2053,7 +2391,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
             ),
             SizedBox(height: 4.h),
             Text(
-              notes,
+              _formatRejectionNote(notes),
               style: GoogleFonts.inter(
                 fontSize: 12.sp,
                 color: Colors.grey[700],

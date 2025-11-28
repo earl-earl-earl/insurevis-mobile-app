@@ -83,13 +83,15 @@ class ClaimsService {
   }
 
   /// Update claim status
+  /// Update claim status
   static Future<bool> updateClaimStatus(String claimId, String status) async {
     try {
       await _supabase
           .from('claims')
           .update({
             'status': status,
-            'updated_at': DateTime.now().toIso8601String(),
+            // FIX: Convert to UTC here too
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', claimId);
 
@@ -101,14 +103,16 @@ class ClaimsService {
   }
 
   /// Submit claim (change status from draft to submitted)
+  /// Submit claim (change status from draft to submitted)
   static Future<bool> submitClaim(String claimId) async {
     try {
       await _supabase
           .from('claims')
           .update({
             'status': 'submitted',
-            'submitted_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
+            // FIX: Convert to UTC before stringifying
+            'submitted_at': DateTime.now().toUtc().toIso8601String(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', claimId);
 
