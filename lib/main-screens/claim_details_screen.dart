@@ -643,15 +643,30 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     if (confirm != true) return;
 
     try {
-      // Delete from storage
+      // Delete from storage first
+      bool storageDeleted = true;
       if (doc.storagePath != null) {
-        await SupabaseService.client.storage.from('insurevis-documents').remove(
-          [doc.storagePath!],
-        );
+        try {
+          await SupabaseService.client.storage
+              .from('insurevis-documents')
+              .remove([doc.storagePath!]);
+        } catch (storageError) {
+          storageDeleted = false;
+          print('Failed to delete from storage: $storageError');
+          // Don't proceed with database deletion if storage deletion failed
+          throw Exception(
+            'Failed to delete file from storage. Database record preserved.',
+          );
+        }
       }
 
-      // Delete from database
-      await SupabaseService.client.from('documents').delete().eq('id', doc.id);
+      // Only delete from database if storage deletion succeeded
+      if (storageDeleted) {
+        await SupabaseService.client
+            .from('documents')
+            .delete()
+            .eq('id', doc.id);
+      }
 
       setState(() {
         _deletedDocumentIds.add(doc.id); // Track the deletion

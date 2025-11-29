@@ -190,15 +190,25 @@ class DocumentService {
       final document = await getDocumentWithUrl(documentId);
       if (document == null) return false;
 
-      // 2. Delete from storage
+      // 2. Delete from storage first
+      bool storageDeleted = true;
       if (document.storagePath != null) {
-        await _storageService.deleteFile(document.storagePath!);
+        try {
+          await _storageService.deleteFile(document.storagePath!);
+        } catch (storageError) {
+          storageDeleted = false;
+          print('Failed to delete from storage: $storageError');
+          // Don't proceed with database deletion if storage deletion failed
+          return false;
+        }
       }
 
-      // 3. Delete from database
-      await _supabase.from('documents').delete().eq('id', documentId);
+      // 3. Only delete from database if storage deletion succeeded
+      if (storageDeleted) {
+        await _supabase.from('documents').delete().eq('id', documentId);
+      }
 
-      return true;
+      return storageDeleted;
     } catch (e) {
       print('Delete document error: $e');
       return false;

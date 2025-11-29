@@ -229,13 +229,17 @@ class DocumentService {
       final document = await getDocumentWithUrl(documentId);
       if (document == null) return false;
 
-      // 2. Delete from storage
+      // 2. Delete from storage first
+      bool storageDeleted = false;
       if (document.storagePath != null) {
         await _storageService.deleteFile(document.storagePath!);
+        storageDeleted = true;
       }
 
-      // 3. Delete from database
-      await _supabase.from('documents').delete().eq('id', documentId);
+      // 3. Only delete from database if storage deletion succeeded (or no storage file)
+      if (storageDeleted || document.storagePath == null) {
+        await _supabase.from('documents').delete().eq('id', documentId);
+      }
 
       return true;
     } catch (e) {
