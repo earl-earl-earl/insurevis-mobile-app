@@ -68,14 +68,6 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     'additional_documents': false,
   };
 
-  // Documents exclusive to specific companies
-  static const Set<String> _carCompanyOnlyDocuments = {'stencil_strips'};
-  static const Set<String> _insuranceOnlyDocuments = {
-    'insurance_policy',
-    'police_report',
-    'additional_documents',
-  };
-
   // Editing state
   bool _isEditing = false;
   bool _isAppeal = false;
@@ -398,14 +390,9 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
   }
 
   List<Widget> _buildStatusChips(DocumentModel doc) {
-    final type = doc.type.value;
     List<Widget> chips = [];
-    if (!_insuranceOnlyDocuments.contains(type)) {
-      chips.add(_buildPartyStatusChip(doc, isCarCompany: true));
-    }
-    if (!_carCompanyOnlyDocuments.contains(type)) {
-      chips.add(_buildPartyStatusChip(doc, isCarCompany: false));
-    }
+    chips.add(_buildPartyStatusChip(doc, isCarCompany: true));
+    chips.add(_buildPartyStatusChip(doc, isCarCompany: false));
     // Add spacing between chips
     List<Widget> spaced = [];
     for (int i = 0; i < chips.length; i++) {
