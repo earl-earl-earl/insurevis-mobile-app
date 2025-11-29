@@ -218,31 +218,37 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
       final rejected =
           doc.carCompanyVerificationNotes != null &&
           doc.carCompanyVerificationNotes!.trim().isNotEmpty;
-      if (rejected)
+      if (rejected) {
         return {
           'text': 'Rejected',
           'color': Colors.red,
           'note': doc.carCompanyVerificationNotes,
         };
-      if (doc.verifiedByCarCompany)
+      }
+      if (doc.verifiedByCarCompany) {
         return {'text': 'Approved', 'color': Colors.green, 'note': null};
-      if (doc.status.toLowerCase() == 'appealed')
+      }
+      if (doc.status.toLowerCase() == 'appealed') {
         return {'text': 'Appealed', 'color': Colors.purple, 'note': null};
+      }
       return {'text': 'Pending', 'color': Colors.orange, 'note': null};
     } else {
       final rejected =
           doc.insuranceVerificationNotes != null &&
           doc.insuranceVerificationNotes!.trim().isNotEmpty;
-      if (rejected)
+      if (rejected) {
         return {
           'text': 'Rejected',
           'color': Colors.red,
           'note': doc.insuranceVerificationNotes,
         };
-      if (doc.verifiedByInsuranceCompany)
+      }
+      if (doc.verifiedByInsuranceCompany) {
         return {'text': 'Approved', 'color': Colors.green, 'note': null};
-      if (doc.status.toLowerCase() == 'appealed')
+      }
+      if (doc.status.toLowerCase() == 'appealed') {
         return {'text': 'Appealed', 'color': Colors.purple, 'note': null};
+      }
       return {'text': 'Pending', 'color': Colors.orange, 'note': null};
     }
   }
@@ -794,6 +800,13 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
               .from('insurevis-documents')
               .createSignedUrl(filePath, 3600 * 24 * 30); // 30 days
 
+          // Determine is_primary based on local map
+          final isPrimary = _requiredDocuments[category] ?? false;
+
+          // Create description
+          final description =
+              'Document uploaded for insurance claim ${widget.claim.claimNumber} - ${_documentTitleFromKey(category)}';
+
           // Create Document Record
           await SupabaseService.client.from('documents').insert({
             'claim_id': widget.claim.id,
@@ -805,6 +818,8 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
             'storage_path': filePath,
             'remote_url': signedUrl,
             'status': 'uploaded',
+            'is_primary': isPrimary, // Added
+            'description': description, // Added
           });
         }
       }
@@ -2297,6 +2312,41 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         ],
       ),
     );
+  }
+
+  String _documentTitleFromKey(String key) {
+    switch (key) {
+      case 'lto_or':
+        return 'LTO O.R.';
+      case 'lto_cr':
+        return 'LTO C.R.';
+      case 'drivers_license':
+        return "Driver's License";
+      case 'owner_valid_id':
+        return 'Owner Valid ID';
+      case 'police_report':
+        return 'Police Report';
+      case 'insurance_policy':
+        return 'Insurance Policy';
+      case 'job_estimate':
+        return 'Job Estimate';
+      case 'damage_photos':
+        return 'Damage Photos';
+      case 'stencil_strips':
+        return 'Stencil Strips';
+      case 'additional_documents':
+        return 'Additional Documents';
+      default:
+        return key
+            .split('_')
+            .map(
+              (word) =>
+                  word.isNotEmpty
+                      ? '${word[0].toUpperCase()}${word.substring(1)}'
+                      : '',
+            )
+            .join(' ');
+    }
   }
 
   Widget _buildApprovalStatusCard({
