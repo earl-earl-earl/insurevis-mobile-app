@@ -73,6 +73,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
   static const Set<String> _insuranceOnlyDocuments = {
     'insurance_policy',
     'police_report',
+    'additional_documents',
   };
 
   // Editing state
@@ -788,6 +789,11 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
               .from('insurevis-documents')
               .uploadBinary(filePath, bytes);
 
+          // Generate signed URL for the uploaded file
+          final signedUrl = await SupabaseService.client.storage
+              .from('insurevis-documents')
+              .createSignedUrl(filePath, 3600 * 24 * 30); // 30 days
+
           // Create Document Record
           await SupabaseService.client.from('documents').insert({
             'claim_id': widget.claim.id,
@@ -797,6 +803,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
             'file_size_bytes': await file.length(),
             'format': fileExt,
             'storage_path': filePath,
+            'remote_url': signedUrl,
             'status': 'uploaded',
           });
         }
