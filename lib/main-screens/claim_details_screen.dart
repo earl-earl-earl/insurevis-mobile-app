@@ -135,6 +135,9 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
               .map((j) => DocumentModel.fromJson(j as Map<String, dynamic>))
               .toList();
 
+      // Sort documents by type name ascending
+      docs.sort((a, b) => a.type.displayName.compareTo(b.type.displayName));
+
       // Preload signed URLs for display/download
       for (final d in docs) {
         if (d.storagePath != null && d.storagePath!.isNotEmpty) {
@@ -785,12 +788,16 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         final category = entry.key;
         final files = entry.value;
 
-        for (final file in files) {
+        for (var i = 0; i < files.length; i++) {
+          final file = files[i];
           final bytes = await file.readAsBytes();
           final fileName = file.path.split(Platform.pathSeparator).last;
           final fileExt = fileName.split('.').last;
+          // Add index to ensure unique file paths when uploading multiple files of same type
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final uniqueId = '${timestamp}_${i}';
           final filePath =
-              '${user.id}/${widget.claim.id}/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+              '${user.id}/${widget.claim.id}/${uniqueId}_$fileName';
 
           // Upload to Storage
           await SupabaseService.client.storage
@@ -1008,12 +1015,13 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     final formatStatus = widget.formatStatus ?? _defaultFormatStatus;
     final formatCurrency = widget.formatCurrency ?? _defaultFormatCurrency;
 
-    // Allow editing if draft, pending docs, or rejected (appeal)
+    // Allow editing if draft, pending docs, appealed, or rejected (appeal)
     final canEdit =
         claim.status == 'draft' ||
         claim.status == 'pending_documents' ||
         claim.status == 'submitted' ||
-        claim.status == 'under_review';
+        claim.status == 'under_review' ||
+        claim.status == 'appealed';
     // Consider a claim rejected when either the main insurance status is 'rejected'
     // or the car company has rejected the claim via 'car_company_status'.
     final isRejected =
