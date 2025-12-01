@@ -2364,32 +2364,297 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     }
   }
 
-  void _proceedToClaimInsurance() {
-    // Navigate to Insurance Document Upload with selected repair options and pricing data
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => InsuranceDocumentUpload(
-              imagePaths: widget.imagePaths ?? const <String>[],
-              apiResponses:
-                  widget.apiResponses ?? <String, Map<String, dynamic>>{},
-              assessmentIds: widget.assessmentIds ?? <String, String>{},
-              selectedRepairOptions: Map<int, String>.from(
-                _selectedRepairOptions,
-              ),
-              repairPricingData: Map<int, Map<String, dynamic>>.from(
-                _repairPricingData.map((k, v) => MapEntry(k, v ?? {})),
-              ),
-              replacePricingData: Map<int, Map<String, dynamic>>.from(
-                _replacePricingData.map((k, v) => MapEntry(k, v ?? {})),
-              ),
-              manualDamages: List<Map<String, String>>.from(_manualDamages),
-              estimatedDamageCost: _estimatedDamageCost,
-              vehicleData: widget.vehicleData,
+  Future<void> _proceedToClaimInsurance() async {
+    // Check if there are any damages (API-detected or manual)
+    int totalDamages = 0;
+
+    // Count API-detected damages
+    final apiResponses =
+        widget.apiResponses ?? <String, Map<String, dynamic>>{};
+    for (var response in apiResponses.values) {
+      if (response['damages'] is List) {
+        totalDamages += (response['damages'] as List).length;
+      } else if (response['prediction'] is List) {
+        totalDamages += (response['prediction'] as List).length;
+      }
+    }
+
+    // Count manual damages
+    totalDamages += _manualDamages.length;
+
+    // If no damages found, show error and prevent navigation
+    if (totalDamages == 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Please add at least one damage (automated or manual) to proceed.',
             ),
-      ),
-    );
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Generate temporary PDF for job estimate
+    String? tempPdfPath;
+    try {
+      // Build the apiResponses with all damage information for PDF generation
+      final Map<String, Map<String, dynamic>> pdfResponses = {};
+      final apiResponsesForPdf =
+          widget.apiResponses ?? <String, Map<String, dynamic>>{};
+
+      // Process API responses and add individual damage costs
+      apiResponsesForPdf.forEach((imagePath, response) {
+        final copiedResponse = Map<String, dynamic>.from(response);
+
+        // Get damage indices for this image
+        final damageIndices = _imageToDamageIndices[imagePath] ?? [];
+
+        // If there are damages, add cost information to each damage
+        if (copiedResponse['damages'] is List) {
+          final damagesList = copiedResponse['damages'] as List;
+          for (int i = 0; i < damagesList.length; i++) {
+            if (i < damageIndices.length) {
+              final damageIndex = damageIndices[i];
+              final selectedOption = _selectedRepairOptions[damageIndex];
+              if (selectedOption != null) {
+                final damage = damagesList[i] as Map<String, dynamic>;
+                damage['recommended_action'] = selectedOption;
+                damage['action'] = selectedOption;
+
+                // Calculate cost for this specific damage
+                double damageCost = 0.0;
+                if (selectedOption == 'repair') {
+                  final repairData = _repairPricingData[damageIndex];
+                  if (repairData != null) {
+                    final repoTotal =
+                        (repairData['total_with_labor'] as num?)?.toDouble();
+                    if (repoTotal != null) {
+                      damageCost = repoTotal;
+                    } else {
+                      final double bodyPaint =
+                          (repairData['srp_insurance'] as num?)?.toDouble() ??
+                          0.0;
+                      final double labor =
+                          (repairData['cost_installation_personal'] as num?)
+                              ?.toDouble() ??
+                          0.0;
+                      damageCost = bodyPaint + labor;
+                    }
+                  }
+                } else if (selectedOption == 'replace') {
+                  final replacePricing = _replacePricingData[damageIndex];
+                  final repairData = _repairPricingData[damageIndex];
+                  if (replacePricing != null || repairData != null) {
+                    final repoTotal =
+                        (replacePricing?['total_with_labor'] as num?)
+                            ?.toDouble() ??
+                        (repairData?['total_with_labor'] as num?)?.toDouble();
+                    if (repoTotal != null) {
+                      damageCost = repoTotal;
+                    } else {
+                      final double thinsmith =
+                          (replacePricing?['insurance'] as num?)?.toDouble() ??
+                          0.0;
+                      final double bodyPaint =
+                          (repairData?['srp_insurance'] as num?)?.toDouble() ??
+                          0.0;
+                      final double labor =
+                          (replacePricing?['cost_installation_personal']
+                                  as num?)
+                              ?.toDouble() ??
+                          (repairData?['cost_installation_personal'] as num?)
+                              ?.toDouble() ??
+                          0.0;
+                      damageCost = thinsmith + bodyPaint + labor;
+                    }
+                  }
+                }
+
+                damage['cost'] = damageCost.toString();
+                damage['estimated_cost'] = damageCost.toString();
+              }
+            }
+          }
+        }
+
+        pdfResponses[imagePath] = copiedResponse;
+      });
+
+      // Add manual damages as a separate entry if they exist
+      if (_manualDamages.isNotEmpty) {
+        List<Map<String, dynamic>> manualDamagesForPdf = [];
+        for (int i = 0; i < _manualDamages.length; i++) {
+          final manual = _manualDamages[i];
+          final globalIndex = -(i + 1);
+          final damagedPart = manual['damaged_part'] ?? 'Unknown Part';
+          final damageType = manual['damage_type'] ?? 'Unknown Damage';
+          final selectedOption = _selectedRepairOptions[globalIndex];
+
+          if (selectedOption != null) {
+            double damageCost = 0.0;
+            if (selectedOption == 'repair') {
+              final repairData = _repairPricingData[globalIndex];
+              if (repairData != null) {
+                final repoTotal =
+                    (repairData['total_with_labor'] as num?)?.toDouble();
+                if (repoTotal != null) {
+                  damageCost = repoTotal;
+                } else {
+                  final double bodyPaint =
+                      (repairData['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+                  final double labor =
+                      (repairData['cost_installation_personal'] as num?)
+                          ?.toDouble() ??
+                      0.0;
+                  damageCost = bodyPaint + labor;
+                }
+              }
+            } else if (selectedOption == 'replace') {
+              final replacePricing = _replacePricingData[globalIndex];
+              final repairData = _repairPricingData[globalIndex];
+              if (replacePricing != null || repairData != null) {
+                final repoTotal =
+                    (replacePricing?['total_with_labor'] as num?)?.toDouble() ??
+                    (repairData?['total_with_labor'] as num?)?.toDouble();
+                if (repoTotal != null) {
+                  damageCost = repoTotal;
+                } else {
+                  final double thinsmith =
+                      (replacePricing?['insurance'] as num?)?.toDouble() ?? 0.0;
+                  final double bodyPaint =
+                      (repairData?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
+                  final double labor =
+                      (replacePricing?['cost_installation_personal'] as num?)
+                          ?.toDouble() ??
+                      (repairData?['cost_installation_personal'] as num?)
+                          ?.toDouble() ??
+                      0.0;
+                  damageCost = thinsmith + bodyPaint + labor;
+                }
+              }
+            }
+
+            manualDamagesForPdf.add({
+              'label': damagedPart,
+              'damaged_part': damagedPart,
+              'damage_type': damageType,
+              'recommended_action': selectedOption,
+              'action': selectedOption,
+              'cost': damageCost.toString(),
+              'estimated_cost': damageCost.toString(),
+            });
+          }
+        }
+
+        if (manualDamagesForPdf.isNotEmpty) {
+          double manualDamagesTotalCost = 0.0;
+          for (var damage in manualDamagesForPdf) {
+            try {
+              final cost =
+                  double.tryParse(damage['cost']?.toString() ?? '0') ?? 0.0;
+              manualDamagesTotalCost += cost;
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+
+          pdfResponses['manual_report_1'] = {
+            'damages': manualDamagesForPdf,
+            'total_cost': manualDamagesTotalCost.toString(),
+            'overall_severity': 'Manual Entry',
+          };
+        }
+      }
+
+      // Ensure every response has a usable total_cost
+      if (!_isDamageSevere && pdfResponses.isNotEmpty) {
+        double totalToUse = _estimatedDamageCost;
+        if (totalToUse <= 0) {
+          for (var response in pdfResponses.values) {
+            if (response['total_cost'] != null) {
+              try {
+                totalToUse += _parseToDouble(response['total_cost']);
+              } catch (e) {
+                // Ignore
+              }
+            }
+          }
+        }
+
+        final missingKeys =
+            pdfResponses.keys.where((key) {
+              final val = pdfResponses[key]!['total_cost'];
+              if (val == null) return true;
+              if (val.toString().toLowerCase() == 'n/a') return true;
+              try {
+                final parsed = _parseToDouble(val);
+                return parsed <= 0;
+              } catch (e) {
+                return true;
+              }
+            }).toList();
+
+        if (missingKeys.isNotEmpty) {
+          final perEntry = totalToUse / missingKeys.length;
+          for (var key in missingKeys) {
+            pdfResponses[key]!['total_cost'] = perEntry.toString();
+          }
+        }
+      }
+
+      if (_isDamageSevere) {
+        pdfResponses.forEach((key, value) {
+          value['total_cost'] = 'To be given by the mechanic';
+        });
+      }
+
+      // Generate temporary PDF
+      tempPdfPath = await PDFService.generateTemporaryPDF(
+        imagePaths: widget.imagePaths ?? [],
+        apiResponses: pdfResponses,
+      );
+
+      if (tempPdfPath != null) {
+        print('Generated temporary PDF for job estimate: $tempPdfPath');
+      }
+    } catch (e) {
+      print('Error generating temporary PDF: $e');
+      // Continue even if PDF generation fails - it's not critical
+    }
+
+    // Navigate to Insurance Document Upload with selected repair options and pricing data
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => InsuranceDocumentUpload(
+                imagePaths: widget.imagePaths ?? const <String>[],
+                apiResponses:
+                    widget.apiResponses ?? <String, Map<String, dynamic>>{},
+                assessmentIds: widget.assessmentIds ?? <String, String>{},
+                selectedRepairOptions: Map<int, String>.from(
+                  _selectedRepairOptions,
+                ),
+                repairPricingData: Map<int, Map<String, dynamic>>.from(
+                  _repairPricingData.map((k, v) => MapEntry(k, v ?? {})),
+                ),
+                replacePricingData: Map<int, Map<String, dynamic>>.from(
+                  _replacePricingData.map((k, v) => MapEntry(k, v ?? {})),
+                ),
+                manualDamages: List<Map<String, String>>.from(_manualDamages),
+                estimatedDamageCost: _estimatedDamageCost,
+                vehicleData: widget.vehicleData,
+                tempJobEstimatePdfPath: tempPdfPath,
+              ),
+        ),
+      );
+    }
   }
 
   Future<void> _sharePDF(String filePath) async {

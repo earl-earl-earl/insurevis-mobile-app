@@ -229,6 +229,38 @@ class PDFService {
     }
   }
 
+  /// Generate PDF and save to temporary directory for use in job estimate
+  /// Returns the file path of the temporary PDF, or null if generation fails
+  static Future<String?> generateTemporaryPDF({
+    required List<String> imagePaths,
+    required Map<String, Map<String, dynamic>> apiResponses,
+  }) async {
+    try {
+      final pdf = await _generateMultiplePDF(imagePaths, apiResponses);
+      if (pdf == null) return null;
+
+      // Get temporary directory
+      final tempDir = await getTemporaryDirectory();
+      final fileName =
+          'job_estimate_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final tempFile = File('${tempDir.path}/$fileName');
+
+      // Save PDF bytes to temporary file
+      final bytes = await pdf.save();
+      await tempFile.writeAsBytes(bytes);
+
+      if (await tempFile.exists() && await tempFile.length() > 0) {
+        print('Temporary PDF generated at: ${tempFile.path}');
+        return tempFile.path;
+      }
+
+      return null;
+    } catch (e) {
+      print('Error generating temporary PDF: $e');
+      return null;
+    }
+  }
+
   /// Builds a summary page showing the total estimated cost
   static pw.Widget _buildSummaryPage(
     int totalAssessments,

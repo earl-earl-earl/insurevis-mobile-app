@@ -207,42 +207,59 @@ class _VehicleFormState extends State<VehicleForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF2A2A2A),
+        Padding(
+          padding: EdgeInsets.only(left: 4.w, bottom: 8.h),
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+              letterSpacing: 0.2,
+            ),
           ),
         ),
-        SizedBox(height: 8.h),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           maxLength: maxLength,
+          style: GoogleFonts.inter(
+            fontSize: 15.sp,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF1A1A1A),
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.inter(
-              fontSize: 14.sp,
-              color: Color(0xFF999999),
+              fontSize: 15.sp,
+              color: Color(0xFFAAAAAA),
+              fontWeight: FontWeight.w400,
             ),
-            prefixIcon: Icon(icon, color: GlobalStyles.primaryColor),
+            prefixIcon: Icon(
+              icon,
+              color: GlobalStyles.primaryColor.withOpacity(0.7),
+              size: 20.sp,
+            ),
             filled: true,
-            fillColor: Colors.grey.shade50,
+            fillColor: Color(0xFFF5F7FA),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(14.r),
+              borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(14.r),
+              borderSide: BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(14.r),
               borderSide: BorderSide(
                 color: GlobalStyles.primaryColor,
                 width: 2,
               ),
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16.w,
+              vertical: 18.h,
             ),
             counterText: '',
           ),
@@ -255,22 +272,24 @@ class _VehicleFormState extends State<VehicleForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Vehicle Make',
-          style: GoogleFonts.inter(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF2A2A2A),
+        Padding(
+          padding: EdgeInsets.only(left: 4.w, bottom: 8.h),
+          child: Text(
+            'Vehicle Make',
+            style: GoogleFonts.inter(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+              letterSpacing: 0.2,
+            ),
           ),
         ),
-        SizedBox(height: 8.h),
         if (_isLoadingBrands)
           Container(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.all(18.w),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.grey.shade300),
+              color: Color(0xFFF5F7FA),
+              borderRadius: BorderRadius.circular(14.r),
             ),
             child: Row(
               children: [
@@ -278,7 +297,7 @@ class _VehicleFormState extends State<VehicleForm> {
                   width: 20.w,
                   height: 20.w,
                   child: CircularProgressIndicator(
-                    strokeWidth: 2,
+                    strokeWidth: 2.5,
                     color: GlobalStyles.primaryColor,
                   ),
                 ),
@@ -286,8 +305,9 @@ class _VehicleFormState extends State<VehicleForm> {
                 Text(
                   'Loading car brands...',
                   style: GoogleFonts.inter(
-                    fontSize: 14.sp,
+                    fontSize: 15.sp,
                     color: Color(0xFF666666),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -299,31 +319,42 @@ class _VehicleFormState extends State<VehicleForm> {
             hint: Text(
               'Select vehicle make',
               style: GoogleFonts.inter(
-                fontSize: 14.sp,
-                color: Color(0xFF999999),
+                fontSize: 15.sp,
+                color: Color(0xFFAAAAAA),
+                fontWeight: FontWeight.w400,
               ),
+            ),
+            style: GoogleFonts.inter(
+              fontSize: 15.sp,
+              color: Color(0xFF1A1A1A),
+              fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
               prefixIcon: Icon(
                 Icons.directions_car,
-                color: GlobalStyles.primaryColor,
+                color: GlobalStyles.primaryColor.withOpacity(0.7),
+                size: 20.sp,
               ),
               filled: true,
-              fillColor: Colors.grey.shade50,
+              fillColor: Color(0xFFF5F7FA),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(14.r),
+                borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(14.r),
+                borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(14.r),
                 borderSide: BorderSide(
                   color: GlobalStyles.primaryColor,
                   width: 2,
                 ),
+              ),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16.w,
+                vertical: 18.h,
               ),
             ),
             items: [
@@ -336,11 +367,26 @@ class _VehicleFormState extends State<VehicleForm> {
                         (brand['brand'] ?? brand['name']).toString();
                     return DropdownMenuItem<String>(
                       value: brandName,
-                      child: Text(brandName),
+                      child: Text(
+                        brandName,
+                        style: GoogleFonts.inter(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     );
                   })
                   .toList(),
-              DropdownMenuItem<String>(value: 'Others', child: Text('Others')),
+              DropdownMenuItem<String>(
+                value: 'Others',
+                child: Text(
+                  'Others',
+                  style: GoogleFonts.inter(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
             ],
             onChanged: _onMakeSelected,
           ),
@@ -348,28 +394,38 @@ class _VehicleFormState extends State<VehicleForm> {
           SizedBox(height: 12.h),
           TextField(
             controller: widget.makeController,
+            style: GoogleFonts.inter(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF1A1A1A),
+            ),
             decoration: InputDecoration(
               hintText: 'Enter vehicle make',
               hintStyle: GoogleFonts.inter(
-                fontSize: 14.sp,
-                color: Color(0xFF999999),
+                fontSize: 15.sp,
+                color: Color(0xFFAAAAAA),
+                fontWeight: FontWeight.w400,
               ),
               filled: true,
-              fillColor: Colors.grey.shade50,
+              fillColor: Color(0xFFF5F7FA),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(14.r),
+                borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(14.r),
+                borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(14.r),
                 borderSide: BorderSide(
                   color: GlobalStyles.primaryColor,
                   width: 2,
                 ),
+              ),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16.w,
+                vertical: 18.h,
               ),
             ),
           ),
@@ -384,39 +440,62 @@ class _VehicleFormState extends State<VehicleForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Vehicle Model',
-          style: GoogleFonts.inter(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF2A2A2A),
+        Padding(
+          padding: EdgeInsets.only(left: 4.w, bottom: 8.h),
+          child: Text(
+            'Vehicle Model',
+            style: GoogleFonts.inter(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+              letterSpacing: 0.2,
+            ),
           ),
         ),
-        SizedBox(height: 8.h),
         DropdownButtonFormField<String>(
           value: _selectedModel,
           hint: Text(
             isDisabled ? 'Select make first' : 'Select vehicle model',
-            style: GoogleFonts.inter(fontSize: 14.sp, color: Color(0xFF999999)),
+            style: GoogleFonts.inter(
+              fontSize: 15.sp,
+              color: Color(0xFFAAAAAA),
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          style: GoogleFonts.inter(
+            fontSize: 15.sp,
+            color: Color(0xFF1A1A1A),
+            fontWeight: FontWeight.w500,
           ),
           decoration: InputDecoration(
-            prefixIcon: Icon(Icons.car_crash, color: GlobalStyles.primaryColor),
+            prefixIcon: Icon(
+              Icons.car_crash,
+              color:
+                  isDisabled
+                      ? Colors.grey.shade400
+                      : GlobalStyles.primaryColor.withOpacity(0.7),
+              size: 20.sp,
+            ),
             filled: true,
-            fillColor: isDisabled ? Colors.grey.shade200 : Colors.grey.shade50,
+            fillColor: isDisabled ? Color(0xFFEBEBEB) : Color(0xFFF5F7FA),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(14.r),
+              borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(14.r),
+              borderSide: BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(14.r),
               borderSide: BorderSide(
                 color: GlobalStyles.primaryColor,
                 width: 2,
               ),
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16.w,
+              vertical: 18.h,
             ),
           ),
           items:
@@ -435,13 +514,25 @@ class _VehicleFormState extends State<VehicleForm> {
                                   .toString();
                           return DropdownMenuItem<String>(
                             value: modelName,
-                            child: Text(modelName),
+                            child: Text(
+                              modelName,
+                              style: GoogleFonts.inter(
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           );
                         })
                         .toList(),
                     DropdownMenuItem<String>(
                       value: 'Others',
-                      child: Text('Others'),
+                      child: Text(
+                        'Others',
+                        style: GoogleFonts.inter(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ],
           onChanged: isDisabled ? null : _onModelSelected,
@@ -450,28 +541,38 @@ class _VehicleFormState extends State<VehicleForm> {
           SizedBox(height: 12.h),
           TextField(
             controller: widget.modelController,
+            style: GoogleFonts.inter(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF1A1A1A),
+            ),
             decoration: InputDecoration(
               hintText: 'Enter vehicle model',
               hintStyle: GoogleFonts.inter(
-                fontSize: 14.sp,
-                color: Color(0xFF999999),
+                fontSize: 15.sp,
+                color: Color(0xFFAAAAAA),
+                fontWeight: FontWeight.w400,
               ),
               filled: true,
-              fillColor: Colors.grey.shade50,
+              fillColor: Color(0xFFF5F7FA),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(14.r),
+                borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(14.r),
+                borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(14.r),
                 borderSide: BorderSide(
                   color: GlobalStyles.primaryColor,
                   width: 2,
                 ),
+              ),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16.w,
+                vertical: 18.h,
               ),
             ),
           ),
@@ -488,46 +589,63 @@ class _VehicleFormState extends State<VehicleForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Vehicle Year',
-          style: GoogleFonts.inter(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF2A2A2A),
+        Padding(
+          padding: EdgeInsets.only(left: 4.w, bottom: 8.h),
+          child: Text(
+            'Vehicle Year',
+            style: GoogleFonts.inter(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+              letterSpacing: 0.2,
+            ),
           ),
         ),
-        SizedBox(height: 8.h),
         TextField(
           controller: widget.yearController,
           enabled: !isDisabled,
           keyboardType: TextInputType.number,
           maxLength: 4,
+          style: GoogleFonts.inter(
+            fontSize: 15.sp,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF1A1A1A),
+          ),
           decoration: InputDecoration(
             hintText: isDisabled ? 'Select model first' : 'Enter vehicle year',
             hintStyle: GoogleFonts.inter(
-              fontSize: 14.sp,
-              color: Color(0xFF999999),
+              fontSize: 15.sp,
+              color: Color(0xFFAAAAAA),
+              fontWeight: FontWeight.w400,
             ),
             prefixIcon: Icon(
               Icons.calendar_today,
-              color: GlobalStyles.primaryColor,
+              color:
+                  isDisabled
+                      ? Colors.grey.shade400
+                      : GlobalStyles.primaryColor.withOpacity(0.7),
+              size: 20.sp,
             ),
             filled: true,
-            fillColor: isDisabled ? Colors.grey.shade200 : Colors.grey.shade50,
+            fillColor: isDisabled ? Color(0xFFEBEBEB) : Color(0xFFF5F7FA),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(14.r),
+              borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(14.r),
+              borderSide: BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(14.r),
               borderSide: BorderSide(
                 color: GlobalStyles.primaryColor,
                 width: 2,
               ),
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16.w,
+              vertical: 18.h,
             ),
             counterText: '',
           ),

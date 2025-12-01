@@ -12,6 +12,8 @@ import 'package:insurevis/services/claims_service.dart';
 import 'package:insurevis/services/documents_service.dart';
 import 'package:insurevis/models/document_model.dart';
 import 'package:insurevis/services/prices_repository.dart';
+import 'package:insurevis/services/local_storage_service.dart';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
 
 class InsuranceDocumentUpload extends StatefulWidget {
   final List<String> imagePaths;
@@ -23,6 +25,7 @@ class InsuranceDocumentUpload extends StatefulWidget {
   final List<Map<String, String>>? manualDamages;
   final double? estimatedDamageCost;
   final Map<String, String>? vehicleData;
+  final String? tempJobEstimatePdfPath;
 
   const InsuranceDocumentUpload({
     super.key,
@@ -35,6 +38,7 @@ class InsuranceDocumentUpload extends StatefulWidget {
     this.manualDamages,
     this.estimatedDamageCost,
     this.vehicleData,
+    this.tempJobEstimatePdfPath,
   });
 
   @override
@@ -139,6 +143,14 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     // Only fetch pricing if not already provided
     if (widget.selectedRepairOptions == null) {
       _fetchAllPricingData();
+    }
+    // Add temporary PDF to job_estimate if available
+    if (widget.tempJobEstimatePdfPath != null) {
+      final tempPdfFile = File(widget.tempJobEstimatePdfPath!);
+      if (tempPdfFile.existsSync()) {
+        uploadedDocuments['job_estimate']!.add(tempPdfFile);
+        debugPrint('Added temporary job estimate PDF to documents');
+      }
     }
   }
 
@@ -347,6 +359,26 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   void dispose() {
     _incidentLocationController.dispose();
     _incidentDateController.dispose();
+
+    // Clean up temporary PDF if user exits without submitting
+    if (widget.tempJobEstimatePdfPath != null) {
+      try {
+        final tempPdfFile = File(widget.tempJobEstimatePdfPath!);
+        if (tempPdfFile.existsSync()) {
+          tempPdfFile
+              .delete()
+              .then((_) {
+                debugPrint('Cleaned up temporary job estimate PDF on dispose');
+              })
+              .catchError((e) {
+                debugPrint('Error cleaning up temporary PDF on dispose: $e');
+              });
+        }
+      } catch (e) {
+        debugPrint('Error in dispose cleanup: $e');
+      }
+    }
+
     super.dispose();
   }
 
@@ -417,7 +449,6 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                       ),
                     ),
                     _buildDocumentCategories(),
-                    SizedBox(height: 40.h),
                     // Removed duplicate vehicle info section from bottom of the form
                   ],
                 ),
@@ -511,7 +542,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     return Container(
       padding: EdgeInsets.all(20.sp),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withAlpha(25),
+        color: GlobalStyles.primaryColor.withAlpha(15),
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
@@ -1255,7 +1286,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withAlpha(25),
+        color: GlobalStyles.primaryColor.withAlpha(15),
         borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: GlobalStyles.primaryColor.withAlpha(76)),
       ),
@@ -1321,7 +1352,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withAlpha(25),
+        color: GlobalStyles.primaryColor.withAlpha(15),
         borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: GlobalStyles.primaryColor.withAlpha(76)),
       ),
@@ -1600,7 +1631,10 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
     return Container(
       padding: EdgeInsets.all(20.sp),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12.r),
+        color: Colors.grey.withAlpha(25),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1750,16 +1784,23 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         fileName.toLowerCase().endsWith('.jpg') ||
         fileName.toLowerCase().endsWith('.jpeg') ||
         fileName.toLowerCase().endsWith('.png');
+    final isPdf = fileName.toLowerCase().endsWith('.pdf');
 
     // Check if this is an assessment image
     final isAssessmentImage =
         category == 'damage_photos' && widget.imagePaths.contains(file.path);
 
+    // Check if this is the auto-generated job estimate PDF
+    final isAutoGeneratedJobEstimate =
+        category == 'job_estimate' &&
+        widget.tempJobEstimatePdfPath != null &&
+        file.path == widget.tempJobEstimatePdfPath;
+
     return Container(
       margin: EdgeInsets.only(bottom: 8.h),
       padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryColor.withAlpha(51),
+        color: GlobalStyles.primaryColor.withAlpha(15),
         borderRadius: BorderRadius.circular(6.r),
       ),
       child: Row(
@@ -1795,6 +1836,17 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                     ),
                   ),
                 ],
+                if (isAutoGeneratedJobEstimate) ...[
+                  SizedBox(height: 2.h),
+                  Text(
+                    'Auto-generated',
+                    style: GoogleFonts.inter(
+                      fontSize: 10.sp,
+                      color: GlobalStyles.primaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1813,6 +1865,51 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+            )
+          else if (isAutoGeneratedJobEstimate && isPdf)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // View button
+                Container(
+                  height: 30.h,
+                  width: 30.w,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withAlpha(51),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => _viewPdf(file.path),
+                    icon: Icon(
+                      Icons.visibility,
+                      color: Colors.blue,
+                      size: 16.sp,
+                    ),
+                    tooltip: 'View PDF',
+                  ),
+                ),
+                SizedBox(width: 4.w),
+                // Download button
+                Container(
+                  height: 30.h,
+                  width: 30.w,
+                  decoration: BoxDecoration(
+                    color: Colors.green.withAlpha(51),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => _downloadPdf(file.path),
+                    icon: Icon(
+                      Icons.download,
+                      color: Colors.green,
+                      size: 16.sp,
+                    ),
+                    tooltip: 'Download PDF',
+                  ),
+                ),
+              ],
             )
           else
             Container(
@@ -1920,7 +2017,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
                     Container(
                       padding: EdgeInsets.all(12.w),
                       decoration: BoxDecoration(
-                        color: GlobalStyles.primaryColor.withAlpha(25),
+                        color: GlobalStyles.primaryColor.withAlpha(15),
                         borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Row(
@@ -2145,10 +2242,119 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       return;
     }
 
+    // Prevent removal of auto-generated job estimate PDF
+    if (category == 'job_estimate' &&
+        widget.tempJobEstimatePdfPath != null &&
+        file.path == widget.tempJobEstimatePdfPath) {
+      _showErrorMessage(
+        'Auto-generated job estimate cannot be removed. Please upload an additional estimate if needed.',
+      );
+      return;
+    }
+
     setState(() {
       uploadedDocuments[category]!.remove(file);
     });
     _showSuccessMessage('File removed');
+  }
+
+  Future<void> _viewPdf(String pdfPath) async {
+    try {
+      // Check if file exists
+      final file = File(pdfPath);
+      if (!await file.exists()) {
+        _showErrorMessage('PDF file not found');
+        return;
+      }
+
+      // Navigate to a PDF viewer screen
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => _PDFViewerScreen(pdfPath: pdfPath),
+          ),
+        );
+      }
+    } catch (e) {
+      _showErrorMessage('Error viewing PDF: $e');
+    }
+  }
+
+  Future<void> _downloadPdf(String sourcePath) async {
+    try {
+      // Check if source file exists
+      final sourceFile = File(sourcePath);
+      if (!await sourceFile.exists()) {
+        _showErrorMessage('PDF file not found');
+        return;
+      }
+
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20.w,
+                  height: 20.h,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Text('Downloading PDF...'),
+              ],
+            ),
+            duration: const Duration(seconds: 2),
+            backgroundColor: GlobalStyles.primaryColor,
+          ),
+        );
+      }
+
+      // Read the PDF bytes
+      final pdfBytes = await sourceFile.readAsBytes();
+
+      // Generate a unique filename with timestamp
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'Job_Estimate_$timestamp.pdf';
+
+      // Save to user-selected location or default documents folder
+      String? savedPath;
+      try {
+        savedPath = await LocalStorageService.saveFileToDocuments(
+          pdfBytes,
+          fileName,
+          allowPicker: true,
+        );
+      } catch (e) {
+        debugPrint('Error using LocalStorageService: $e');
+        // Fallback to file picker
+        savedPath = await FilePicker.platform.saveFile(
+          dialogTitle: 'Save Job Estimate PDF',
+          fileName: fileName,
+          type: FileType.custom,
+          allowedExtensions: ['pdf'],
+          bytes: pdfBytes,
+        );
+      }
+
+      if (savedPath != null && mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        _showSuccessMessage('PDF downloaded successfully!');
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        _showErrorMessage('Download cancelled');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        _showErrorMessage('Error downloading PDF: $e');
+      }
+      debugPrint('Error downloading PDF: $e');
+    }
   }
 
   bool _checkRequiredDocuments() {
@@ -2535,6 +2741,21 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       if (mounted) {
         // Close upload modal
         Navigator.of(context, rootNavigator: true).pop();
+
+        // Clean up temporary PDF after successful submission
+        if (widget.tempJobEstimatePdfPath != null) {
+          try {
+            final tempPdfFile = File(widget.tempJobEstimatePdfPath!);
+            if (await tempPdfFile.exists()) {
+              await tempPdfFile.delete();
+              debugPrint('Cleaned up temporary job estimate PDF');
+            }
+          } catch (e) {
+            debugPrint('Error cleaning up temporary PDF: $e');
+            // Non-critical error, continue
+          }
+        }
+
         // Show success dialog
         _showSuccessDialog(claimNumber: claim.claimNumber);
       }
@@ -2659,5 +2880,52 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         ),
       );
     }
+  }
+}
+
+// PDF Viewer Screen Widget
+class _PDFViewerScreen extends StatelessWidget {
+  final String pdfPath;
+
+  const _PDFViewerScreen({required this.pdfPath});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Job Estimate Preview',
+          style: GoogleFonts.inter(
+            fontSize: 20.sp,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF2A2A2A),
+          ),
+        ),
+      ),
+      body: PDFView(
+        filePath: pdfPath,
+        enableSwipe: true,
+        swipeHorizontal: false,
+        autoSpacing: true,
+        pageFling: true,
+        pageSnap: true,
+        defaultPage: 0,
+        fitPolicy: FitPolicy.WIDTH,
+        preventLinkNavigation: false,
+        onError: (error) {
+          debugPrint('Error loading PDF: $error');
+        },
+        onPageError: (page, error) {
+          debugPrint('Error on page $page: $error');
+        },
+      ),
+    );
   }
 }

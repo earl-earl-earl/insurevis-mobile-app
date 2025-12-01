@@ -166,45 +166,70 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   }
 
   Widget _buildActionButtons(bool anyUploading) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed:
-            anyUploading
-                ? null
-                : () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => VehicleInformationForm(
-                            imagePaths: widget.imagePaths,
-                            apiResponses: _apiResponses,
-                            assessmentIds: _assessmentIds,
-                          ),
-                    ),
-                  );
-                },
-        style: ButtonStyle(
-          backgroundColor: WidgetStatePropertyAll(
-            anyUploading ? Colors.grey : GlobalStyles.primaryColor,
-          ),
-          padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          ),
-          shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Row(
+      children: [
+        Tooltip(
+          message: 'Home',
+          child: IconButton(
+            onPressed: () {
+              Navigator.popUntil(context, (route) => route.isFirst);
+            },
+            icon: const Icon(Icons.home, color: GlobalStyles.primaryColor),
+            iconSize: 24.sp,
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(
+                GlobalStyles.primaryColor.withAlpha(15),
+              ),
+              padding: WidgetStatePropertyAll(
+                EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
           ),
         ),
-        child: Text(
-          "View Assessment Report",
-          style: GoogleFonts.inter(
-            color: Colors.white,
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w600,
+        SizedBox(width: 12.w),
+        Expanded(
+          child: ElevatedButton(
+            onPressed:
+                anyUploading
+                    ? null
+                    : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => VehicleInformationForm(
+                                imagePaths: widget.imagePaths,
+                                apiResponses: _apiResponses,
+                                assessmentIds: _assessmentIds,
+                              ),
+                        ),
+                      );
+                    },
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(
+                anyUploading ? Colors.grey : GlobalStyles.primaryColor,
+              ),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            child: Text(
+              "View Assessment Report",
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 
