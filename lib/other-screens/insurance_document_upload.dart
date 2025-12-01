@@ -384,80 +384,303 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) return;
+
+        final hasChanges = _hasUserMadeChanges();
+        if (hasChanges) {
+          final shouldPop = await _showExitConfirmationDialog();
+          if (shouldPop == true && context.mounted) {
+            Navigator.of(context).pop();
+          }
+        } else {
+          if (context.mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
-          onPressed: () => Navigator.pop(context),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF2A2A2A)),
+            onPressed: () async {
+              final hasChanges = _hasUserMadeChanges();
+              if (hasChanges) {
+                final shouldPop = await _showExitConfirmationDialog();
+                if (shouldPop == true && context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              } else {
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              }
+            },
+          ),
+          title: Text(
+            'Upload Documents',
+            style: GoogleFonts.inter(
+              fontSize: 20.sp,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF2A2A2A),
+            ),
+          ),
         ),
-        title: Text(
-          'Upload Documents',
-          style: GoogleFonts.inter(
-            fontSize: 20.sp,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF2A2A2A),
+        body: Container(
+          height: double.infinity,
+          color: Colors.white,
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(16.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildInstructions(),
+                      SizedBox(height: 40.h),
+                      _buildVehicleInfoSection(),
+                      SizedBox(height: 40.h),
+                      _buildIncidentInformationSection(),
+                      _buildDamageAssessmentImagesSection(),
+                      SizedBox(height: 40.h),
+                      _buildRepairOptionsSection(),
+                      SizedBox(height: 40.h),
+                      _buildEstimatedCostSection(),
+                      SizedBox(height: 20.h),
+                      Padding(
+                        padding: EdgeInsets.all(20.sp),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Document Upload Section",
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFF2A2A2A),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 24.sp,
+                              ),
+                            ),
+                            SizedBox(height: 8.h),
+                            Text(
+                              'Please upload all required documents listed below.',
+                              style: GoogleFonts.inter(
+                                color: const Color(0x992A2A2A),
+                                fontSize: 14.sp,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _buildDocumentCategories(),
+                      // Removed duplicate vehicle info section from bottom of the form
+                    ],
+                  ),
+                ),
+              ),
+              _buildBottomActions(),
+            ],
           ),
         ),
       ),
-      body: Container(
-        height: double.infinity,
-        color: Colors.white,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(16.w),
+    );
+  }
+
+  /// Checks if the user has made any changes to the form
+  bool _hasUserMadeChanges() {
+    // Check if incident information fields have values
+    final hasIncidentInfo =
+        _incidentLocationController.text.trim().isNotEmpty ||
+        _incidentDateController.text.trim().isNotEmpty;
+
+    // Check if any additional documents were uploaded (excluding pre-loaded ones)
+    bool hasUploadedNewDocuments = false;
+
+    for (String category in uploadedDocuments.keys) {
+      final files = uploadedDocuments[category] ?? [];
+
+      if (category == 'damage_photos') {
+        // Check if there are more photos than the original assessment images
+        final additionalPhotos =
+            files
+                .where((file) => !widget.imagePaths.contains(file.path))
+                .toList();
+        if (additionalPhotos.isNotEmpty) {
+          hasUploadedNewDocuments = true;
+          break;
+        }
+      } else if (category == 'job_estimate') {
+        // Check if there are files other than the auto-generated PDF
+        final additionalEstimates =
+            files
+                .where(
+                  (file) =>
+                      widget.tempJobEstimatePdfPath == null ||
+                      file.path != widget.tempJobEstimatePdfPath,
+                )
+                .toList();
+        if (additionalEstimates.isNotEmpty) {
+          hasUploadedNewDocuments = true;
+          break;
+        }
+      } else {
+        // For other categories, check if any files were uploaded
+        if (files.isNotEmpty) {
+          hasUploadedNewDocuments = true;
+          break;
+        }
+      }
+    }
+
+    return hasIncidentInfo || hasUploadedNewDocuments;
+  }
+
+  /// Shows a confirmation dialog when user tries to exit with unsaved changes
+  Future<bool?> _showExitConfirmationDialog() async {
+    return showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          contentPadding: EdgeInsets.zero,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon and Title Section
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(24.w),
+                decoration: BoxDecoration(
+                  color: GlobalStyles.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16.r),
+                    topRight: Radius.circular(16.r),
+                  ),
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInstructions(),
-                    SizedBox(height: 40.h),
-                    _buildVehicleInfoSection(),
-                    SizedBox(height: 40.h),
-                    _buildIncidentInformationSection(),
-                    _buildDamageAssessmentImagesSection(),
-                    SizedBox(height: 40.h),
-                    _buildRepairOptionsSection(),
-                    SizedBox(height: 40.h),
-                    _buildEstimatedCostSection(),
-                    SizedBox(height: 20.h),
-                    Padding(
-                      padding: EdgeInsets.all(20.sp),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Document Upload Section",
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFF2A2A2A),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 24.sp,
-                            ),
-                          ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            'Please upload all required documents listed below.',
-                            style: GoogleFonts.inter(
-                              color: const Color(0x992A2A2A),
-                              fontSize: 14.sp,
-                            ),
-                          ),
-                        ],
+                    Container(
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.warning_rounded,
+                        color: Colors.orange.shade700,
+                        size: 32.sp,
                       ),
                     ),
-                    _buildDocumentCategories(),
-                    // Removed duplicate vehicle info section from bottom of the form
+                    SizedBox(height: 16.h),
+                    Text(
+                      'Unsaved Changes',
+                      style: GoogleFonts.inter(
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF2A2A2A),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 ),
               ),
-            ),
-            _buildBottomActions(),
-          ],
-        ),
-      ),
+
+              // Message Section
+              Padding(
+                padding: EdgeInsets.all(24.w),
+                child: Column(
+                  children: [
+                    Text(
+                      'You have unsaved changes. Are you sure you want to exit?',
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        color: const Color(0xFF2A2A2A),
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8.h),
+                    Text(
+                      'All your progress will be lost.',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        color: const Color(0x992A2A2A),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Buttons Section
+              Padding(
+                padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+                child: Row(
+                  children: [
+                    // Cancel Button
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          side: BorderSide(
+                            color: GlobalStyles.primaryColor,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.inter(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                            color: GlobalStyles.primaryColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    // Exit Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade600,
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Exit',
+                          style: GoogleFonts.inter(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -2376,6 +2599,8 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     // Show upload progress modal
     _showUploadProgressModal();
 
+    dynamic claim; // Track claim for cleanup in case of error
+
     try {
       // Get current user
       final currentUser = SupabaseService.currentUser;
@@ -2650,9 +2875,37 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         return;
       }
 
-      debugPrint('Starting document upload for claim: ${claim.id}');
+      // IMPORTANT: Submit the claim FIRST before uploading documents
+      // This prevents orphaned documents if submission fails
+      debugPrint('Submitting claim ${claim.id} before document upload...');
+      final submitSuccess = await ClaimsService.submitClaim(claim.id);
+
+      if (!submitSuccess) {
+        // Submission failed - clean up the draft claim
+        debugPrint('Claim submission failed. Cleaning up draft claim...');
+
+        try {
+          await ClaimsService.deleteClaim(claim.id);
+          debugPrint('Successfully deleted draft claim ${claim.id}');
+        } catch (e) {
+          debugPrint('Error deleting draft claim: $e');
+        }
+
+        // Close upload modal
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        _showErrorMessage('Failed to submit claim. Please try again.');
+        return;
+      }
+
+      debugPrint(
+        'Claim submitted successfully. Starting document upload for claim: ${claim.id}',
+      );
       bool allUploadsSuccessful = true;
       int totalUploaded = 0;
+      List<String> uploadedDocumentIds =
+          []; // Track uploaded documents for potential rollback
 
       // Collect all files to upload in parallel
       final List<File> allFiles = [];
@@ -2701,6 +2954,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               debugPrint(
                 'Successfully uploaded: ${uploadResults[i]!.fileName}',
               );
+              uploadedDocumentIds.add(uploadResults[i]!.id);
               totalUploaded++;
             } else {
               debugPrint('Failed to upload file: ${allFiles[i].path}');
@@ -2713,28 +2967,50 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         }
       }
 
-      debugPrint('Total files uploaded: $totalUploaded');
+      debugPrint(
+        'Total files uploaded: $totalUploaded out of ${allFiles.length}',
+      );
 
-      if (!allUploadsSuccessful) {
-        // Close upload modal
-        if (mounted) {
-          Navigator.of(context, rootNavigator: true).pop();
+      // If ALL documents failed to upload, delete the claim and show error
+      if (!allUploadsSuccessful && totalUploaded == 0) {
+        // Complete failure - no documents uploaded, delete the claim
+        debugPrint(
+          'All documents failed to upload. Deleting submitted claim...',
+        );
+
+        try {
+          await ClaimsService.deleteClaim(claim.id);
+          debugPrint(
+            'Successfully deleted claim ${claim.id} due to document upload failure',
+          );
+        } catch (deleteError) {
+          debugPrint(
+            'Error deleting claim after document upload failure: $deleteError',
+          );
         }
-        _showErrorMessage('Some documents failed to upload. Please try again.');
-        return;
-      }
 
-      // Submit the claim (change status from draft to submitted)
-      final submitSuccess = await ClaimsService.submitClaim(claim.id);
-
-      if (!submitSuccess) {
-        // Close upload modal
         if (mounted) {
           Navigator.of(context, rootNavigator: true).pop();
         }
         _showErrorMessage(
-          'Claim created but submission failed. Please try again.',
+          'Failed to upload documents. Claim has been cancelled. Please try again.',
         );
+        return;
+      } else if (!allUploadsSuccessful && totalUploaded > 0) {
+        // Partial failure - some documents uploaded, keep the claim
+        debugPrint(
+          'Warning: Only $totalUploaded out of ${allFiles.length} documents were uploaded',
+        );
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        if (mounted) {
+          _showSuccessDialog(
+            claimNumber: claim.claimNumber,
+            documentUploadWarning: true,
+            partialUpload: true,
+          );
+        }
         return;
       }
 
@@ -2761,6 +3037,18 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       }
     } catch (e) {
       debugPrint('Error submitting claim: $e');
+
+      // Clean up draft claim if it was created
+      if (claim != null) {
+        debugPrint('Cleaning up draft claim due to error...');
+        try {
+          await ClaimsService.deleteClaim(claim.id);
+          debugPrint('Successfully deleted draft claim ${claim.id}');
+        } catch (deleteError) {
+          debugPrint('Error deleting draft claim: $deleteError');
+        }
+      }
+
       _showErrorMessage('Error submitting claim: ${e.toString()}');
       // Close upload modal on error
       if (mounted) {
@@ -2769,7 +3057,11 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     }
   }
 
-  void _showSuccessDialog({String? claimNumber}) {
+  void _showSuccessDialog({
+    String? claimNumber,
+    bool documentUploadWarning = false,
+    bool partialUpload = false,
+  }) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -2794,12 +3086,51 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Your insurance claim has been submitted successfully.',
+                  documentUploadWarning
+                      ? 'Your insurance claim has been submitted successfully.'
+                      : 'Your insurance claim has been submitted successfully.',
                   style: GoogleFonts.inter(
                     color: Color(0x992A2A2A),
                     fontSize: 14.sp,
                   ),
                 ),
+                if (documentUploadWarning) ...[
+                  SizedBox(height: 12.h),
+                  Container(
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: Colors.orange.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.warning_rounded,
+                          color: Colors.orange.shade700,
+                          size: 20.sp,
+                        ),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Text(
+                            partialUpload
+                                ? 'Some documents could not be uploaded. Please upload the missing documents from your claims page.'
+                                : 'Documents could not be uploaded. Please upload them from your claims page.',
+                            style: GoogleFonts.inter(
+                              color: Colors.orange.shade900,
+                              fontSize: 13.sp,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (claimNumber != null) ...[
                   SizedBox(height: 16.h),
                   Container(

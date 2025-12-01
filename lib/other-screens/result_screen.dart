@@ -636,7 +636,7 @@ class ResultsScreenState extends State<ResultsScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            "The damage is severe. Please proceed to issuing a claim.",
+            "Please bring your car to car company for manual inspection.",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: Colors.black,

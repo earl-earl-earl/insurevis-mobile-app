@@ -121,6 +121,18 @@ class ClaimsService {
     }
   }
 
+  /// Delete a claim (used for cleanup of failed draft claims)
+  static Future<bool> deleteClaim(String claimId) async {
+    try {
+      await _supabase.from('claims').delete().eq('id', claimId);
+      print('Successfully deleted claim: $claimId');
+      return true;
+    } catch (e) {
+      print('Error deleting claim: $e');
+      return false;
+    }
+  }
+
   /// Get claims for car company verification
   static Future<List<ClaimModel>> getClaimsForCarVerification() async {
     try {

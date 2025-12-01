@@ -3,11 +3,8 @@ import 'package:camera/camera.dart'; // Make sure camera types like FlashMode ar
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 // import 'package:google_fonts/google_fonts.dart'; // Not used in this version
 import 'package:insurevis/global_ui_variables.dart';
-import 'package:insurevis/other-screens/result_screen.dart';
+import 'package:insurevis/other-screens/multiple_results_screen.dart';
 import 'package:insurevis/other-screens/gallery_view.dart';
-// import 'package:photo_manager/photo_manager.dart'; // REMOVED: No longer used
-import 'package:provider/provider.dart';
-import 'package:insurevis/providers/assessment_provider.dart';
 import 'package:insurevis/services/camera_buffer_service.dart';
 
 class CameraScreen extends StatefulWidget {
@@ -185,28 +182,15 @@ class _CameraScreenState extends State<CameraScreen> {
       await CameraBufferService.optimizeMemory();
 
       if (mounted) {
-        // Add the photo to assessments before navigating
-        final assessmentProvider = Provider.of<AssessmentProvider>(
+        // Navigate to multiple results screen with the captured image
+        Navigator.push(
           context,
-          listen: false,
+          MaterialPageRoute(
+            builder:
+                (context) =>
+                    MultipleResultsScreen(imagePaths: [imageFile.path]),
+          ),
         );
-        final assessment = await assessmentProvider.addAssessment(
-          imageFile.path,
-        );
-
-        // Navigate to results screen with the assessment ID
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) => ResultsScreen(
-                    imagePath: imageFile.path,
-                    assessmentId: assessment.id,
-                  ),
-            ),
-          );
-        }
       }
     } catch (e) {
       // DEBUG: print("Error taking picture: $e");
