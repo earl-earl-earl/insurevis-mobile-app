@@ -1,0 +1,481 @@
+{
+  "designSystem": {
+    "meta": {
+      "name": "InsureVis Design System",
+      "version": "1.0.0",
+      "description": "Soft, clean, modern design system with professional soft colors and responsive sizing",
+      "lastUpdated": "2025-12-02"
+    },
+    "principles": {
+      "visualStyle": "soft, clean, modern look and feel",
+      "colorPalette": "professional soft colors with medium vibrancy",
+      "spacing": "flexible spacing with breathing room",
+      "contrast": "medium to low contrast",
+      "depth": "flat with soft shadows"
+    },
+    "colors": {
+      "primary": {
+        "main": "#64B5F6",
+        "light": "#90CAF9",
+        "dark": "#42A5F5",
+        "description": "Soft professional blue - main brand color (Colors.blue[300])"
+      },
+      "background": {
+        "main": "#F8F8F8",
+        "alternative": "#FAFAFA",
+        "description": "Very light gray / off-white"
+      },
+      "surface": {
+        "main": "#FFFFFF",
+        "elevated": "#FFFFFF",
+        "description": "White with soft shadows for depth"
+      },
+      "text": {
+        "primary": "#1A1A1A",
+        "secondary": "#333333",
+        "tertiary": "#666666",
+        "disabled": "#999999",
+        "description": "Dark gray hierarchy"
+      },
+      "accents": {
+        "accent1": "#81C784",
+        "accent2": "#FFB74D",
+        "description": "Professional soft highlight colors (limit to 1-2)"
+      },
+      "feedback": {
+        "success": {
+          "main": "#81C784",
+          "light": "#A5D6A7",
+          "description": "Professional soft green for success states (Colors.green[300])"
+        },
+        "error": {
+          "main": "#E57373",
+          "light": "#EF9A9A",
+          "description": "Professional soft red for error states (Colors.red[300])"
+        },
+        "warning": {
+          "main": "#FFB74D",
+          "light": "#FFCC80",
+          "description": "Professional soft orange for warning states (Colors.orange[300])"
+        },
+        "info": {
+          "main": "#64B5F6",
+          "light": "#90CAF9",
+          "description": "Professional soft blue for info states (Colors.blue[300])"
+        },
+        "purple": {
+          "main": "#BA68C8",
+          "light": "#CE93D8",
+          "description": "Soft purple for additional feedback states (Colors.purple[300])"
+        }
+      },
+      "states": {
+        "disabled": {
+          "opacity": 0.4,
+          "description": "Opacity for disabled elements"
+        },
+        "focusRing": {
+          "color": "#64B5F6",
+          "width": "2px",
+          "offset": "2px",
+          "description": "Focus indicator using primary color"
+        },
+        "hover": {
+          "opacity": 0.8,
+          "description": "Hover state opacity"
+        }
+      }
+    },
+    "typography": {
+      "fontFamilies": {
+        "heading": {
+          "name": "Geist",
+          "fallback": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          "usage": "Headings and titles"
+        },
+        "body": {
+          "name": "Manrope",
+          "fallback": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          "usage": "Body text and UI elements"
+        }
+      },
+      "scale": {
+        "h1": {
+          "fontSize": "32px",
+          "fontWeight": "600",
+          "lineHeight": "40px",
+          "fontFamily": "Geist",
+          "letterSpacing": "-0.5px"
+        },
+        "h2": {
+          "fontSize": "28px",
+          "fontWeight": "600",
+          "lineHeight": "36px",
+          "fontFamily": "Geist",
+          "letterSpacing": "-0.4px"
+        },
+        "h3": {
+          "fontSize": "24px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "fontFamily": "Geist",
+          "letterSpacing": "-0.3px"
+        },
+        "h4": {
+          "fontSize": "20px",
+          "fontWeight": "600",
+          "lineHeight": "28px",
+          "fontFamily": "Geist",
+          "letterSpacing": "-0.2px"
+        },
+        "h5": {
+          "fontSize": "18px",
+          "fontWeight": "600",
+          "lineHeight": "24px",
+          "fontFamily": "Geist",
+          "letterSpacing": "0px"
+        },
+        "h6": {
+          "fontSize": "16px",
+          "fontWeight": "600",
+          "lineHeight": "22px",
+          "fontFamily": "Geist",
+          "letterSpacing": "0px"
+        },
+        "body1": {
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "24px",
+          "fontFamily": "Manrope"
+        },
+        "body2": {
+          "fontSize": "14px",
+          "fontWeight": "400",
+          "lineHeight": "20px",
+          "fontFamily": "Manrope"
+        },
+        "caption": {
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "16px",
+          "fontFamily": "Manrope"
+        },
+        "button": {
+          "fontSize": "14px",
+          "fontWeight": "500",
+          "lineHeight": "20px",
+          "fontFamily": "Manrope",
+          "letterSpacing": "0.5px",
+          "textTransform": "none"
+        }
+      }
+    },
+    "spacing": {
+      "unit": "8px",
+      "scale": {
+        "xs": "4px",
+        "sm": "8px",
+        "md": "16px",
+        "lg": "24px",
+        "xl": "32px",
+        "xxl": "48px",
+        "xxxl": "64px"
+      },
+      "component": {
+        "padding": {
+          "tight": "8px",
+          "normal": "16px",
+          "loose": "24px"
+        },
+        "margin": {
+          "tight": "8px",
+          "normal": "16px",
+          "loose": "24px"
+        },
+        "gap": {
+          "tight": "8px",
+          "normal": "16px",
+          "loose": "24px"
+        }
+      },
+      "layout": {
+        "contentMaxWidth": "1200px",
+        "sideMargin": "16px",
+        "sectionSpacing": "48px"
+      }
+    },
+    "borderRadius": {
+      "none": "0px",
+      "sm": "4px",
+      "md": "8px",
+      "lg": "12px",
+      "xl": "16px",
+      "xxl": "24px",
+      "full": "9999px",
+      "default": "8px"
+    },
+    "shadows": {
+      "none": "none",
+      "sm": "0 1px 2px 0 rgba(0, 0, 0, 0.04)",
+      "md": "0 2px 4px 0 rgba(0, 0, 0, 0.06)",
+      "lg": "0 4px 8px 0 rgba(0, 0, 0, 0.08)",
+      "xl": "0 8px 16px 0 rgba(0, 0, 0, 0.10)",
+      "default": "0 2px 4px 0 rgba(0, 0, 0, 0.06)",
+      "description": "Soft, subtle shadows for flat design with depth"
+    },
+    "icons": {
+      "library": "Lucide Icons",
+      "defaultStyle": "outlined",
+      "strokeWidth": {
+        "thin": "1px",
+        "normal": "1.5px",
+        "thick": "2px",
+        "default": "1.5px"
+      },
+      "sizes": {
+        "xs": "16px",
+        "sm": "20px",
+        "md": "24px",
+        "lg": "32px",
+        "xl": "40px"
+      },
+      "states": {
+        "default": "outlined with thin stroke",
+        "active": "filled",
+        "hover": "outlined with normal stroke"
+      }
+    },
+    "components": {
+      "button": {
+        "borderRadius": "8px",
+        "padding": "12px 24px",
+        "shadow": "0 2px 4px 0 rgba(0, 0, 0, 0.06)",
+        "transition": "all 250ms cubic-bezier(0.4, 0.0, 0.2, 1)",
+        "variants": {
+          "primary": {
+            "background": "#64B5F6",
+            "text": "#FFFFFF",
+            "hoverBackground": "#42A5F5"
+          },
+          "secondary": {
+            "background": "#F8F8F8",
+            "text": "#1A1A1A",
+            "hoverBackground": "#EFEFEF"
+          },
+          "outlined": {
+            "background": "transparent",
+            "text": "#64B5F6",
+            "border": "1px solid #64B5F6",
+            "hoverBackground": "rgba(100, 181, 246, 0.1)"
+          }
+        }
+      },
+      "card": {
+        "background": "#FFFFFF",
+        "borderRadius": "12px",
+        "padding": "24px",
+        "shadow": "0 2px 4px 0 rgba(0, 0, 0, 0.06)",
+        "border": "none"
+      },
+      "input": {
+        "background": "#FFFFFF",
+        "border": "1px solid #E0E0E0",
+        "borderRadius": "8px",
+        "padding": "12px 16px",
+        "focusBorder": "1px solid #64B5F6",
+        "focusShadow": "0 0 0 2px rgba(100, 181, 246, 0.2)"
+      },
+      "dialog": {
+        "background": "#FFFFFF",
+        "borderRadius": "16px",
+        "padding": "32px",
+        "shadow": "0 8px 16px 0 rgba(0, 0, 0, 0.10)",
+        "overlay": "rgba(0, 0, 0, 0.4)"
+      },
+      "navbar": {
+        "background": "#FFFFFF",
+        "height": "64px",
+        "shadow": "0 2px 4px 0 rgba(0, 0, 0, 0.04)",
+        "padding": "0 24px"
+      },
+      "chip": {
+        "background": "#F8F8F8",
+        "borderRadius": "16px",
+        "padding": "6px 12px",
+        "fontSize": "12px"
+      }
+    },
+    "animations": {
+      "durations": {
+        "fast": "150ms",
+        "normal": "250ms",
+        "slow": "350ms",
+        "slower": "500ms"
+      },
+      "easings": {
+        "standard": "cubic-bezier(0.4, 0.0, 0.2, 1)",
+        "decelerate": "cubic-bezier(0.0, 0.0, 0.2, 1)",
+        "accelerate": "cubic-bezier(0.4, 0.0, 1, 1)",
+        "sharp": "cubic-bezier(0.4, 0.0, 0.6, 1)",
+        "default": "cubic-bezier(0.4, 0.0, 0.2, 1)"
+      },
+      "transitions": {
+        "button": {
+          "property": "all",
+          "duration": "250ms",
+          "easing": "cubic-bezier(0.4, 0.0, 0.2, 1)"
+        },
+        "card": {
+          "property": "transform, box-shadow",
+          "duration": "250ms",
+          "easing": "cubic-bezier(0.4, 0.0, 0.2, 1)"
+        },
+        "page": {
+          "property": "opacity, transform",
+          "duration": "350ms",
+          "easing": "cubic-bezier(0.4, 0.0, 0.2, 1)"
+        },
+        "modal": {
+          "property": "opacity, transform",
+          "duration": "250ms",
+          "easing": "cubic-bezier(0.4, 0.0, 0.2, 1)"
+        }
+      },
+      "pageTransitions": {
+        "fadeIn": {
+          "from": { "opacity": 0 },
+          "to": { "opacity": 1 },
+          "duration": "350ms",
+          "easing": "cubic-bezier(0.4, 0.0, 0.2, 1)"
+        },
+        "slideUp": {
+          "from": { "opacity": 0, "transform": "translateY(20px)" },
+          "to": { "opacity": 1, "transform": "translateY(0)" },
+          "duration": "350ms",
+          "easing": "cubic-bezier(0.4, 0.0, 0.2, 1)"
+        },
+        "slideRight": {
+          "from": { "opacity": 0, "transform": "translateX(-20px)" },
+          "to": { "opacity": 1, "transform": "translateX(0)" },
+          "duration": "350ms",
+          "easing": "cubic-bezier(0.4, 0.0, 0.2, 1)"
+        }
+      }
+    },
+    "accessibility": {
+      "focusVisible": {
+        "outline": "2px solid #64B5F6",
+        "outlineOffset": "2px"
+      },
+      "minTouchTarget": "44px",
+      "minContrast": "4.5:1",
+      "reducedMotion": {
+        "respectPreference": true,
+        "fallback": "no animation, instant state changes"
+      }
+    },
+    "breakpoints": {
+      "mobile": "0px",
+      "tablet": "768px",
+      "desktop": "1024px",
+      "wide": "1440px"
+    },
+    "implementation": {
+      "notes": [
+        "Use Geist font for all headings, titles, and prominent text",
+        "Use Manrope font for body text, UI labels, and general content",
+        "Use the fonts located in assets/fonts/",
+        "Use lucide_icons for icons",
+        "All dimensions use flutter_screenutil for responsive sizing",
+        "Font sizes use .sp (scaled pixels)",
+        "Widths and horizontal spacing use .w",
+        "Heights and vertical spacing use .h",
+        "Border radius uses .r",
+        "Default to Lucide outlined icons with thin stroke width",
+        "Use filled Lucide icons only for active/selected states",
+        "Apply cubic-bezier(0.4, 0.0, 0.2, 1) for all animations",
+        "Maintain medium-to-low contrast throughout the interface",
+        "Use soft shadows (low opacity) to create subtle depth",
+        "Keep color vibrancy medium - prefer soft, professional tones",
+        "Ensure flexible spacing with generous padding and margins",
+        "Round corners on all interactive components (8px-16px typical)",
+        "Limit accent colors to 1-2 and keep them subtle",
+        "Maintain consistent feedback states across all components"
+      ],
+      "flutter": {
+        "requiredPackages": [
+          "flutter_screenutil: For responsive sizing across all screen sizes"
+        ],
+        "fonts": {
+          "geist": {
+            "family": "Geist",
+            "location": "assets/fonts/",
+            "usage": "Headings and titles",
+            "note": "Load from local font files, not Google Fonts package"
+          },
+          "manrope": {
+            "family": "Manrope",
+            "location": "assets/fonts/",
+            "usage": "Body text and UI elements",
+            "note": "Load from local font files, not Google Fonts package"
+          }
+        },
+        "iconPackage": "lucide_icons or flutter_lucide",
+        "themeData": {
+          "primaryColor": "#64B5F6",
+          "scaffoldBackgroundColor": "#F8F8F8",
+          "cardColor": "#FFFFFF",
+          "fontFamilyHeading": "Geist",
+          "fontFamilyBody": "Manrope",
+          "note": "All numeric values should use ScreenUtil extensions (.sp, .w, .h, .r) for responsive sizing"
+        },
+        "pubspecFontConfiguration": {
+          "fonts": [
+            {
+              "family": "Geist",
+              "fonts": [
+                {
+                  "asset": "assets/fonts/Geist-Regular.ttf",
+                  "weight": 400
+                },
+                {
+                  "asset": "assets/fonts/Geist-Medium.ttf",
+                  "weight": 500
+                },
+                {
+                  "asset": "assets/fonts/Geist-SemiBold.ttf",
+                  "weight": 600
+                },
+                {
+                  "asset": "assets/fonts/Geist-Bold.ttf",
+                  "weight": 700
+                }
+              ]
+            },
+            {
+              "family": "Manrope",
+              "fonts": [
+                {
+                  "asset": "assets/fonts/Manrope-Regular.ttf",
+                  "weight": 400
+                },
+                {
+                  "asset": "assets/fonts/Manrope-Medium.ttf",
+                  "weight": 500
+                },
+                {
+                  "asset": "assets/fonts/Manrope-SemiBold.ttf",
+                  "weight": 600
+                },
+                {
+                  "asset": "assets/fonts/Manrope-Bold.ttf",
+                  "weight": 700
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

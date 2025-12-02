@@ -876,6 +876,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                       _calculateEstimatedDamageCost();
                     }
                   },
+                  Colors.blue,
                 ),
               ),
               SizedBox(width: 12.w),
@@ -893,6 +894,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                       _calculateEstimatedDamageCost();
                     }
                   },
+                  Colors.orange,
                 ),
               ),
             ],
@@ -1423,6 +1425,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                       _calculateEstimatedDamageCost();
                     }
                   },
+                  Colors.blue,
                 ),
               ),
               SizedBox(width: 12.w),
@@ -1446,6 +1449,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                       _calculateEstimatedDamageCost();
                     }
                   },
+                  Colors.orange,
                 ),
               ),
             ],
@@ -1460,33 +1464,39 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     IconData icon,
     bool isSelected,
     VoidCallback onTap,
+    Color color,
   ) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+        padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 16.w),
         decoration: BoxDecoration(
-          color:
-              isSelected ? Colors.green : Colors.green.withValues(alpha: 0.15),
+          color: isSelected ? color : Colors.white,
           borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(color: Colors.green, width: 2),
+          border: Border.all(color: color, width: 2.5),
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : [],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : Colors.green,
-              size: 20.sp,
-            ),
+            Icon(icon, color: isSelected ? Colors.white : color, size: 22.sp),
             SizedBox(width: 8.w),
             Text(
               title,
               style: GoogleFonts.inter(
-                color: isSelected ? Colors.white : Colors.green,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : color,
+                fontSize: 15.sp,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],

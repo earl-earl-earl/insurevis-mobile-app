@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Add this
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:insurevis/main-screens/profile_screen.dart';
-import 'package:insurevis/main-screens/claims_screen.dart';
+import 'package:insurevis/views/main-screens/profile_screen.dart';
+import 'package:insurevis/views/main-screens/claims_screen.dart';
 import 'package:insurevis/models/firebase_msg.dart';
 import 'package:insurevis/other-screens/faq_screen.dart';
 import 'package:insurevis/other-screens/gallery_view.dart';
@@ -20,10 +20,10 @@ import 'package:insurevis/services/user_device_service.dart';
 import 'package:insurevis/config/supabase_config.dart';
 import 'package:insurevis/services/prices_repository.dart';
 import 'package:insurevis/services/car_brands_repository.dart';
-import 'package:insurevis/login-signup/signin.dart';
-import 'package:insurevis/login-signup/signup.dart';
-import 'package:insurevis/login-signup/app_initializer.dart';
-import 'package:insurevis/main-screens/main_container.dart';
+import 'package:insurevis/views/login-signup/signin.dart';
+import 'package:insurevis/views/login-signup/signup.dart';
+import 'package:insurevis/views/login-signup/app_initializer.dart';
+import 'package:insurevis/views/main-screens/main_container.dart';
 import 'package:insurevis/onboarding/app_onboarding_page.dart';
 import 'package:insurevis/other-screens/camera.dart';
 import 'package:insurevis/other-screens/notification_center.dart';
@@ -206,7 +206,17 @@ class MainApp extends StatelessWidget {
               return MaterialApp(
                 title: 'InsureVis',
                 navigatorKey: MainApp.navigatorKey,
-                theme: themeProvider.lightTheme,
+                theme: themeProvider.lightTheme.copyWith(
+                  // Apply custom fonts to theme
+                  textTheme: themeProvider.lightTheme.textTheme.apply(
+                    fontFamily: 'Manrope', // Body font
+                  ),
+                  // Headings use Geist font
+                  primaryTextTheme: themeProvider.lightTheme.primaryTextTheme
+                      .apply(
+                        fontFamily: 'Geist', // Heading font
+                      ),
+                ),
                 // Keep darkTheme available but force the app to light mode
                 darkTheme: themeProvider.darkTheme,
                 themeMode: ThemeMode.light,
@@ -234,7 +244,7 @@ class MainApp extends StatelessWidget {
                   '/policy': (context) => const PrivacyPolicyScreen(),
                   '/terms': (context) => const TermsOfServiceScreen(),
                   '/assessment_report': (context) => const PDFAssessmentView(),
-                  '/vehicle_info': (context) => const VehicleInformationForm()
+                  '/vehicle_info': (context) => const VehicleInformationForm(),
                 },
               );
             },

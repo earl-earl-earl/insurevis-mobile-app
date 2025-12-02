@@ -1,277 +1,252 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+/// Design System Variables - Based on theme_design_system.json
+/// Soft, clean, modern design system with professional soft colors
 class GlobalStyles {
-  static const MaterialColor vibrantBlue = MaterialColor(
-    0xFF0066FF,
-    <int, Color>{
-      50: Color(0xFFE6F0FF),
-      100: Color(0xFFB3D1FF),
-      200: Color(0xFF80B3FF),
-      300: Color(0xFF4D94FF),
-      400: Color(0xFF1A75FF),
-      500: Color(0xFF0066FF), // Base
-      600: Color(0xFF0059E6),
-      700: Color(0xFF0047B3),
-      800: Color(0xFF003380),
-      900: Color(0xFF002266),
-    },
+  // ==================== COLORS ====================
+
+  // Primary Colors (Soft Professional Blue)
+  static const Color primaryMain = Color(0xFF64B5F6); // Colors.blue[300]
+  static const Color primaryLight = Color(0xFF90CAF9); // Colors.blue[200]
+  static const Color primaryDark = Color(0xFF42A5F5); // Colors.blue[400]
+
+  // Background Colors (Very Light Gray / Off-White)
+  static const Color backgroundMain = Color(0xFFF8F8F8);
+  static const Color backgroundAlternative = Color(0xFFFAFAFA);
+
+  // Surface Colors (White with soft shadows)
+  static const Color surfaceMain = Color(0xFFFFFFFF);
+  static const Color surfaceElevated = Color(0xFFFFFFFF);
+
+  // Text Colors (Dark Gray Hierarchy)
+  static const Color textPrimary = Color(0xFF1A1A1A);
+  static const Color textSecondary = Color(0xFF333333);
+  static const Color textTertiary = Color(0xFF666666);
+  static const Color textDisabled = Color(0xFF999999);
+
+  // Accent Colors (Professional highlights - limit to 1-2)
+  static const Color accent1 = Color(0xFF81C784); // Soft green
+  static const Color accent2 = Color(0xFFFFB74D); // Soft amber
+
+  // Feedback Colors (Professional soft tones for states)
+  static const Color successMain = Color(0xFF81C784); // Colors.green[300]
+  static const Color successLight = Color(0xFFA5D6A7); // Colors.green[200]
+  static const Color errorMain = Color(0xFFE57373); // Colors.red[300]
+  static const Color errorLight = Color(0xFFEF9A9A); // Colors.red[200]
+  static const Color warningMain = Color(0xFFFFB74D); // Colors.orange[300]
+  static const Color warningLight = Color(0xFFFFCC80); // Colors.orange[200]
+  static const Color infoMain = Color(0xFF64B5F6); // Colors.blue[300]
+  static const Color infoLight = Color(0xFF90CAF9); // Colors.blue[200]
+  static const Color purpleMain = Color(0xFFBA68C8); // Colors.purple[300]
+  static const Color purpleLight = Color(0xFFCE93D8); // Colors.purple[200]
+
+  // State Colors
+  static const double disabledOpacity = 0.4;
+  static const Color focusRingColor = primaryMain;
+  static const double hoverOpacity = 0.8;
+
+  // ==================== TYPOGRAPHY ====================
+
+  // Font Families (from assets/fonts/)
+  static const String fontFamilyHeading = 'Geist'; // For headings and titles
+  static const String fontFamilyBody = 'Manrope'; // For body text and UI
+
+  // Typography Scale - Headings (using Geist)
+  static double get fontSizeH1 => 32.sp;
+  static double get fontSizeH2 => 28.sp;
+  static double get fontSizeH3 => 24.sp;
+  static double get fontSizeH4 => 20.sp;
+  static double get fontSizeH5 => 18.sp;
+  static double get fontSizeH6 => 16.sp;
+
+  // Typography Scale - Body (using Manrope)
+  static double get fontSizeBody1 => 16.sp;
+  static double get fontSizeBody2 => 14.sp;
+  static double get fontSizeCaption => 12.sp;
+  static double get fontSizeButton => 14.sp;
+
+  // Font Weights
+  static const FontWeight fontWeightRegular = FontWeight.w400;
+  static const FontWeight fontWeightMedium = FontWeight.w500;
+  static const FontWeight fontWeightSemiBold = FontWeight.w600;
+  static const FontWeight fontWeightBold = FontWeight.w700;
+
+  // Line Heights
+  static double get lineHeightH1 => 40.h;
+  static double get lineHeightH2 => 36.h;
+  static double get lineHeightH3 => 32.h;
+  static double get lineHeightH4 => 28.h;
+  static double get lineHeightH5 => 24.h;
+  static double get lineHeightH6 => 22.h;
+  static double get lineHeightBody1 => 24.h;
+  static double get lineHeightBody2 => 20.h;
+  static double get lineHeightCaption => 16.h;
+  static double get lineHeightButton => 20.h;
+
+  // Letter Spacing
+  static const double letterSpacingH1 = -0.5;
+  static const double letterSpacingH2 = -0.4;
+  static const double letterSpacingH3 = -0.3;
+  static const double letterSpacingH4 = -0.2;
+  static const double letterSpacingButton = 0.5;
+
+  // ==================== SPACING ====================
+
+  static double get spacingUnit => 8.w;
+  static double get spacingXs => 4.w;
+  static double get spacingSm => 8.w;
+  static double get spacingMd => 16.w;
+  static double get spacingLg => 24.w;
+  static double get spacingXl => 32.w;
+  static double get spacingXxl => 48.w;
+  static double get spacingXxxl => 64.w;
+
+  // Component Spacing
+  static double get paddingTight => 8.w;
+  static double get paddingNormal => 16.w;
+  static double get paddingLoose => 24.w;
+
+  static double get marginTight => 8.w;
+  static double get marginNormal => 16.w;
+  static double get marginLoose => 24.w;
+
+  static double get gapTight => 8.w;
+  static double get gapNormal => 16.w;
+  static double get gapLoose => 24.w;
+
+  // Layout Spacing
+  static double get contentMaxWidth => 1200.w;
+  static double get sideMargin => 16.w;
+  static double get sectionSpacing => 48.h;
+
+  // ==================== BORDER RADIUS ====================
+
+  static double get radiusNone => 0.r;
+  static double get radiusSm => 4.r;
+  static double get radiusMd => 8.r;
+  static double get radiusLg => 12.r;
+  static double get radiusXl => 16.r;
+  static double get radiusXxl => 24.r;
+  static double get radiusFull => 9999.r;
+  static double get radiusDefault => 8.r;
+
+  // ==================== SHADOWS ====================
+  // Soft, subtle shadows for flat design with depth
+
+  static BoxShadow get shadowSm => BoxShadow(
+    color: const Color.fromRGBO(0, 0, 0, 0.04),
+    offset: Offset(0, 1.h),
+    blurRadius: 2.r,
   );
 
-  static const Color primaryColor = Color(0xFF0066FF);
-  static const Color secondaryColor = Color(0xFF4D94FF);
-
-  // Dark theme colors
-  static const Color darkBackgroundColorStart = Color(0xFF1D1F24);
-  static const Color darkBackgroundColorEnd = Color(0xFF121316);
-  static const Color darkAppBarBackgroundColor = Color(0xFF1E1E1E);
-  static const Color darkTextColor = Colors.white;
-  static const Color darkTextSecondaryColor = Colors.white70;
-
-  // Light theme colors
-  static const Color lightBackgroundColorStart = Color(0xFFF8F9FA);
-  static const Color lightBackgroundColorEnd = Color(0xFFE9ECEF);
-  static const Color lightAppBarBackgroundColor = Colors.white;
-  static const Color lightTextColor = Color(0xFF212529);
-  static const Color lightTextSecondaryColor = Color(0xFF6C757D);
-
-  // Dynamic color getters based on theme
-  static Color getBackgroundColorStart(bool isDarkMode) {
-    return isDarkMode ? darkBackgroundColorStart : lightBackgroundColorStart;
-  }
-
-  static Color getBackgroundColorEnd(bool isDarkMode) {
-    return isDarkMode ? darkBackgroundColorEnd : lightBackgroundColorEnd;
-  }
-
-  static Color getAppBarBackgroundColor(bool isDarkMode) {
-    return isDarkMode ? darkAppBarBackgroundColor : lightAppBarBackgroundColor;
-  }
-
-  static Color getTextColor(bool isDarkMode) {
-    return isDarkMode ? darkTextColor : lightTextColor;
-  }
-
-  static Color getTextSecondaryColor(bool isDarkMode) {
-    return isDarkMode ? darkTextSecondaryColor : lightTextSecondaryColor;
-  }
-
-  // Keep legacy static colors for backward compatibility
-  // static const Color backgroundColorStart = darkBackgroundColorStart;
-  // static const Color backgroundColorEnd = darkBackgroundColorEnd;
-  // static const Color appBarBackgroundColor = darkAppBarBackgroundColor;
-  static const Color backgroundColorStart = lightBackgroundColorStart;
-  static const Color backgroundColorEnd = lightBackgroundColorEnd;
-  static const Color appBarBackgroundColor = lightAppBarBackgroundColor;
-  static const Color textColor = lightTextColor;
-  static const Color textSecondaryColor = lightTextSecondaryColor;
-
-  static final EdgeInsets defaultPadding = EdgeInsets.symmetric(
-    horizontal: 30.w,
+  static BoxShadow get shadowMd => BoxShadow(
+    color: const Color.fromRGBO(0, 0, 0, 0.06),
+    offset: Offset(0, 2.h),
+    blurRadius: 4.r,
   );
 
-  // Google Sans-like text styles using Inter (default for most UI elements)
-  static TextStyle getGoogleSansHeadingStyle(bool isDarkMode) =>
-      GoogleFonts.inter(
-        color: primaryColor,
-        fontSize: 60.sp,
-        fontWeight: FontWeight.w900,
-        height: 1,
-      );
-
-  static TextStyle getGoogleSansSubheadingStyle(bool isDarkMode) =>
-      GoogleFonts.inter(
-        color: getTextColor(isDarkMode),
-        fontSize: 20.sp,
-        fontWeight: FontWeight.w700,
-        height: 1.2,
-      );
-
-  static TextStyle getGoogleSansButtonTextStyle(bool isDarkMode) =>
-      GoogleFonts.inter(
-        color: getTextSecondaryColor(isDarkMode),
-        fontWeight: FontWeight.w600,
-        fontSize: 14.sp,
-      );
-
-  static TextStyle getGoogleSansBodyStyle(bool isDarkMode) => GoogleFonts.inter(
-    color: getTextColor(isDarkMode),
-    fontSize: 16.sp,
-    fontWeight: FontWeight.w400,
-    height: 1.5,
+  static BoxShadow get shadowLg => BoxShadow(
+    color: const Color.fromRGBO(0, 0, 0, 0.08),
+    offset: Offset(0, 4.h),
+    blurRadius: 8.r,
   );
 
-  static TextStyle getGoogleSansCaptionStyle(bool isDarkMode) =>
-      GoogleFonts.inter(
-        color: getTextSecondaryColor(isDarkMode),
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w400,
-      );
-
-  // Poppins text styles (kept for specific branding elements)
-  static TextStyle getPoppinsHeadingStyle(bool isDarkMode) =>
-      GoogleFonts.poppins(
-        color: primaryColor,
-        fontSize: 60.sp,
-        fontWeight: FontWeight.w900,
-        height: 1,
-      );
-
-  static TextStyle getPoppinsBrandStyle(bool isDarkMode) => GoogleFonts.poppins(
-    color: primaryColor,
-    fontSize: 24.sp,
-    fontWeight: FontWeight.w700,
+  static BoxShadow get shadowXl => BoxShadow(
+    color: const Color.fromRGBO(0, 0, 0, 0.10),
+    offset: Offset(0, 8.h),
+    blurRadius: 16.r,
   );
 
-  // Dynamic text styles based on theme (now defaulting to Google Sans)
-  static TextStyle getHeadingStyle(bool isDarkMode) =>
-      getGoogleSansHeadingStyle(isDarkMode);
+  static BoxShadow get shadowDefault => shadowMd;
 
-  static TextStyle getSubheadingStyle(bool isDarkMode) =>
-      getGoogleSansSubheadingStyle(isDarkMode);
+  // ==================== ICONS ====================
+  // Using Lucide Icons: outlined with thin stroke for default, filled for active
 
-  static TextStyle getButtonTextStyle(bool isDarkMode) =>
-      getGoogleSansButtonTextStyle(isDarkMode);
+  static double get iconSizeXs => 16.sp;
+  static double get iconSizeSm => 20.sp;
+  static double get iconSizeMd => 24.sp;
+  static double get iconSizeLg => 32.sp;
+  static double get iconSizeXl => 40.sp;
 
-  static TextStyle getOnboardingTitleStyle(bool isDarkMode) =>
-      getGoogleSansSubheadingStyle(
-        isDarkMode,
-      ).copyWith(fontSize: 35.sp, fontWeight: FontWeight.w700);
+  static const double iconStrokeWidthThin = 1.0;
+  static const double iconStrokeWidthNormal = 1.5;
+  static const double iconStrokeWidthThick = 2.0;
+  static const double iconStrokeWidthDefault = 1.5;
 
-  static TextStyle getOnboardingDescriptionStyle(bool isDarkMode) =>
-      getGoogleSansBodyStyle(isDarkMode).copyWith(fontSize: 13.sp);
+  // ==================== COMPONENTS ====================
 
-  static TextStyle getLoadingTextStyle(bool isDarkMode) =>
-      getGoogleSansBodyStyle(isDarkMode);
+  // Button Component
+  static double get buttonBorderRadius => 8.r;
+  static EdgeInsets get buttonPadding =>
+      EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h);
+  static BoxShadow get buttonShadow => shadowMd;
 
-  // Legacy static text styles for backward compatibility (updated to use Inter)
-  static final TextStyle headingStyle = GoogleFonts.inter(
-    color: primaryColor,
-    fontSize: 60.sp,
-    fontWeight: FontWeight.w900,
-    height: 1,
-  );
+  // Card Component
+  static const Color cardBackground = surfaceMain;
+  static double get cardBorderRadius => 12.r;
+  static EdgeInsets get cardPadding => EdgeInsets.all(24.w);
+  static BoxShadow get cardShadow => shadowMd;
 
-  static final TextStyle subheadingStyle = GoogleFonts.inter(
-    color: textColor,
-    fontSize: 20.sp,
-    fontWeight: FontWeight.w700,
-    height: 1.2,
-  );
+  // Input Component
+  static const Color inputBackground = surfaceMain;
+  static const Color inputBorderColor = Color(0xFFE0E0E0);
+  static double get inputBorderRadius => 8.r;
+  static EdgeInsets get inputPadding =>
+      EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h);
+  static const Color inputFocusBorderColor = primaryMain;
 
-  static final TextStyle buttonTextStyle = GoogleFonts.inter(
-    color: textSecondaryColor,
-    fontWeight: FontWeight.w600,
-    fontSize: 14.sp,
-  );
+  // Dialog Component
+  static const Color dialogBackground = surfaceMain;
+  static double get dialogBorderRadius => 16.r;
+  static EdgeInsets get dialogPadding => EdgeInsets.all(32.w);
+  static BoxShadow get dialogShadow => shadowXl;
+  static const Color dialogOverlay = Color.fromRGBO(0, 0, 0, 0.4);
 
-  // Poppins branding styles (for logo, app name, and brand-specific elements)
-  static TextStyle getPoppinsBranding({
-    Color? color,
-    double? fontSize,
-    FontWeight? fontWeight,
-    double? height,
-  }) {
-    return GoogleFonts.poppins(
-      color: color ?? primaryColor,
-      fontSize: fontSize ?? 16.sp,
-      fontWeight: fontWeight ?? FontWeight.w700,
-      height: height,
-    );
-  }
+  // Navbar Component
+  static const Color navbarBackground = surfaceMain;
+  static double get navbarHeight => 64.h;
+  static BoxShadow get navbarShadow => shadowSm;
+  static EdgeInsets get navbarPadding => EdgeInsets.symmetric(horizontal: 24.w);
 
-  static TextStyle getPoppinsTitle({
-    Color? color,
-    double? fontSize,
-    FontWeight? fontWeight,
-    double? height,
-  }) {
-    return GoogleFonts.poppins(
-      color: color ?? textColor,
-      fontSize: fontSize ?? 24.sp,
-      fontWeight: fontWeight ?? FontWeight.w800,
-      height: height,
-    );
-  }
+  // Chip Component
+  static const Color chipBackground = backgroundMain;
+  static double get chipBorderRadius => 16.r;
+  static EdgeInsets get chipPadding =>
+      EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h);
+  static double get chipFontSize => 12.sp;
 
-  // Onboarding styles
-  static final TextStyle onboardingTitleStyle = GoogleFonts.poppins(
-    color: textColor,
-    fontSize: 35.sp,
-    fontWeight: FontWeight.w900,
-    height: 1,
-  );
+  // ==================== ANIMATIONS ====================
+  // Using cubic-bezier for easing
 
-  static final TextStyle onboardingDescriptionStyle = GoogleFonts.poppins(
-    color: textColor,
-    fontSize: 13.sp,
-  );
+  // Durations
+  static const Duration durationFast = Duration(milliseconds: 150);
+  static const Duration durationNormal = Duration(milliseconds: 250);
+  static const Duration durationSlow = Duration(milliseconds: 350);
+  static const Duration durationSlower = Duration(milliseconds: 500);
 
-  static final TextStyle buttonNextTextStyle = GoogleFonts.poppins(
-    color: Color(0xFF2B1D6B),
-    fontSize: 16.sp,
-    fontWeight: FontWeight.w900,
-  );
+  // Easing Curves
+  static const Curve easingStandard =
+      Curves.easeInOut; // cubic-bezier(0.4, 0.0, 0.2, 1)
+  static const Curve easingDecelerate =
+      Curves.easeOut; // cubic-bezier(0.0, 0.0, 0.2, 1)
+  static const Curve easingAccelerate =
+      Curves.easeIn; // cubic-bezier(0.4, 0.0, 1, 1)
+  static const Curve easingSharp =
+      Curves.easeInOut; // cubic-bezier(0.4, 0.0, 0.6, 1)
+  static const Curve easingDefault = easingStandard;
 
-  static const Color indicatorActiveColor = Colors.white;
-  static const Color indicatorInactiveColor = Colors.grey;
+  // ==================== ACCESSIBILITY ====================
 
-  // static const Color gradientBackgroundStart = Color(0xFF1E1E1E);
-  // static const Color gradientBackgroundEnd = Color.fromARGB(255, 7, 7, 7);
-  static const Color circularButtonColor = Color(0xFF6B4AFF);
+  static double get minTouchTarget => 44.w;
+  static const double minContrast = 4.5; // WCAG AA standard
+  static double get focusOutlineWidth => 2.w;
+  static double get focusOutlineOffset => 2.w;
 
-  static final TextStyle loadingTextStyle = GoogleFonts.poppins(
-    color: textColor,
-    fontSize: 16.sp,
-  );
+  // ==================== BREAKPOINTS ====================
 
-  // Dynamic gradient background
-  static BoxDecoration getGradientBackground(bool isDarkMode) => BoxDecoration(
-    gradient: LinearGradient(
-      colors: [
-        isDarkMode ? backgroundColorStart : lightBackgroundColorStart,
-        isDarkMode ? backgroundColorEnd : lightBackgroundColorEnd,
-      ],
-      end: Alignment.bottomCenter,
-    ),
-  );
-
-  static final BoxDecoration gradientBackground = const BoxDecoration(
-    gradient: LinearGradient(
-      colors: [backgroundColorStart, backgroundColorEnd],
-      end: Alignment.bottomCenter,
-    ),
-  );
-
-  static final ButtonStyle circularButtonStyle = ElevatedButton.styleFrom(
-    shape: const CircleBorder(),
-    fixedSize: Size(60.w, 60.w),
-    backgroundColor: circularButtonColor,
-    padding: EdgeInsets.all(0.r),
-  );
-
-  static final double leadingPaddingLeft = 30.0;
-  static final double leadingPaddingTop = 20.0;
-  static final Color paleWhite = Colors.white24;
-
-  static AppBar buildCustomAppBar({
-    required BuildContext context,
-    required IconData icon,
-    required Color color,
-    required Color appBarBackgroundColor,
-  }) {
-    return AppBar(
-      backgroundColor: appBarBackgroundColor,
-      automaticallyImplyLeading: false,
-      leading: IconButton(
-        icon: Icon(icon, color: color, size: 24.sp),
-        onPressed: () {
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-          }
-        },
-      ),
-    );
-  }
+  static double get breakpointMobile => 0.w;
+  static double get breakpointTablet => 768.w;
+  static double get breakpointDesktop => 1024.w;
+  static double get breakpointWide => 1440.w;
 }
