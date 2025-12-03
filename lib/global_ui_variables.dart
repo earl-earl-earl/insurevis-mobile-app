@@ -25,9 +25,19 @@ class GlobalStyles {
   static const Color textTertiary = Color(0xFF666666);
   static const Color textDisabled = Color(0xFF999999);
 
-  // Accent Colors (Professional highlights - limit to 1-2)
-  static const Color accent1 = Color(0xFF81C784); // Soft green
-  static const Color accent2 = Color(0xFFFFB74D); // Soft amber
+  // Accent Colors (Semantic naming for clear purpose)
+  static const Color accentPositive = Color(
+    0xFF81C784,
+  ); // Positive actions, success highlights
+  static const Color accentAttention = Color(
+    0xFFFFB74D,
+  ); // Warnings, highlights, attention
+
+  // Legacy naming (deprecated - use semantic names above)
+  @Deprecated('Use accentPositive instead')
+  static const Color accent1 = accentPositive;
+  @Deprecated('Use accentAttention instead')
+  static const Color accent2 = accentAttention;
 
   // Feedback Colors (Professional soft tones for states)
   static const Color successMain = Color(0xFF81C784); // Colors.green[300]
@@ -46,6 +56,22 @@ class GlobalStyles {
   static const Color focusRingColor = primaryMain;
   static const double hoverOpacity = 0.8;
 
+  // Component State Colors
+  static const Color componentDisabled = Color(
+    0xFFE0E0E0,
+  ); // Disabled backgrounds
+  static const Color textOnDisabled = Color(0xFF999999); // Text on disabled
+  static const Color primaryPressed = Color(
+    0xFF2196F3,
+  ); // Pressed/active state (darker blue)
+  static const Color loadingOverlay = Color(
+    0x80FFFFFF,
+  ); // 50% white overlay for loading
+  static const Color skeletonBase = Color(0xFFE0E0E0); // Skeleton loader base
+  static const Color skeletonHighlight = Color(
+    0xFFF5F5F5,
+  ); // Skeleton loader shimmer
+
   // ==================== TYPOGRAPHY ====================
 
   // Font Families (from assets/fonts/)
@@ -58,7 +84,8 @@ class GlobalStyles {
   static double get fontSizeH3 => 24.sp;
   static double get fontSizeH4 => 20.sp;
   static double get fontSizeH5 => 18.sp;
-  static double get fontSizeH6 => 16.sp;
+  static double get fontSizeH6 =>
+      17.sp; // Slightly larger than body to maintain hierarchy
 
   // Typography Scale - Body (using Manrope)
   static double get fontSizeBody1 => 16.sp;
@@ -78,7 +105,7 @@ class GlobalStyles {
   static double get lineHeightH3 => 32.h;
   static double get lineHeightH4 => 28.h;
   static double get lineHeightH5 => 24.h;
-  static double get lineHeightH6 => 22.h;
+  static double get lineHeightH6 => 23.h; // Updated for 17sp font size
   static double get lineHeightBody1 => 24.h;
   static double get lineHeightBody2 => 20.h;
   static double get lineHeightCaption => 16.h;
@@ -121,14 +148,16 @@ class GlobalStyles {
   static double get sectionSpacing => 48.h;
 
   // ==================== BORDER RADIUS ====================
+  // Standardized to 2 values: 8px for small/medium, 12px for large components
 
   static double get radiusNone => 0.r;
-  static double get radiusSm => 4.r;
-  static double get radiusMd => 8.r;
-  static double get radiusLg => 12.r;
-  static double get radiusXl => 16.r;
-  static double get radiusXxl => 24.r;
-  static double get radiusFull => 9999.r;
+  static double get radiusSm =>
+      8.r; // Small components (buttons, inputs, chips)
+  static double get radiusMd => 8.r; // Medium components
+  static double get radiusLg => 12.r; // Large components (cards, dialogs)
+  static double get radiusXl => 12.r; // Extra large
+  static double get radiusXxl => 12.r; // XXL (for consistency)
+  static double get radiusFull => 9999.r; // Circular
   static double get radiusDefault => 8.r;
 
   // ==================== SHADOWS ====================
@@ -178,27 +207,32 @@ class GlobalStyles {
 
   // Button Component
   static double get buttonBorderRadius => 8.r;
-  static EdgeInsets get buttonPadding =>
-      EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h);
+  static EdgeInsets get buttonPadding => EdgeInsets.symmetric(
+    horizontal: 24.w,
+    vertical: 14.h,
+  ); // Increased for better touch
   static BoxShadow get buttonShadow => shadowMd;
 
   // Card Component
   static const Color cardBackground = surfaceMain;
-  static double get cardBorderRadius => 12.r;
+  static double get cardBorderRadius => 12.r; // Large components use 12px
   static EdgeInsets get cardPadding => EdgeInsets.all(24.w);
   static BoxShadow get cardShadow => shadowMd;
 
   // Input Component
   static const Color inputBackground = surfaceMain;
-  static const Color inputBorderColor = Color(0xFFE0E0E0);
-  static double get inputBorderRadius => 8.r;
+  static const Color inputBorderColor = Color(
+    0xFFD0D0D0,
+  ); // Improved contrast for visibility
+  static double get inputBorderRadius => 8.r; // Small/medium components use 8px
   static EdgeInsets get inputPadding =>
       EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h);
   static const Color inputFocusBorderColor = primaryMain;
 
   // Dialog Component
   static const Color dialogBackground = surfaceMain;
-  static double get dialogBorderRadius => 16.r;
+  static double get dialogBorderRadius =>
+      12.r; // Standardized to 12px for large components
   static EdgeInsets get dialogPadding => EdgeInsets.all(32.w);
   static BoxShadow get dialogShadow => shadowXl;
   static const Color dialogOverlay = Color.fromRGBO(0, 0, 0, 0.4);
@@ -211,7 +245,8 @@ class GlobalStyles {
 
   // Chip Component
   static const Color chipBackground = backgroundMain;
-  static double get chipBorderRadius => 16.r;
+  static double get chipBorderRadius =>
+      8.r; // Standardized to 8px for small components
   static EdgeInsets get chipPadding =>
       EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h);
   static double get chipFontSize => 12.sp;
@@ -219,11 +254,15 @@ class GlobalStyles {
   // ==================== ANIMATIONS ====================
   // Using cubic-bezier for easing
 
-  // Durations
+  // Durations (optimized for modern devices)
   static const Duration durationFast = Duration(milliseconds: 150);
   static const Duration durationNormal = Duration(milliseconds: 250);
-  static const Duration durationSlow = Duration(milliseconds: 350);
-  static const Duration durationSlower = Duration(milliseconds: 500);
+  static const Duration durationSlow = Duration(
+    milliseconds: 250,
+  ); // Reduced from 350ms for snappier feel
+  static const Duration durationSlower = Duration(
+    milliseconds: 400,
+  ); // Reduced from 500ms
 
   // Easing Curves
   static const Curve easingStandard =

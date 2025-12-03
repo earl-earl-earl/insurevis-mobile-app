@@ -1,0 +1,61 @@
+{
+  "agentModelContext": {
+    "meta": {
+      "role": "UI/UX Implementation Specialist",
+      "focus": "Mobile-first Flutter Development",
+      "primaryReference": "global_ui_variables.dart"
+    },
+    "uxFramework": {
+      "interactionPatterns": {
+        "touchTargets": {
+          "rule": "Ensure minimum 44x44 logical pixels for all interactive elements",
+          "strategy": "Use padding or transparent containers to extend hit areas for smaller icons",
+          "reference": "GlobalStyles.minTouchTarget"
+        },
+        "feedbackStates": {
+          "tap": "Apply 0.8 opacity on press (GlobalStyles.hoverOpacity)",
+          "disabled": "Apply 0.4 opacity and disable hit testing (GlobalStyles.disabledOpacity)",
+          "focus": "Apply 2px ring with primary color offset by 2px (GlobalStyles.focusRingColor)"
+        },
+        "navigation": {
+          "transitions": "Use standard easing (Cubic 0.4, 0.0, 0.2, 1) with 250ms duration for page routes"
+        }
+      },
+      "accessibilityStandards": {
+        "contrast": "Ensure 4.5:1 ratio for text against background",
+        "scaling": "All font sizes must use .sp extension from flutter_screenutil",
+        "motion": "Respect 'reduce motion' settings by setting animation durations to 0ms when requested"
+      },
+      "motionDesign": {
+        "standardDuration": "250ms (GlobalStyles.durationNormal)",
+        "entranceCurve": "Decelerate (Out) - for elements entering the screen",
+        "exitCurve": "Accelerate (In) - for elements leaving the screen",
+        "defaultCurve": "Standard Cubic (GlobalStyles.easingStandard) - for on-screen state changes"
+      }
+    },
+    "implementationInstructions": {
+      "responsiveSizing": [
+        "ALWAYS use flutter_screenutil extensions for all numeric dimensions.",
+        "Use .w for horizontal widths, margins, and padding.",
+        "Use .h for vertical heights and spacing.",
+        "Use .r for border radius to ensure circular shapes stay circular.",
+        "Use .sp for all font sizes to respect user text scaling preferences."
+      ],
+      "typographyUsage": [
+        "Map 'Geist' font family strictly to Headings (H1-H6).",
+        "Map 'Manrope' font family to Body, Buttons, and Captions.",
+        "Do not hardcode font families; reference GlobalStyles.fontFamilyHeading and GlobalStyles.fontFamilyBody."
+      ],
+      "componentRules": [
+        "Buttons: Must have 8.r border radius and medium vibrancy colors.",
+        "Cards: Must use 12.r radius and 'surfaceMain' background color.",
+        "Inputs: Default border color is #E0E0E0; Focus border is primaryMain (#64B5F6)."
+      ],
+      "codeStyle": [
+        "Import 'global_ui_variables.dart' as GlobalStyles.",
+        "Use static const variables from GlobalStyles instead of raw hex codes.",
+        "Wrap root widgets in ScreenUtilInit to enable responsive sizing."
+      ]
+    }
+  }
+}
