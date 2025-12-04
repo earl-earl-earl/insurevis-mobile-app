@@ -160,101 +160,107 @@ class ClaimsWidgetUtils {
     return Card(
       margin: EdgeInsets.only(bottom: 12.h),
       elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-        child: Padding(
-          padding: EdgeInsets.all(16.w),
-          child: Row(
-            children: [
-              buildClaimIcon(claim.status, color),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      claim.claimNumber,
-                      style: TextStyle(
-                        fontSize: GlobalStyles.fontSizeBody1,
-                        fontWeight: GlobalStyles.fontWeightSemiBold,
-                        fontFamily: GlobalStyles.fontFamilyBody,
-                        color: GlobalStyles.textPrimary,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+          splashColor: color.withValues(alpha: 0.1),
+          highlightColor: color.withValues(alpha: 0.05),
+          child: Padding(
+            padding: EdgeInsets.all(16.w),
+            child: Row(
+              children: [
+                buildClaimIcon(claim.status, color),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        claim.claimNumber,
+                        style: TextStyle(
+                          fontSize: GlobalStyles.fontSizeBody1,
+                          fontWeight: GlobalStyles.fontWeightSemiBold,
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                          color: GlobalStyles.textPrimary,
+                        ),
                       ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        claim.incidentDescription,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: GlobalStyles.fontSizeBody2,
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                          color: GlobalStyles.textSecondary,
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.w,
+                              vertical: 4.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(
+                                GlobalStyles.radiusSm,
+                              ),
+                            ),
+                            child: Text(
+                              formattedStatus,
+                              style: TextStyle(
+                                fontSize: GlobalStyles.fontSizeCaption,
+                                fontWeight: GlobalStyles.fontWeightMedium,
+                                color: color,
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Text(
+                            formattedAmount,
+                            style: TextStyle(
+                              fontSize: GlobalStyles.fontSizeBody2,
+                              fontWeight: GlobalStyles.fontWeightMedium,
+                              fontFamily: GlobalStyles.fontFamilyBody,
+                              color: GlobalStyles.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Icon(
+                      LucideIcons.chevronRight,
+                      color: GlobalStyles.textTertiary,
+                      size: GlobalStyles.iconSizeSm,
                     ),
                     SizedBox(height: 4.h),
                     Text(
-                      claim.incidentDescription,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      formattedDate,
                       style: TextStyle(
-                        fontSize: GlobalStyles.fontSizeBody2,
+                        fontSize: GlobalStyles.fontSizeCaption,
                         fontFamily: GlobalStyles.fontFamilyBody,
-                        color: GlobalStyles.textSecondary,
+                        color: GlobalStyles.textTertiary,
                       ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8.w,
-                            vertical: 4.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(
-                              GlobalStyles.radiusSm,
-                            ),
-                          ),
-                          child: Text(
-                            formattedStatus,
-                            style: TextStyle(
-                              fontSize: GlobalStyles.fontSizeCaption,
-                              fontWeight: GlobalStyles.fontWeightMedium,
-                              color: color,
-                              fontFamily: GlobalStyles.fontFamilyBody,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 8.w),
-                        Text(
-                          formattedAmount,
-                          style: TextStyle(
-                            fontSize: GlobalStyles.fontSizeBody2,
-                            fontWeight: GlobalStyles.fontWeightMedium,
-                            fontFamily: GlobalStyles.fontFamilyBody,
-                            color: GlobalStyles.textPrimary,
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Icon(
-                    LucideIcons.chevronRight,
-                    color: GlobalStyles.textTertiary,
-                    size: GlobalStyles.iconSizeSm,
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    formattedDate,
-                    style: TextStyle(
-                      fontSize: GlobalStyles.fontSizeCaption,
-                      fontFamily: GlobalStyles.fontFamilyBody,
-                      color: GlobalStyles.textTertiary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -270,15 +276,34 @@ class ClaimsWidgetUtils {
   }) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            GlobalStyles.primaryMain.withValues(alpha: 0.02),
+            GlobalStyles.surfaceMain,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+      ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: GlobalStyles.iconSizeXl,
-            color: GlobalStyles.textDisabled,
+          Container(
+            padding: EdgeInsets.all(20.w),
+            decoration: BoxDecoration(
+              color: GlobalStyles.primaryMain.withValues(alpha: 0.05),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: GlobalStyles.iconSizeXl * 1.2,
+              color: GlobalStyles.textDisabled,
+            ),
           ),
-          SizedBox(height: GlobalStyles.paddingTight),
+          SizedBox(height: GlobalStyles.paddingNormal),
           Text(
             title,
             style: TextStyle(
@@ -389,35 +414,55 @@ class ClaimsWidgetUtils {
         color: GlobalStyles.surfaceMain,
         borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
         elevation: 2,
+        shadowColor: iconColor.withValues(alpha: 0.12),
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+          splashColor: iconColor.withValues(alpha: 0.15),
+          highlightColor: iconColor.withValues(alpha: 0.08),
           child: Container(
-            padding: EdgeInsets.symmetric(vertical: 16.h),
+            padding: EdgeInsets.symmetric(vertical: 18.h, horizontal: 8.w),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: GlobalStyles.iconSizeLg,
-                    color: iconColor,
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, child) {
+                    return Transform.scale(scale: value, child: child);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(14.w),
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(
+                        GlobalStyles.radiusMd,
+                      ),
+                      border: Border.all(
+                        color: iconColor.withValues(alpha: 0.2),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: GlobalStyles.iconSizeLg,
+                      color: iconColor,
+                    ),
                   ),
                 ),
-                SizedBox(height: 8.h),
+                SizedBox(height: 10.h),
                 Text(
                   label,
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: GlobalStyles.fontSizeCaption,
                     fontWeight: GlobalStyles.fontWeightMedium,
                     fontFamily: GlobalStyles.fontFamilyBody,
                     color: GlobalStyles.textPrimary,
+                    height: 1.3,
                   ),
                 ),
               ],

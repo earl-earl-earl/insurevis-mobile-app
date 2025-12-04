@@ -41,7 +41,8 @@ class ClaimDetailsScreen extends StatefulWidget {
   State<ClaimDetailsScreen> createState() => _ClaimDetailsScreenState();
 }
 
-class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
+class _ClaimDetailsScreenState extends State<ClaimDetailsScreen>
+    with TickerProviderStateMixin {
   final StorageService _storage = StorageService();
   final DownloadService _downloader = DownloadService();
   final ImagePicker _picker = ImagePicker();
@@ -62,6 +63,10 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
   bool _isAppeal = false;
   bool _isSaving = false;
 
+  // Document section expansion state
+  final Map<String, bool> _expandedSections = {};
+  int _currentDocumentIndex = 0;
+
   // Real-time subscription tracking
   late RealtimeChannel _claimSubscription;
   late RealtimeChannel _documentSubscription;
@@ -73,14 +78,45 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
   late TextEditingController _vehicleYearController;
   late TextEditingController _vehiclePlateNumberController;
 
+  // Animation controllers
+  late AnimationController _fadeController;
+  late AnimationController _editModeController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _editModeAnimation;
+
   @override
   void initState() {
     super.initState();
     _currentClaim = widget.claim;
+
+    // Initialize animations
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _editModeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+    _editModeAnimation = CurvedAnimation(
+      parent: _editModeController,
+      curve: Curves.easeInOut,
+    );
+
     _initializeControllers();
     _initializeCategories();
     _loadDocuments();
     _setupRealtimeSubscriptions();
+
+    // Start entry animation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fadeController.forward();
+    });
   }
 
   void _initializeControllers() {
@@ -262,6 +298,8 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     _vehicleModelController.dispose();
     _vehicleYearController.dispose();
     _vehiclePlateNumberController.dispose();
+    _fadeController.dispose();
+    _editModeController.dispose();
     // Clean up subscriptions
     SupabaseService.client.removeChannel(_claimSubscription);
     SupabaseService.client.removeChannel(_documentSubscription);
@@ -791,6 +829,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         }
 
         // Exit edit mode and refresh the UI with updated data
+        await _editModeController.reverse();
         setState(() {
           _isEditing = false;
           _isAppeal = false;
@@ -932,16 +971,20 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: GlobalStyles.surfaceMain,
           elevation: 0,
           leading:
               _isEditing
                   ? IconButton(
-                    icon: Icon(LucideIcons.arrowLeft),
+                    icon: Icon(
+                      LucideIcons.arrowLeft,
+                      color: GlobalStyles.textPrimary,
+                    ),
                     onPressed: () async {
                       if (_hasUnsavedChanges()) {
                         final discard = await _showDiscardChangesDialog();
                         if (discard && mounted) {
+                          await _editModeController.reverse();
                           setState(() {
                             _isEditing = false;
                             _isAppeal = false;
@@ -966,49 +1009,66 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
             style: TextStyle(
               fontSize: GlobalStyles.fontSizeH3,
               fontWeight: FontWeight.w700,
+              color: GlobalStyles.textPrimary,
+              fontFamily: GlobalStyles.fontFamilyHeading,
             ),
           ),
           actions: [
             if (!_isEditing && (canEdit || isRejected))
               isRejected
                   ? Padding(
-                    padding: EdgeInsets.only(right: 16.w),
-                    child: TextButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _isEditing = true;
-                          _isAppeal = isRejected;
-                        });
-                      },
-                      icon: Icon(
-                        LucideIcons.refreshCw,
-                        size: GlobalStyles.iconSizeSm,
-                        color: GlobalStyles.primaryMain,
+                    padding: EdgeInsets.only(right: 12.w),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            GlobalStyles.warningMain,
+                            GlobalStyles.warningMain.withValues(alpha: 0.8),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
-                      label: Text(
-                        'Appeal',
-                        style: TextStyle(
-                          color: GlobalStyles.primaryMain,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14.sp,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _isEditing = true;
+                            _isAppeal = true;
+                            _editModeController.forward();
+                          });
+                        },
+                        icon: Icon(
+                          LucideIcons.fileText,
+                          color: Colors.white,
+                          size: 18.sp,
                         ),
-                      ),
-                      style: TextButton.styleFrom(
-                        backgroundColor: GlobalStyles.primaryMain.withOpacity(
-                          0.1,
+                        label: Text(
+                          'Appeal',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.sp,
+                            fontFamily: GlobalStyles.fontFamilyBody,
+                          ),
                         ),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 0,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.r),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 10.h,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
                         ),
                       ),
                     ),
                   )
                   : IconButton(
-                    icon: Icon(LucideIcons.pencil),
+                    icon: Icon(
+                      LucideIcons.pencil,
+                      color: GlobalStyles.primaryMain,
+                    ),
                     tooltip: 'Edit',
                     onPressed: () {
                       setState(() {
@@ -1019,17 +1079,28 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
                   ),
             if (_isEditing)
               IconButton(
-                icon:
-                    _isSaving
-                        ? SizedBox(
-                          width: 20.w,
-                          height: 20.w,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.black,
+                icon: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (child, animation) {
+                    return ScaleTransition(scale: animation, child: child);
+                  },
+                  child:
+                      _isSaving
+                          ? SizedBox(
+                            key: const ValueKey('loading'),
+                            width: 20.w,
+                            height: 20.h,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: GlobalStyles.successMain,
+                            ),
+                          )
+                          : Icon(
+                            LucideIcons.check,
+                            key: const ValueKey('check'),
+                            color: GlobalStyles.successMain,
                           ),
-                        )
-                        : Icon(LucideIcons.check),
+                ),
                 tooltip: 'Save',
                 onPressed: _isSaving ? null : _saveClaim,
               ),
@@ -1038,26 +1109,48 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
         bottomNavigationBar:
             !_isEditing
                 ? SafeArea(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: GlobalStyles.primaryMain,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 16.h),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          elevation: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: GlobalStyles.surfaceMain,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, -2),
                         ),
-                        child: Text(
-                          'Close',
-                          style: TextStyle(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w600,
+                      ],
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: GlobalStyles.primaryMain,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(LucideIcons.x, size: 18.sp),
+                              SizedBox(width: 8.w),
+                              Text(
+                                'Close',
+                                style: TextStyle(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: GlobalStyles.fontFamilyBody,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -1080,109 +1173,119 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
   }
 
   Widget _buildEditForm() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_isAppeal)
-            Container(
-              padding: EdgeInsets.all(12.w),
-              margin: EdgeInsets.only(bottom: 16.h),
-              decoration: BoxDecoration(
-                color: Colors.orange[50],
-                borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: Colors.orange[200]!),
-              ),
-              child: Row(
-                children: [
-                  Icon(LucideIcons.info, color: Colors.orange[800]),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Text(
-                      'You are appealing a rejected claim. Please update the documents as needed.',
+    return FadeTransition(
+      opacity: _editModeAnimation,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.05),
+          end: Offset.zero,
+        ).animate(_editModeAnimation),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.all(16.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_isAppeal)
+                Container(
+                  padding: EdgeInsets.all(12.w),
+                  margin: EdgeInsets.only(bottom: 16.h),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(LucideIcons.info, color: Colors.orange[800]),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: Text(
+                          'You are appealing a rejected claim. Please update the documents as needed.',
+                          style: TextStyle(
+                            color: Colors.orange[900],
+                            fontSize: 13.sp,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              _buildVehicleInfoSection(),
+              SizedBox(height: 24.h),
+              _buildEstimatedCostSection(),
+              SizedBox(height: 20.h),
+              Padding(
+                padding: EdgeInsets.all(20.sp),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Document Upload Section",
                       style: TextStyle(
-                        color: Colors.orange[900],
-                        fontSize: 13.sp,
+                        color: const Color(0xFF2A2A2A),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 24.sp,
                       ),
                     ),
-                  ),
-                ],
+                    SizedBox(height: 8.h),
+                    Text(
+                      'Please upload all required documents listed below.',
+                      style: TextStyle(
+                        color: const Color(0x992A2A2A),
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-
-          _buildVehicleInfoSection(),
-          SizedBox(height: 40.h),
-          _buildEstimatedCostSection(),
-          SizedBox(height: 20.h),
-          Padding(
-            padding: EdgeInsets.all(20.sp),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Document Upload Section",
-                  style: TextStyle(
-                    color: const Color(0xFF2A2A2A),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 24.sp,
-                  ),
-                ),
-                SizedBox(height: 8.h),
-                Text(
-                  'Please upload all required documents listed below.',
-                  style: TextStyle(
-                    color: const Color(0x992A2A2A),
-                    fontSize: 14.sp,
-                  ),
-                ),
-              ],
-            ),
+              _buildDocumentCategories(),
+              SizedBox(height: 24.h),
+            ],
           ),
-          _buildDocumentCategories(),
-          SizedBox(height: 40.h),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildVehicleInfoSection() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Vehicle Information',
-            style: TextStyle(
-              fontSize: 24.sp,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF2A2A2A),
-            ),
-          ),
-          SizedBox(height: 16.h),
-          Container(
-            padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.grey.shade200),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(13),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, (1 - value) * 20),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAnimatedSectionHeader('Vehicle Information'),
+            SizedBox(height: 16.h),
+            Container(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: GlobalStyles.surfaceElevated,
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(
+                  color: GlobalStyles.primaryMain.withValues(alpha: 0.1),
+                  width: 1.0,
                 ),
-              ],
+              ),
+              child: VehicleForm(
+                makeController: _vehicleMakeController,
+                modelController: _vehicleModelController,
+                yearController: _vehicleYearController,
+                plateNumberController: _vehiclePlateNumberController,
+              ),
             ),
-            child: VehicleForm(
-              makeController: _vehicleMakeController,
-              modelController: _vehicleModelController,
-              yearController: _vehicleYearController,
-              plateNumberController: _vehiclePlateNumberController,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1191,62 +1294,80 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     final formatCurrency = widget.formatCurrency ?? _defaultFormatCurrency;
     final cost = widget.claim.estimatedDamageCost;
 
-    return Container(
-      padding: EdgeInsets.all(20.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Estimated Cost',
-                style: TextStyle(
-                  fontSize: 24.sp,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2A2A2A),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, (1 - value) * 20),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.all(20.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAnimatedSectionHeader('Estimated Cost'),
+            SizedBox(height: 12.h),
+            Text(
+              'This is the estimated cost based on your repair options.',
+              style: TextStyle(
+                fontSize: GlobalStyles.fontSizeBody2,
+                color: GlobalStyles.textSecondary,
+                fontFamily: GlobalStyles.fontFamilyBody,
+              ),
+            ),
+            SizedBox(height: 16.h),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12.r),
+                color: GlobalStyles.primaryMain.withValues(alpha: 0.06),
+                border: Border.all(
+                  color: GlobalStyles.primaryMain.withValues(alpha: 0.15),
+                  width: 1.0,
                 ),
               ),
-            ],
-          ),
-          SizedBox(height: 8.h),
-          Text(
-            'This is the estimated cost based on your repair options.',
-            style: TextStyle(
-              fontSize: GlobalStyles.fontSizeBody2,
-              color: const Color(0x992A2A2A),
-            ),
-          ),
-          SizedBox(height: 30.h),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(20.w),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12.r),
-              color: GlobalStyles.primaryMain.withAlpha(38),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  'Total Estimated Cost',
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    color: const Color(0x992A2A2A),
-                    fontWeight: FontWeight.w500,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Estimated Cost',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          color: GlobalStyles.textSecondary,
+                          fontWeight: GlobalStyles.fontWeightMedium,
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        formatCurrency(cost),
+                        style: TextStyle(
+                          fontSize: 24.sp,
+                          color: GlobalStyles.primaryMain,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: GlobalStyles.fontFamilyHeading,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                SizedBox(height: 8.h),
-                Text(
-                  formatCurrency(cost),
-                  style: TextStyle(
-                    fontSize: GlobalStyles.fontSizeH2,
-                    color: GlobalStyles.primaryMain,
-                    fontWeight: FontWeight.bold,
+                  Icon(
+                    LucideIcons.dollarSign,
+                    color: GlobalStyles.primaryMain.withValues(alpha: 0.3),
+                    size: 32.sp,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1259,109 +1380,55 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
           'lto_or',
           'Upload photocopy/PDF of LTO Official Receipt with number',
         ),
-        SizedBox(
-          height: 16.h,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: const Divider(color: Color(0x442A2A2A)),
-          ),
-        ),
+        SizedBox(height: 12.h),
         _buildDocumentCategory(
           'LTO C.R (Certificate of Registration)',
           'lto_cr',
           'Upload photocopy/PDF of LTO Certificate of Registration with number',
         ),
-        SizedBox(
-          height: 16.h,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: const Divider(color: Color(0x442A2A2A)),
-          ),
-        ),
+        SizedBox(height: 12.h),
         _buildDocumentCategory(
           'Driver\'s License',
           'drivers_license',
           'Upload photocopy/PDF of driver\'s license',
         ),
-        SizedBox(
-          height: 16.h,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: const Divider(color: Color(0x442A2A2A)),
-          ),
-        ),
+        SizedBox(height: 12.h),
         _buildDocumentCategory(
           'Valid ID of Owner',
           'owner_valid_id',
           'Upload photocopy/PDF of owner\'s valid government ID',
         ),
-        SizedBox(
-          height: 16.h,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: const Divider(color: Color(0x442A2A2A)),
-          ),
-        ),
+        SizedBox(height: 12.h),
         _buildDocumentCategory(
           'Police Report/Affidavit',
           'police_report',
           'Upload original police report or affidavit',
         ),
-        SizedBox(
-          height: 16.h,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: const Divider(color: Color(0x442A2A2A)),
-          ),
-        ),
+        SizedBox(height: 12.h),
         _buildDocumentCategory(
           'Insurance Policy',
           'insurance_policy',
           'Upload photocopy/PDF of your insurance policy',
         ),
-        SizedBox(
-          height: 16.h,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: const Divider(color: Color(0x442A2A2A)),
-          ),
-        ),
+        SizedBox(height: 12.h),
         _buildDocumentCategory(
           'Job Estimate',
           'job_estimate',
           'Upload repair/job estimate from service provider',
         ),
-        SizedBox(
-          height: 16.h,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: const Divider(color: Color(0x442A2A2A)),
-          ),
-        ),
+        SizedBox(height: 12.h),
         _buildDocumentCategory(
           'Pictures of Damage',
           'damage_photos',
           'Assessment photos are already included. You can add more damage photos or PDF documents if needed.',
         ),
-        SizedBox(
-          height: 16.h,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: const Divider(color: Color(0x442A2A2A)),
-          ),
-        ),
+        SizedBox(height: 12.h),
         _buildDocumentCategory(
           'Stencil Strips',
           'stencil_strips',
           'Upload stencil strips documentation',
         ),
-        SizedBox(
-          height: 16.h,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: const Divider(color: Color(0x442A2A2A)),
-          ),
-        ),
+        SizedBox(height: 12.h),
         _buildDocumentCategory(
           'Additional Documents',
           'additional_documents',
@@ -1383,7 +1450,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     final hasFiles = existingDocs.isNotEmpty || newDocs.isNotEmpty;
 
     return Container(
-      padding: EdgeInsets.all(20.sp),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1643,573 +1710,814 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     required String Function(String status) formatStatus,
     required String Function(double? amount) formatCurrency,
   }) {
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.all(16.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Fixed header card with claim id, status and estimated cost
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(16.w),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16.r),
-                    border: Border.all(color: Colors.grey[200]!),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(16.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Fixed header card with claim id and status
+                  Container(
+                    padding: EdgeInsets.all(16.w),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          statusColor(claim.status).withValues(alpha: 0.08),
+                          statusColor(claim.status).withValues(alpha: 0.02),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(
+                        color: statusColor(claim.status).withValues(alpha: 0.2),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(12.w),
+                          decoration: BoxDecoration(
+                            color: statusColor(
+                              claim.status,
+                            ).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          child: Icon(
+                            _statusIcon(claim.status),
+                            color: statusColor(claim.status),
+                            size: 28.sp,
+                          ),
+                        ),
+                        SizedBox(width: 14.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Claim #${claim.claimNumber}',
+                                style: TextStyle(
+                                  fontSize: 17.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: GlobalStyles.textPrimary,
+                                  fontFamily: GlobalStyles.fontFamilyHeading,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 6.h),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10.w,
+                                  vertical: 5.h,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: statusColor(claim.status),
+                                  borderRadius: BorderRadius.circular(6.r),
+                                ),
+                                child: Text(
+                                  formatStatus(claim.status),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      buildClaimIcon(claim.status, statusColor(claim.status)),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Column(
+
+                  SizedBox(height: 12.h),
+
+                  // Approval Status Cards - Side by Side
+                  if (claim.status != 'draft') ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildApprovalStatusCard(
+                            title: 'Car Company',
+                            status: claim.carCompanyStatus,
+                            isApproved: claim.isApprovedByCarCompany,
+                            approvalDate: claim.carCompanyApprovalDate,
+                            rejectedDate: claim.rejectedAt,
+                            notes: claim.carCompanyApprovalNotes,
+                            compact: true,
+                          ),
+                        ),
+                        // Only show insurance review if car company hasn't rejected
+                        if (claim.carCompanyStatus != 'rejected') ...[
+                          SizedBox(width: 10.w),
+                          Expanded(
+                            child: _buildApprovalStatusCard(
+                              title: 'Insurance Co.',
+                              status: claim.status,
+                              isApproved: claim.isApprovedByInsuranceCompany,
+                              approvalDate: claim.insuranceCompanyApprovalDate,
+                              rejectedDate: claim.rejectedAt,
+                              notes: claim.insuranceCompanyApprovalNotes,
+                              compact: true,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    SizedBox(height: 16.h),
+                  ],
+
+                  // Estimated Cost with Icon
+                  Container(
+                    padding: EdgeInsets.all(16.w),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          GlobalStyles.successMain.withValues(alpha: 0.1),
+                          GlobalStyles.successMain.withValues(alpha: 0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(
+                        color: GlobalStyles.successMain.withValues(alpha: 0.3),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(10.w),
+                          decoration: BoxDecoration(
+                            color: GlobalStyles.successMain.withValues(
+                              alpha: 0.15,
+                            ),
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                          child: Icon(
+                            LucideIcons.dollarSign,
+                            color: GlobalStyles.successMain,
+                            size: 24.sp,
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              claim.claimNumber,
+                              'Estimated Cost',
                               style: TextStyle(
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 12.sp,
+                                color: GlobalStyles.textSecondary,
+                                fontWeight: FontWeight.w600,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            SizedBox(height: 6.h),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10.w,
-                                vertical: 4.h,
-                              ),
-                              decoration: BoxDecoration(
-                                color: statusColor(
-                                  claim.status,
-                                ).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20.r),
-                              ),
-                              child: Text(
-                                formatStatus(claim.status),
-                                style: TextStyle(
-                                  color: statusColor(claim.status),
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            SizedBox(height: 2.h),
+                            Text(
+                              formatCurrency(claim.estimatedDamageCost),
+                              style: TextStyle(
+                                fontSize: 22.sp,
+                                fontWeight: FontWeight.bold,
+                                color: GlobalStyles.successMain,
+                                fontFamily: GlobalStyles.fontFamilyHeading,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: 16.h),
-
-                // Approval Status Cards
-                if (claim.status != 'draft') ...[
-                  _buildApprovalStatusCard(
-                    title: 'Car Company Review',
-                    status: claim.carCompanyStatus,
-                    isApproved: claim.isApprovedByCarCompany,
-                    approvalDate: claim.carCompanyApprovalDate,
-                    rejectedDate: claim.rejectedAt,
-                    notes: claim.carCompanyApprovalNotes,
-                  ),
-                  // Only show insurance review if car company hasn't rejected
-                  if (claim.carCompanyStatus != 'rejected') ...[
-                    SizedBox(height: 12.h),
-                    _buildApprovalStatusCard(
-                      title: 'Insurance Company Review',
-                      status: claim.status,
-                      isApproved: claim.isApprovedByInsuranceCompany,
-                      approvalDate: claim.insuranceCompanyApprovalDate,
-                      rejectedDate: claim.rejectedAt,
-                      notes: claim.insuranceCompanyApprovalNotes,
+                      ],
                     ),
-                  ],
+                  ),
+
                   SizedBox(height: 16.h),
-                ],
 
-                // Estimated Cost section
-                Text(
-                  'Estimated Cost',
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: 6.h),
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(16.w),
-                  decoration: BoxDecoration(
-                    color: GlobalStyles.primaryMain.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(
-                      color: GlobalStyles.primaryMain.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    formatCurrency(claim.estimatedDamageCost),
-                    style: TextStyle(
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.w700,
-                      color: GlobalStyles.primaryMain,
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: 16.h),
-
-                // Details
-                _buildDetailRow(
-                  'Incident Date',
-                  DateFormat.yMMMd().format(claim.incidentDate),
-                ),
-                _buildDetailRow('Location', claim.incidentLocation),
-                _buildDetailRow(
-                  'Vehicle',
-                  '${claim.vehicleMake} ${claim.vehicleModel} (${claim.vehicleYear})',
-                ),
-                _buildDetailRow(
-                  'Plate Number',
-                  claim.vehiclePlateNumber ?? 'N/A',
-                ),
-                _buildDetailRow(
-                  'Created Date',
-                  DateFormat.yMMMd().add_jm().format(
-                    claim.createdAt.add(Duration(hours: 8)),
-                  ),
-                ),
-
-                SizedBox(height: 12.h),
-                Text(
-                  'Description',
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 6.h),
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Text(
-                    claim.incidentDescription,
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: Colors.grey[700],
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: 16.h),
-
-                // Documents header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Documents',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w700,
+                  // Claim Details Card
+                  Container(
+                    padding: EdgeInsets.all(14.w),
+                    decoration: BoxDecoration(
+                      color: GlobalStyles.surfaceElevated,
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(
+                        color: GlobalStyles.primaryMain.withValues(alpha: 0.1),
+                        width: 1,
                       ),
                     ),
-                    if (_loadingDocs)
-                      SizedBox(
-                        height: 18.sp,
-                        width: 18.sp,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: GlobalStyles.primaryMain,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              LucideIcons.info,
+                              size: 16.sp,
+                              color: GlobalStyles.primaryMain,
+                            ),
+                            SizedBox(width: 6.w),
+                            Text(
+                              'Claim Details',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.bold,
+                                color: GlobalStyles.textPrimary,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                  ],
-                ),
-                SizedBox(height: 8.h),
+                        SizedBox(height: 12.h),
+                        _buildDetailRow(
+                          'Incident Date',
+                          DateFormat.yMMMd().format(claim.incidentDate),
+                        ),
+                        _buildDetailRow('Location', claim.incidentLocation),
+                        _buildDetailRow(
+                          'Vehicle',
+                          '${claim.vehicleMake} ${claim.vehicleModel} (${claim.vehicleYear})',
+                        ),
+                        _buildDetailRow(
+                          'Plate Number',
+                          claim.vehiclePlateNumber ?? 'N/A',
+                        ),
+                        _buildDetailRow(
+                          'Created Date',
+                          DateFormat.yMMMd().add_jm().format(
+                            claim.createdAt.add(Duration(hours: 8)),
+                          ),
+                          isLast: true,
+                        ),
+                      ],
+                    ),
+                  ),
 
-                if (_docError != null)
+                  SizedBox(height: 16.h),
+
+                  // Description Card
                   Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(12.w),
+                    padding: EdgeInsets.all(14.w),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.05),
-                      border: Border.all(color: Colors.red.withOpacity(0.2)),
-                      borderRadius: BorderRadius.circular(8.r),
+                      color: GlobalStyles.surfaceElevated,
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(
+                        color: GlobalStyles.primaryMain.withValues(alpha: 0.1),
+                        width: 1,
+                      ),
                     ),
-                    child: Text(
-                      _docError!,
-                      style: TextStyle(color: Colors.red[700], fontSize: 13.sp),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              LucideIcons.fileText,
+                              size: 16.sp,
+                              color: GlobalStyles.primaryMain,
+                            ),
+                            SizedBox(width: 6.w),
+                            Text(
+                              'Incident Description',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.bold,
+                                color: GlobalStyles.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 10.h),
+                        Text(
+                          claim.incidentDescription,
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            color: GlobalStyles.textSecondary,
+                            height: 1.6,
+                            fontFamily: GlobalStyles.fontFamilyBody,
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                else if (_documents.isEmpty && !_loadingDocs)
-                  Text(
-                    'No documents uploaded for this claim yet.',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14.sp),
                   ),
-              ],
+
+                  SizedBox(height: 16.h),
+
+                  // Documents header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Documents',
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (_loadingDocs)
+                        SizedBox(
+                          height: 18.sp,
+                          width: 18.sp,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: GlobalStyles.primaryMain,
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: 8.h),
+
+                  if (_docError != null)
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.05),
+                        border: Border.all(color: Colors.red.withOpacity(0.2)),
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: Text(
+                        _docError!,
+                        style: TextStyle(
+                          color: Colors.red[700],
+                          fontSize: 13.sp,
+                        ),
+                      ),
+                    )
+                  else if (_documents.isEmpty && !_loadingDocs)
+                    Text(
+                      'No documents uploaded for this claim yet.',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
 
-        // Documents list
-        if (_documents.isNotEmpty)
-          SliverList.builder(
-            itemCount: _documents.length,
-            itemBuilder: (context, index) {
-              final doc = _documents[index];
-              return _buildDocumentTile(doc);
-            },
-          ),
-      ],
+          // Documents sections with carousel
+          if (_documents.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          LucideIcons.files,
+                          size: 18.sp,
+                          color: GlobalStyles.primaryMain,
+                        ),
+                        SizedBox(width: 8.w),
+                        Text(
+                          'Documents',
+                          style: TextStyle(
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.bold,
+                            color: GlobalStyles.textPrimary,
+                            fontFamily: GlobalStyles.fontFamilyHeading,
+                          ),
+                        ),
+                        Spacer(),
+                        Text(
+                          '${_documents.length} file${_documents.length != 1 ? 's' : ''}',
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: GlobalStyles.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12.h),
+                    ..._buildDocumentCarouselSections(),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildDocumentTile(DocumentModel doc) {
-    final url = _signedUrls[doc.id];
-    final statusInfo = ClaimDetailsHandlerUtils.getDocumentStatusInfo(doc);
-    final borderColor = statusInfo['color'] as Color;
-
-    if (ClaimDetailsHandlerUtils.isPdf(doc)) {
-      return Padding(
-        padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: borderColor.withAlpha(80)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // First row: icon, title, filename, buttons
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                child: Row(
-                  children: [
-                    Icon(
-                      LucideIcons.fileText,
-                      color: Colors.red[600],
-                      size: 22.sp,
-                    ),
-                    SizedBox(width: 10.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            doc.type.displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          SizedBox(height: 2.h),
-                          Text(
-                            doc.fileName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_progress[doc.id] != null)
-                      SizedBox(
-                        width: 24.sp,
-                        height: 24.sp,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          value: (_progress[doc.id] ?? 0),
-                          color: GlobalStyles.primaryMain,
-                        ),
-                      )
-                    else
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: 'Open',
-                            onPressed: url == null ? null : () => _openPdf(doc),
-                            icon: Icon(
-                              LucideIcons.externalLink,
-                              color: Colors.blueGrey,
-                              size: 22.sp,
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: 'Download',
-                            onPressed:
-                                url == null ? null : () => _download(doc),
-                            icon: Icon(
-                              LucideIcons.download,
-                              color: GlobalStyles.primaryMain,
-                              size: 22.sp,
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-              // Second row: status chips
-              Padding(
-                padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: ClaimDetailsWidgetUtils.buildStatusChips(
-                    context,
-                    doc,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    } else if (ClaimDetailsHandlerUtils.isImage(doc) && url != null) {
-      return Padding(
-        padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: borderColor.withAlpha(80)),
-            borderRadius: BorderRadius.circular(12.r),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Image preview
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder:
-                          (_) => ImageViewerPage(
-                            imageUrl: url,
-                            title: doc.type.displayName,
-                          ),
-                    ),
-                  );
-                },
-                child: ClipRRect(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(12.r),
-                  ),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Image.network(
-                      url,
-                      fit: BoxFit.cover,
-                      errorBuilder:
-                          (_, __, ___) => Container(
-                            color: Colors.grey[200],
-                            child: Center(
-                              child: Icon(
-                                Icons.image_not_supported_rounded,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ),
-                    ),
-                  ),
-                ),
-              ),
-              // Top row: title, filename, download button
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            doc.type.displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          SizedBox(height: 2.h),
-                          Text(
-                            doc.fileName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_progress[doc.id] != null)
-                      SizedBox(
-                        width: 24.sp,
-                        height: 24.sp,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          value: (_progress[doc.id] ?? 0),
-                          color: GlobalStyles.primaryMain,
-                        ),
-                      )
-                    else
-                      IconButton(
-                        tooltip: 'Download',
-                        onPressed: () => _download(doc),
-                        icon: Icon(
-                          LucideIcons.download,
-                          color: GlobalStyles.primaryMain,
-                          size: 22.sp,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Bottom row: status chips
-              Padding(
-                padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: ClaimDetailsWidgetUtils.buildStatusChips(
-                    context,
-                    doc,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    } else {
-      return Padding(
-        padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: borderColor.withAlpha(80)),
-          ),
-          child: Column(
-            children: [
-              // Top row: icon, title, filename, download button
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                child: Row(
-                  children: [
-                    Icon(
-                      LucideIcons.file,
-                      color: Colors.grey[700],
-                      size: 22.sp,
-                    ),
-                    SizedBox(width: 10.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            doc.type.displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          SizedBox(height: 2.h),
-                          Text(
-                            doc.fileName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Download',
-                      onPressed:
-                          _signedUrls[doc.id] == null
-                              ? null
-                              : () => _download(doc),
-                      icon: Icon(
-                        LucideIcons.download,
-                        color: GlobalStyles.primaryMain,
-                        size: 22.sp,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Bottom row: status chips
-              Padding(
-                padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: ClaimDetailsWidgetUtils.buildStatusChips(
-                    context,
-                    doc,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, {bool isLast = false}) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 10.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100.w,
+            width: 110.w,
             child: Text(
               label,
-              style: TextStyle(fontSize: 14.sp, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: GlobalStyles.textSecondary,
+                fontWeight: GlobalStyles.fontWeightMedium,
+                fontFamily: GlobalStyles.fontFamilyBody,
+              ),
             ),
           ),
-          SizedBox(width: 10.w),
+          SizedBox(width: 12.w),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
+                color: GlobalStyles.textPrimary,
+                fontFamily: GlobalStyles.fontFamilyBody,
+              ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnimatedSectionHeader(
+    String title, {
+    bool showUnderline = true,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 20.sp,
+            fontWeight: FontWeight.bold,
+            color: GlobalStyles.textPrimary,
+            fontFamily: GlobalStyles.fontFamilyHeading,
+          ),
+        ),
+        if (showUnderline) ...[
+          SizedBox(height: 8.h),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOut,
+            builder: (context, value, child) {
+              return Container(
+                height: 3.h,
+                width: 50.w * value,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      GlobalStyles.primaryMain,
+                      GlobalStyles.primaryMain.withValues(alpha: 0.4),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
+              );
+            },
+          ),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> _buildDocumentCarouselSections() {
+    // Group documents by category
+    final Map<String, List<DocumentModel>> groupedDocs = {};
+    for (final doc in _documents) {
+      final category = doc.type.value;
+      if (!groupedDocs.containsKey(category)) {
+        groupedDocs[category] = [];
+      }
+      groupedDocs[category]!.add(doc);
+    }
+
+    // Build collapsible sections
+    List<Widget> sections = [];
+    groupedDocs.forEach((category, docs) {
+      if (docs.isEmpty) return;
+
+      final isExpanded = _expandedSections[category] ?? false;
+      final displayName = _documentTitleFromKey(category);
+
+      sections.add(
+        Container(
+          margin: EdgeInsets.only(bottom: 8.h),
+          decoration: BoxDecoration(
+            color: GlobalStyles.surfaceElevated,
+            borderRadius: BorderRadius.circular(10.r),
+            border: Border.all(
+              color: GlobalStyles.primaryMain.withValues(alpha: 0.1),
+              width: 1.0,
+            ),
+          ),
+          child: Column(
+            children: [
+              // Header
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _expandedSections[category] = !isExpanded;
+                    if (!isExpanded) {
+                      _currentDocumentIndex = 0;
+                    }
+                  });
+                },
+                borderRadius: BorderRadius.circular(10.r),
+                child: Padding(
+                  padding: EdgeInsets.all(12.w),
+                  child: Row(
+                    children: [
+                      Icon(
+                        LucideIcons.folder,
+                        size: 18.sp,
+                        color: GlobalStyles.primaryMain,
+                      ),
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        child: Text(
+                          displayName,
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w600,
+                            color: GlobalStyles.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 3.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: GlobalStyles.primaryMain.withValues(
+                            alpha: 0.1,
+                          ),
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: Text(
+                          '${docs.length}',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.bold,
+                            color: GlobalStyles.primaryMain,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      AnimatedRotation(
+                        turns: isExpanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          LucideIcons.chevronDown,
+                          size: 18.sp,
+                          color: GlobalStyles.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Expandable Content - Carousel
+              if (isExpanded) ...[
+                Divider(
+                  height: 1,
+                  color: GlobalStyles.primaryMain.withValues(alpha: 0.1),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(12.w),
+                  child: _buildDocumentCarousel(docs, category),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    });
+
+    return sections;
+  }
+
+  Widget _buildDocumentCarousel(List<DocumentModel> docs, String category) {
+    if (docs.isEmpty) {
+      return Center(
+        child: Text(
+          'No documents',
+          style: TextStyle(fontSize: 12.sp, color: GlobalStyles.textTertiary),
+        ),
+      );
+    }
+
+    final currentIndex = _currentDocumentIndex.clamp(0, docs.length - 1);
+    final doc = docs[currentIndex];
+
+    return Column(
+      children: [
+        // Document preview
+        _buildCompactDocumentTile(doc),
+
+        // Carousel controls
+        if (docs.length > 1) ...[
+          SizedBox(height: 8.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                onPressed:
+                    currentIndex > 0
+                        ? () {
+                          setState(() {
+                            _currentDocumentIndex--;
+                          });
+                        }
+                        : null,
+                icon: Icon(LucideIcons.chevronLeft),
+                iconSize: 20.sp,
+                color:
+                    currentIndex > 0
+                        ? GlobalStyles.primaryMain
+                        : GlobalStyles.textDisabled,
+              ),
+              Text(
+                '${currentIndex + 1} of ${docs.length}',
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  color: GlobalStyles.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              IconButton(
+                onPressed:
+                    currentIndex < docs.length - 1
+                        ? () {
+                          setState(() {
+                            _currentDocumentIndex++;
+                          });
+                        }
+                        : null,
+                icon: Icon(LucideIcons.chevronRight),
+                iconSize: 20.sp,
+                color:
+                    currentIndex < docs.length - 1
+                        ? GlobalStyles.primaryMain
+                        : GlobalStyles.textDisabled,
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCompactDocumentTile(DocumentModel doc) {
+    final url = _signedUrls[doc.id];
+    final statusInfo = ClaimDetailsHandlerUtils.getDocumentStatusInfo(doc);
+    final borderColor = statusInfo['color'] as Color;
+    final isImage = ClaimDetailsHandlerUtils.isImage(doc);
+    final isPdf = ClaimDetailsHandlerUtils.isPdf(doc);
+
+    return Container(
+      padding: EdgeInsets.all(10.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(
+          color: borderColor.withValues(alpha: 0.2),
+          width: 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image preview if available
+          if (isImage && url != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6.r),
+              child: GestureDetector(
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => ImageViewerPage(
+                              imageUrl: url,
+                              title: doc.fileName,
+                            ),
+                      ),
+                    ),
+                child: Container(
+                  height: 150.h,
+                  width: double.infinity,
+                  color: Colors.grey[200],
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          value:
+                              loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                          color: GlobalStyles.primaryMain,
+                        ),
+                      );
+                    },
+                    errorBuilder:
+                        (context, error, stackTrace) => Icon(
+                          LucideIcons.imageMinus,
+                          color: Colors.grey[500],
+                          size: 32.sp,
+                        ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 8.h),
+          ],
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: GlobalStyles.primaryMain.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6.r),
+                ),
+                child: Icon(
+                  isImage ? LucideIcons.image : LucideIcons.fileText,
+                  color: GlobalStyles.primaryMain,
+                  size: 20.sp,
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      doc.type.displayName,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: GlobalStyles.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      doc.fileName,
+                      style: TextStyle(
+                        fontSize: 10.sp,
+                        color: GlobalStyles.textTertiary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (isImage && url != null)
+                IconButton(
+                  onPressed:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => ImageViewerPage(
+                                imageUrl: url,
+                                title: doc.fileName,
+                              ),
+                        ),
+                      ),
+                  icon: Icon(LucideIcons.eye, size: 18.sp),
+                  color: GlobalStyles.primaryMain,
+                  padding: EdgeInsets.all(4.w),
+                  constraints: BoxConstraints(),
+                )
+              else if (isPdf)
+                IconButton(
+                  onPressed: () => _openPdf(doc),
+                  icon: Icon(LucideIcons.eye, size: 18.sp),
+                  color: GlobalStyles.primaryMain,
+                  padding: EdgeInsets.all(4.w),
+                  constraints: BoxConstraints(),
+                ),
+              IconButton(
+                onPressed: () => _download(doc),
+                icon: Icon(LucideIcons.download, size: 18.sp),
+                color: GlobalStyles.primaryMain,
+                padding: EdgeInsets.all(4.w),
+                constraints: BoxConstraints(),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          Wrap(
+            spacing: 6.w,
+            runSpacing: 6.h,
+            children: ClaimDetailsWidgetUtils.buildStatusChips(context, doc),
           ),
         ],
       ),
@@ -2258,6 +2566,7 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
     DateTime? approvalDate,
     DateTime? rejectedDate,
     String? notes,
+    bool compact = false,
   }) {
     // Determine status
     String statusText;
@@ -2292,84 +2601,180 @@ class _ClaimDetailsScreenState extends State<ClaimDetailsScreen> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10.w : 14.w,
+        vertical: compact ? 10.h : 12.h,
+      ),
       decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12.r),
+        color: statusColor.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(
-          color: statusColor.withValues(alpha: 0.2),
-          width: 1.5,
+          color: statusColor.withValues(alpha: 0.15),
+          width: 1.0,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
         children: [
-          Row(
-            children: [
-              Icon(statusIcon, color: statusColor, size: 20.sp),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey[800],
+          if (compact) ...[
+            // Compact mode: Icon and title stacked, status badge below
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(statusIcon, color: statusColor, size: 18.sp),
+                    SizedBox(width: 6.w),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey[800],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 6.h),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w600,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            // Full mode: Original layout
+            Row(
+              children: [
+                Icon(statusIcon, color: statusColor, size: 20.sp),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 4.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w600,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (statusText == 'Rejected' && rejectedDate != null) ...[
+              SizedBox(height: 8.h),
+              Text(
+                'Rejected on: ${DateFormat.yMMMd().add_jm().format(rejectedDate)}',
+                style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+              ),
+            ] else if (approvalDate != null) ...[
+              SizedBox(height: 8.h),
+              Text(
+                'Date: ${DateFormat.yMMMd().add_jm().format(approvalDate)}',
+                style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+              ),
+            ],
+            if (notes != null && notes.trim().isNotEmpty) ...[
+              SizedBox(height: 8.h),
+              Text(
+                'Notes:',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
                 ),
               ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                child: Text(
-                  statusText,
-                  style: TextStyle(
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
-                    color: statusColor,
-                  ),
+              SizedBox(height: 4.h),
+              Text(
+                ClaimDetailsHandlerUtils.formatRejectionNote(notes),
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: Colors.grey[700],
+                  height: 1.4,
                 ),
               ),
             ],
-          ),
-          if (statusText == 'Rejected' && rejectedDate != null) ...[
-            SizedBox(height: 8.h),
-            Text(
-              'Rejected on: ${DateFormat.yMMMd().add_jm().format(rejectedDate)}',
-              style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
-            ),
-          ] else if (approvalDate != null) ...[
-            SizedBox(height: 8.h),
-            Text(
-              'Date: ${DateFormat.yMMMd().add_jm().format(approvalDate)}',
-              style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
-            ),
-          ],
-          if (notes != null && notes.trim().isNotEmpty) ...[
-            SizedBox(height: 8.h),
-            Text(
-              'Notes:',
-              style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700],
-              ),
-            ),
-            SizedBox(height: 4.h),
-            Text(
-              ClaimDetailsHandlerUtils.formatRejectionNote(notes),
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: Colors.grey[700],
-                height: 1.4,
-              ),
-            ),
           ],
         ],
       ),
+    );
+  }
+}
+
+// Animated document card with scale effect on press
+class _AnimatedDocumentCard extends StatefulWidget {
+  final Color borderColor;
+  final Widget child;
+
+  const _AnimatedDocumentCard({required this.borderColor, required this.child});
+
+  @override
+  State<_AnimatedDocumentCard> createState() => _AnimatedDocumentCardState();
+}
+
+class _AnimatedDocumentCardState extends State<_AnimatedDocumentCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _scaleController.forward(),
+      onTapUp: (_) => _scaleController.reverse(),
+      onTapCancel: () => _scaleController.reverse(),
+      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
   }
 }

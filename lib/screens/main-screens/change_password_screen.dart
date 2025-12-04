@@ -15,7 +15,8 @@ class ChangePasswordScreen extends StatefulWidget {
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
 }
 
-class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
+class _ChangePasswordScreenState extends State<ChangePasswordScreen>
+    with TickerProviderStateMixin {
   final TextEditingController _currentPasswordController =
       TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
@@ -28,12 +29,29 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _obscureCurrent = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+    _fadeController.forward();
+  }
 
   @override
   void dispose() {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
@@ -132,86 +150,203 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           'Change Password',
           style: TextStyle(
             color: GlobalStyles.textPrimary,
-            fontSize: GlobalStyles.fontSizeBody1,
+            fontSize: GlobalStyles.fontSizeH5,
             fontWeight: GlobalStyles.fontWeightSemiBold,
             fontFamily: GlobalStyles.fontFamilyHeading,
           ),
         ),
       ),
       body: SafeArea(
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: const BoxDecoration(color: GlobalStyles.surfaceMain),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                SizedBox(height: isKeyboardVisible ? 20.h : 40.h),
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(color: GlobalStyles.surfaceMain),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  SizedBox(height: isKeyboardVisible ? 16.h : 32.h),
 
-                Text(
-                  'Change Password',
-                  style: TextStyle(
-                    fontSize: GlobalStyles.fontSizeH2,
-                    fontWeight: GlobalStyles.fontWeightBold,
-                    fontFamily: GlobalStyles.fontFamilyHeading,
-                    color: GlobalStyles.textPrimary,
-                  ),
-                ),
-                SizedBox(height: GlobalStyles.paddingTight),
-                Text(
-                  'Update your account password below.',
-                  style: TextStyle(
-                    fontSize: GlobalStyles.fontSizeBody2,
-                    color: GlobalStyles.textSecondary,
-                    fontFamily: GlobalStyles.fontFamilyBody,
-                  ),
-                ),
-
-                SizedBox(height: isKeyboardVisible ? 30.h : 60.h),
-
-                _buildPasswordField(
-                  label: 'Current Password',
-                  controller: _currentPasswordController,
-                  hint: 'Enter your current password',
-                  error: _currentPasswordError,
-                  obscure: _obscureCurrent,
-                  onToggle:
-                      () => setState(() => _obscureCurrent = !_obscureCurrent),
-                ),
-
-                SizedBox(height: 24.h),
-
-                _buildPasswordField(
-                  label: 'New Password',
-                  controller: _newPasswordController,
-                  hint: 'Enter new password',
-                  error: _newPasswordError,
-                  obscure: _obscureNew,
-                  onToggle: () => setState(() => _obscureNew = !_obscureNew),
-                ),
-
-                SizedBox(height: 24.h),
-
-                _buildPasswordField(
-                  label: 'Confirm New Password',
-                  controller: _confirmPasswordController,
-                  hint: 'Confirm new password',
-                  obscure: _obscureConfirm,
-                  onToggle:
-                      () => setState(() => _obscureConfirm = !_obscureConfirm),
-                ),
-
-                SizedBox(height: 32.h),
-
-                _isLoading
-                    ? AuthWidgetUtils.buildLoadingButton()
-                    : AuthWidgetUtils.buildPrimaryButton(
-                      onPressed: _changePassword,
-                      text: 'Change Password',
+                  // Animated header with icon
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeOut,
+                    builder: (context, value, child) {
+                      return Transform.translate(
+                        offset: Offset(0, (1 - value) * 20),
+                        child: Opacity(opacity: value, child: child),
+                      );
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(16.w),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            GlobalStyles.primaryMain.withValues(alpha: 0.08),
+                            GlobalStyles.primaryMain.withValues(alpha: 0.02),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          GlobalStyles.radiusMd,
+                        ),
+                        border: Border.all(
+                          color: GlobalStyles.primaryMain.withValues(
+                            alpha: 0.1,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12.w),
+                            decoration: BoxDecoration(
+                              color: GlobalStyles.primaryMain.withValues(
+                                alpha: 0.15,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                GlobalStyles.radiusSm,
+                              ),
+                            ),
+                            child: Icon(
+                              LucideIcons.lock,
+                              color: GlobalStyles.primaryMain,
+                              size: GlobalStyles.iconSizeMd,
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Secure Your Account',
+                                  style: TextStyle(
+                                    fontSize: GlobalStyles.fontSizeBody1,
+                                    fontWeight: GlobalStyles.fontWeightSemiBold,
+                                    fontFamily: GlobalStyles.fontFamilyHeading,
+                                    color: GlobalStyles.textPrimary,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                                SizedBox(height: 2.h),
+                                Text(
+                                  'Keep your account safe with a strong password',
+                                  style: TextStyle(
+                                    fontSize: GlobalStyles.fontSizeCaption,
+                                    color: GlobalStyles.textSecondary,
+                                    fontFamily: GlobalStyles.fontFamilyBody,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-              ],
+                  ),
+
+                  SizedBox(height: isKeyboardVisible ? 24.h : 48.h),
+
+                  // Animated password fields with staggered entrance
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeOut,
+                    builder: (context, value, child) {
+                      return Transform.translate(
+                        offset: Offset(0, (1 - value) * 20),
+                        child: Opacity(opacity: value, child: child),
+                      );
+                    },
+                    child: _buildPasswordField(
+                      label: 'Current Password',
+                      controller: _currentPasswordController,
+                      hint: 'Enter your current password',
+                      error: _currentPasswordError,
+                      obscure: _obscureCurrent,
+                      onToggle:
+                          () => setState(
+                            () => _obscureCurrent = !_obscureCurrent,
+                          ),
+                    ),
+                  ),
+
+                  SizedBox(height: 20.h),
+
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.easeOut,
+                    builder: (context, value, child) {
+                      return Transform.translate(
+                        offset: Offset(0, (1 - value) * 20),
+                        child: Opacity(opacity: value, child: child),
+                      );
+                    },
+                    child: _buildPasswordField(
+                      label: 'New Password',
+                      controller: _newPasswordController,
+                      hint: 'Enter new password',
+                      error: _newPasswordError,
+                      obscure: _obscureNew,
+                      onToggle:
+                          () => setState(() => _obscureNew = !_obscureNew),
+                    ),
+                  ),
+
+                  SizedBox(height: 20.h),
+
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.easeOut,
+                    builder: (context, value, child) {
+                      return Transform.translate(
+                        offset: Offset(0, (1 - value) * 20),
+                        child: Opacity(opacity: value, child: child),
+                      );
+                    },
+                    child: _buildPasswordField(
+                      label: 'Confirm New Password',
+                      controller: _confirmPasswordController,
+                      hint: 'Confirm new password',
+                      obscure: _obscureConfirm,
+                      onToggle:
+                          () => setState(
+                            () => _obscureConfirm = !_obscureConfirm,
+                          ),
+                    ),
+                  ),
+
+                  SizedBox(height: 48.h),
+
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 900),
+                    curve: Curves.easeOut,
+                    builder: (context, value, child) {
+                      return Transform.translate(
+                        offset: Offset(0, (1 - value) * 20),
+                        child: Opacity(opacity: value, child: child),
+                      );
+                    },
+                    child:
+                        _isLoading
+                            ? AuthWidgetUtils.buildLoadingButton()
+                            : AuthWidgetUtils.buildPrimaryButton(
+                              onPressed: _changePassword,
+                              text: 'Change Password',
+                            ),
+                  ),
+
+                  SizedBox(height: isKeyboardVisible ? 16.h : 32.h),
+                ],
+              ),
             ),
           ),
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:insurevis/global_ui_variables.dart';
@@ -15,7 +16,7 @@ class SignIn extends StatefulWidget {
   SignInState createState() => SignInState();
 }
 
-class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
+class SignInState extends State<SignIn> with TickerProviderStateMixin {
   bool _isPasswordVisible = false;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -24,7 +25,9 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
   bool _rememberMe = false;
   bool _isLoading = false;
   late AnimationController _animationController;
+  late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   // Error messages for individual fields
   String? _emailError;
@@ -33,16 +36,44 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+
+    // Main fade animation
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    _animationController.forward();
+    // Slide up animation
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
+
+    // Start animations with slight delay for smoother appearance
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        _animationController.forward();
+        _slideController.forward();
+      }
+    });
+
+    // Auto-focus email field after animations
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        _emailFocusNode.requestFocus();
+      }
+    });
   }
 
   @override
@@ -52,11 +83,18 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
     _animationController.dispose();
+    _slideController.dispose();
     super.dispose();
   }
 
   void _handleSignIn() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Light haptic feedback
+    HapticFeedback.lightImpact();
+
+    // Unfocus to dismiss keyboard
+    FocusScope.of(context).unfocus();
 
     // Clear any previous errors
     setState(() {
@@ -72,6 +110,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         _emailError = "Please enter your email";
       });
       hasErrors = true;
+      HapticFeedback.mediumImpact();
     } else {
       // Validate email format
       final emailError = AuthValidationUtils.validateEmail(
@@ -82,6 +121,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
           _emailError = emailError;
         });
         hasErrors = true;
+        HapticFeedback.mediumImpact();
       }
     }
 
@@ -90,6 +130,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         _passwordError = "Please enter your password";
       });
       hasErrors = true;
+      HapticFeedback.mediumImpact();
     }
 
     if (hasErrors) {
@@ -109,16 +150,25 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
       setState(() => _isLoading = false);
 
       if (result['success'] && mounted) {
+        // Success haptic
+        HapticFeedback.heavyImpact();
+
         // Show success message
         AuthWidgetUtils.showSnackBar(context, "Signed in successfully!");
 
-        // Navigate to home screen
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/home',
-          (Route<dynamic> route) => false,
-        );
+        // Smooth transition to home
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/home',
+            (Route<dynamic> route) => false,
+          );
+        }
       } else if (mounted) {
+        // Error haptic
+        HapticFeedback.mediumImpact();
+
         // Show error message
         AuthWidgetUtils.showSnackBar(
           context,
@@ -130,6 +180,7 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
       setState(() => _isLoading = false);
 
       if (mounted) {
+        HapticFeedback.mediumImpact();
         AuthWidgetUtils.showSnackBar(
           context,
           "An unexpected error occurred. Please try again.",
@@ -143,217 +194,278 @@ class SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     final double topSpacingHeight = isKeyboardVisible ? 10.h : 30.h;
-    final double middleSpacingHeight = isKeyboardVisible ? 5.h : 30.h;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(),
+      appBar: AppBar(backgroundColor: GlobalStyles.backgroundMain),
       body: SafeArea(
         child: Container(
           height: double.infinity,
           width: double.infinity,
           decoration: BoxDecoration(color: GlobalStyles.backgroundMain),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.all(GlobalStyles.paddingNormal),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(height: topSpacingHeight),
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.all(GlobalStyles.paddingNormal),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: topSpacingHeight),
 
-                        // Welcome Header Section
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Welcome to",
-                              style: TextStyle(
-                                fontFamily: GlobalStyles.fontFamilyHeading,
-                                fontSize: GlobalStyles.fontSizeH3,
-                                fontWeight: GlobalStyles.fontWeightSemiBold,
-                                color: GlobalStyles.textPrimary,
-                              ),
-                            ),
-                            Text.rich(
-                              TextSpan(
-                                text: "Insure",
-                                style: TextStyle(
-                                  fontFamily: GlobalStyles.fontFamilyHeading,
-                                  fontSize: GlobalStyles.fontSizeH1,
-                                  fontWeight: GlobalStyles.fontWeightBold,
-                                  color: GlobalStyles.textPrimary,
-                                  height: 0.8,
-                                  letterSpacing: GlobalStyles.letterSpacingH1,
-                                ),
+                          // Welcome Header Section with Hero Animation
+                          Hero(
+                            tag: 'app_logo_text',
+                            child: Material(
+                              color: Colors.transparent,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  TextSpan(
-                                    text: "Vis",
+                                  Text(
+                                    "Welcome back to",
                                     style: TextStyle(
                                       fontFamily:
                                           GlobalStyles.fontFamilyHeading,
-                                      color: GlobalStyles.primaryMain,
-                                      fontSize: GlobalStyles.fontSizeH1,
-                                      fontWeight: GlobalStyles.fontWeightBold,
-                                      letterSpacing:
-                                          GlobalStyles.letterSpacingH1,
+                                      fontSize: GlobalStyles.fontSizeH4,
+                                      fontWeight: GlobalStyles.fontWeightMedium,
+                                      color: GlobalStyles.textSecondary,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  Text.rich(
+                                    TextSpan(
+                                      text: "Insure",
+                                      style: TextStyle(
+                                        fontFamily:
+                                            GlobalStyles.fontFamilyHeading,
+                                        fontSize: 42.sp,
+                                        fontWeight: GlobalStyles.fontWeightBold,
+                                        color: GlobalStyles.textPrimary,
+                                        height: 1.1,
+                                        letterSpacing:
+                                            GlobalStyles.letterSpacingH1,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: "Vis",
+                                          style: TextStyle(
+                                            fontFamily:
+                                                GlobalStyles.fontFamilyHeading,
+                                            color: GlobalStyles.primaryMain,
+                                            fontSize: 42.sp,
+                                            fontWeight:
+                                                GlobalStyles.fontWeightBold,
+                                            letterSpacing:
+                                                GlobalStyles.letterSpacingH1,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  Text(
+                                    "Sign in to continue",
+                                    style: TextStyle(
+                                      fontFamily: GlobalStyles.fontFamilyBody,
+                                      fontSize: GlobalStyles.fontSizeBody1,
+                                      color: GlobalStyles.textTertiary,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
 
-                        SizedBox(height: middleSpacingHeight),
-                        SizedBox(height: 70.h),
+                          SizedBox(height: isKeyboardVisible ? 30.h : 60.h),
 
-                        // Email Field
-                        _buildInputLabel("Email"),
-                        SizedBox(height: 8.h),
-                        AuthWidgetUtils.buildTextField(
-                          controller: _emailController,
-                          focusNode: _emailFocusNode,
-                          hintText: "Enter your email",
-                          keyboardType: TextInputType.emailAddress,
-                          hasError: _emailError != null,
-                        ),
-                        if (_emailError != null) ...[
+                          // Email Field
+                          _buildInputLabel("Email"),
                           SizedBox(height: 8.h),
-                          AuthWidgetUtils.buildErrorText(_emailError!),
-                        ],
+                          AuthWidgetUtils.buildTextField(
+                            controller: _emailController,
+                            focusNode: _emailFocusNode,
+                            hintText: "Enter your email",
+                            keyboardType: TextInputType.emailAddress,
+                            hasError: _emailError != null,
+                          ),
+                          if (_emailError != null) ...[
+                            SizedBox(height: 8.h),
+                            AuthWidgetUtils.buildErrorText(_emailError!),
+                          ],
 
-                        SizedBox(height: 24.h),
+                          SizedBox(height: 24.h),
 
-                        // Password Field
-                        _buildInputLabel("Password"),
-                        SizedBox(height: 8.h),
-                        AuthWidgetUtils.buildTextField(
-                          controller: _passwordController,
-                          focusNode: _passwordFocusNode,
-                          hintText: "Enter your password",
-                          obscureText: !_isPasswordVisible,
-                          hasError: _passwordError != null,
-                          suffixIcon:
-                              AuthWidgetUtils.buildPasswordVisibilityToggle(
-                                isVisible: _isPasswordVisible,
-                                onPressed: () {
-                                  setState(() {
-                                    _isPasswordVisible = !_isPasswordVisible;
-                                  });
+                          // Password Field
+                          _buildInputLabel("Password"),
+                          SizedBox(height: 8.h),
+                          AuthWidgetUtils.buildTextField(
+                            controller: _passwordController,
+                            focusNode: _passwordFocusNode,
+                            hintText: "Enter your password",
+                            obscureText: !_isPasswordVisible,
+                            hasError: _passwordError != null,
+                            suffixIcon:
+                                AuthWidgetUtils.buildPasswordVisibilityToggle(
+                                  isVisible: _isPasswordVisible,
+                                  onPressed: () {
+                                    setState(() {
+                                      _isPasswordVisible = !_isPasswordVisible;
+                                    });
+                                  },
+                                ),
+                          ),
+                          if (_passwordError != null) ...[
+                            SizedBox(height: 8.h),
+                            AuthWidgetUtils.buildErrorText(_passwordError!),
+                          ],
+
+                          SizedBox(height: 10.h),
+
+                          // Remember Me & Forgot Password
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              AuthWidgetUtils.buildRememberMeCheckbox(
+                                isChecked: _rememberMe,
+                                onChanged: () {
+                                  setState(() => _rememberMe = !_rememberMe);
                                 },
                               ),
-                        ),
-                        if (_passwordError != null) ...[
-                          SizedBox(height: 8.h),
-                          AuthWidgetUtils.buildErrorText(_passwordError!),
-                        ],
-
-                        SizedBox(height: 10.h),
-
-                        // Remember Me & Forgot Password
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            AuthWidgetUtils.buildRememberMeCheckbox(
-                              isChecked: _rememberMe,
-                              onChanged: () {
-                                setState(() => _rememberMe = !_rememberMe);
-                              },
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const ForgotPassword(),
+                              TextButton(
+                                onPressed: () {
+                                  HapticFeedback.selectionClick();
+                                  Navigator.push(
+                                    context,
+                                    PageRouteBuilder(
+                                      pageBuilder:
+                                          (
+                                            context,
+                                            animation,
+                                            secondaryAnimation,
+                                          ) => const ForgotPassword(),
+                                      transitionsBuilder: (
+                                        context,
+                                        animation,
+                                        secondaryAnimation,
+                                        child,
+                                      ) {
+                                        const begin = Offset(1.0, 0.0);
+                                        const end = Offset.zero;
+                                        const curve = Curves.easeInOutCubic;
+                                        var tween = Tween(
+                                          begin: begin,
+                                          end: end,
+                                        ).chain(CurveTween(curve: curve));
+                                        var offsetAnimation = animation.drive(
+                                          tween,
+                                        );
+                                        return SlideTransition(
+                                          position: offsetAnimation,
+                                          child: child,
+                                        );
+                                      },
+                                      transitionDuration: const Duration(
+                                        milliseconds: 350,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: TextButton.styleFrom(
+                                  minimumSize: Size.zero,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: GlobalStyles.spacingSm,
+                                    vertical: GlobalStyles.spacingXs,
                                   ),
-                                );
-                              },
-                              style: TextButton.styleFrom(
-                                minimumSize: Size.zero,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: GlobalStyles.spacingSm,
-                                  vertical: GlobalStyles.spacingXs,
+                                  overlayColor: GlobalStyles.primaryLight
+                                      .withOpacity(0.1),
+                                ),
+                                child: Text(
+                                  "Forgot password?",
+                                  style: TextStyle(
+                                    fontFamily: GlobalStyles.fontFamilyBody,
+                                    color: GlobalStyles.primaryMain,
+                                    fontWeight: GlobalStyles.fontWeightSemiBold,
+                                    fontSize: GlobalStyles.fontSizeBody2,
+                                  ),
                                 ),
                               ),
-                              child: Text(
-                                "Forgot password?",
-                                style: TextStyle(
-                                  fontFamily: GlobalStyles.fontFamilyBody,
-                                  color: GlobalStyles.primaryMain,
-                                  fontWeight: GlobalStyles.fontWeightSemiBold,
-                                  fontSize: GlobalStyles.fontSizeBody2,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        SizedBox(height: 10.h),
-
-                        // Sign In Button
-                        _isLoading
-                            ? AuthWidgetUtils.buildLoadingButton()
-                            : AuthWidgetUtils.buildPrimaryButton(
-                              onPressed: _handleSignIn,
-                              text: "Sign in",
-                            ),
-
-                        // Extra space at bottom when keyboard is visible
-                        if (isKeyboardVisible) SizedBox(height: 40.h),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Don't have an account section
-                AnimatedOpacity(
-                  opacity: isKeyboardVisible ? 0.0 : 1.0,
-                  duration: const Duration(milliseconds: 250),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    height: isKeyboardVisible ? 0 : null,
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(vertical: 30.h),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Don't have an account? ",
-                            style: TextStyle(
-                              fontFamily: GlobalStyles.fontFamilyBody,
-                              color: GlobalStyles.textSecondary,
-                              fontSize: GlobalStyles.fontSizeBody2,
-                            ),
+                            ],
                           ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pushNamed(context, '/signup');
-                            },
-                            child: Text(
-                              "Sign Up",
-                              style: TextStyle(
-                                fontFamily: GlobalStyles.fontFamilyBody,
-                                color: GlobalStyles.primaryMain,
-                                fontWeight: GlobalStyles.fontWeightBold,
-                                fontSize: GlobalStyles.fontSizeBody2,
-                                decoration: TextDecoration.underline,
-                                decorationColor: GlobalStyles.primaryMain,
+
+                          SizedBox(height: 10.h),
+
+                          // Sign In Button
+                          _isLoading
+                              ? AuthWidgetUtils.buildLoadingButton()
+                              : AuthWidgetUtils.buildPrimaryButton(
+                                onPressed: _handleSignIn,
+                                text: "Sign in",
                               ),
-                            ),
-                          ),
+
+                          // Extra space at bottom when keyboard is visible
+                          if (isKeyboardVisible) SizedBox(height: 40.h),
                         ],
                       ),
                     ),
                   ),
-                ),
-              ],
+
+                  // Don't have an account section
+                  AnimatedOpacity(
+                    opacity: isKeyboardVisible ? 0.0 : 1.0,
+                    duration: const Duration(milliseconds: 250),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      height: isKeyboardVisible ? 0 : null,
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 30.h),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "Don't have an account? ",
+                              style: TextStyle(
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                                color: GlobalStyles.textSecondary,
+                                fontSize: GlobalStyles.fontSizeBody2,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                Navigator.pushNamed(context, '/signup');
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 4.w,
+                                  vertical: 2.h,
+                                ),
+                                child: Text(
+                                  "Sign Up",
+                                  style: TextStyle(
+                                    fontFamily: GlobalStyles.fontFamilyBody,
+                                    color: GlobalStyles.primaryMain,
+                                    fontWeight: GlobalStyles.fontWeightBold,
+                                    fontSize: GlobalStyles.fontSizeBody2,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: GlobalStyles.primaryMain,
+                                    decorationThickness: 2.0,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

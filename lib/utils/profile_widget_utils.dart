@@ -41,66 +41,80 @@ class ProfileWidgetUtils {
     required String subtitle,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-      child: Container(
-        margin: EdgeInsets.only(bottom: 12.h),
-        padding: EdgeInsets.all(GlobalStyles.paddingTight),
-        decoration: BoxDecoration(
-          color: GlobalStyles.surfaceMain,
-          borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-          border: Border.all(
-            color: GlobalStyles.inputBorderColor.withOpacity(0.3),
-            width: 1,
-          ),
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      decoration: BoxDecoration(
+        color: GlobalStyles.surfaceMain,
+        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+        border: Border.all(
+          color: GlobalStyles.inputBorderColor.withValues(alpha: 0.3),
+          width: 1,
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(10.w),
-              decoration: BoxDecoration(
-                color: GlobalStyles.primaryMain.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
-              ),
-              child: Icon(
-                icon,
-                color: GlobalStyles.primaryMain,
-                size: GlobalStyles.iconSizeMd,
-              ),
-            ),
-            SizedBox(width: GlobalStyles.spacingMd),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: GlobalStyles.textPrimary,
-                      fontSize: GlobalStyles.fontSizeBody2,
-                      fontWeight: GlobalStyles.fontWeightSemiBold,
-                      fontFamily: GlobalStyles.fontFamilyBody,
-                    ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+          splashColor: GlobalStyles.primaryMain.withValues(alpha: 0.08),
+          highlightColor: GlobalStyles.primaryMain.withValues(alpha: 0.04),
+          child: Padding(
+            padding: EdgeInsets.all(GlobalStyles.paddingTight),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10.w),
+                  decoration: BoxDecoration(
+                    color: GlobalStyles.primaryMain.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
                   ),
-                  SizedBox(height: 2.h),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: GlobalStyles.textSecondary,
-                      fontSize: GlobalStyles.fontSizeCaption,
-                      fontFamily: GlobalStyles.fontFamilyBody,
-                    ),
+                  child: Icon(
+                    icon,
+                    color: GlobalStyles.primaryMain,
+                    size: GlobalStyles.iconSizeMd,
                   ),
-                ],
-              ),
+                ),
+                SizedBox(width: GlobalStyles.spacingMd),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: GlobalStyles.textPrimary,
+                          fontSize: GlobalStyles.fontSizeBody2,
+                          fontWeight: GlobalStyles.fontWeightSemiBold,
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: GlobalStyles.textSecondary,
+                          fontSize: GlobalStyles.fontSizeCaption,
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  LucideIcons.chevronRight,
+                  color: GlobalStyles.textTertiary,
+                  size: GlobalStyles.iconSizeSm,
+                ),
+              ],
             ),
-            Icon(
-              LucideIcons.chevronRight,
-              color: GlobalStyles.textTertiary,
-              size: GlobalStyles.iconSizeSm,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -112,25 +126,44 @@ class ProfileWidgetUtils {
     required Color color,
     double size = 120,
   }) {
-    return Container(
-      width: size.w,
-      height: size.w,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color.withValues(alpha: 0.15),
-        border: Border.all(
-          color: GlobalStyles.surfaceMain.withValues(alpha: 0.1),
-          width: 2,
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) {
+        return Transform.scale(scale: value, child: child);
+      },
+      child: Container(
+        width: size.w,
+        height: size.w,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              color.withValues(alpha: 0.2),
+              color.withValues(alpha: 0.15),
+              color.withValues(alpha: 0.1),
+            ],
+            stops: const [0.0, 0.7, 1.0],
+          ),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 3),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.2),
+              blurRadius: 20,
+              spreadRadius: 2,
+            ),
+          ],
         ),
-      ),
-      child: Center(
-        child: Text(
-          initial,
-          style: TextStyle(
-            color: color,
-            fontSize: (size * 0.48).sp,
-            fontWeight: GlobalStyles.fontWeightBold,
-            fontFamily: GlobalStyles.fontFamilyHeading,
+        child: Center(
+          child: Text(
+            initial,
+            style: TextStyle(
+              color: color,
+              fontSize: (size * 0.48).sp,
+              fontWeight: GlobalStyles.fontWeightBold,
+              fontFamily: GlobalStyles.fontFamilyHeading,
+            ),
           ),
         ),
       ),
@@ -140,16 +173,43 @@ class ProfileWidgetUtils {
   /// Builds a section header for settings
   static Widget buildSectionHeader(String title) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 10.h),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: GlobalStyles.primaryMain,
-          fontSize: GlobalStyles.fontSizeBody1,
-          fontWeight: GlobalStyles.fontWeightBold,
-          fontFamily: GlobalStyles.fontFamilyHeading,
-        ),
-        textAlign: TextAlign.left,
+      padding: EdgeInsets.only(bottom: 12.h, top: 4.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: GlobalStyles.primaryMain,
+              fontSize: GlobalStyles.fontSizeBody1,
+              fontWeight: GlobalStyles.fontWeightBold,
+              fontFamily: GlobalStyles.fontFamilyHeading,
+              letterSpacing: 0.3,
+            ),
+            textAlign: TextAlign.left,
+          ),
+          SizedBox(height: 6.h),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOut,
+            builder: (context, value, child) {
+              return Container(
+                height: 3.h,
+                width: 40.w * value,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      GlobalStyles.primaryMain,
+                      GlobalStyles.primaryMain.withValues(alpha: 0.4),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

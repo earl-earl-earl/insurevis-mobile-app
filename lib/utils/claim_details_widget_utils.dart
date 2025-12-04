@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:insurevis/models/insurevis_models.dart';
 import 'package:insurevis/utils/claim_details_handler_utils.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Utilities for building claim details UI widgets
 class ClaimDetailsWidgetUtils {
@@ -98,33 +99,49 @@ class ClaimDetailsWidgetUtils {
               ),
         );
       },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10.r),
-          border: Border.all(color: color.withValues(alpha: 0.5)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${isCarCompany ? 'Car Company' : 'Insurance Company'}: $text',
-              style: TextStyle(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-            if (note != null && note.trim().isNotEmpty) ...[
-              SizedBox(width: GlobalStyles.paddingTight),
-              Icon(
-                Icons.info,
-                size: 10.sp,
-                color: color.withValues(alpha: 0.7),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.95, end: 1.0),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        builder: (context, scale, child) {
+          return Transform.scale(scale: scale, child: child);
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10.r),
+            border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.15),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
             ],
-          ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${isCarCompany ? 'Car Company' : 'Insurance Company'}: $text',
+                style: TextStyle(
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              if (note != null && note.trim().isNotEmpty) ...[
+                SizedBox(width: 4.w),
+                Icon(
+                  Icons.info_outline,
+                  size: 12.sp,
+                  color: color.withValues(alpha: 0.8),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -239,16 +256,40 @@ class ClaimDetailsWidgetUtils {
 
   /// Build document category header
   static Widget buildDocumentCategoryHeader(String category) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      child: Text(
-        ClaimDetailsHandlerUtils.getDocumentCategoryDisplayName(category),
-        style: TextStyle(
-          fontSize: GlobalStyles.fontSizeBody1,
-          fontWeight: GlobalStyles.fontWeightSemiBold,
-          fontFamily: GlobalStyles.fontFamilyHeading,
-          color: GlobalStyles.textPrimary,
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            GlobalStyles.primaryMain.withValues(alpha: 0.08),
+            GlobalStyles.primaryMain.withValues(alpha: 0.02),
+          ],
         ),
+        borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
+        border: Border(
+          left: BorderSide(color: GlobalStyles.primaryMain, width: 3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            LucideIcons.fileText,
+            size: GlobalStyles.iconSizeSm,
+            color: GlobalStyles.primaryMain,
+          ),
+          SizedBox(width: 8.w),
+          Text(
+            ClaimDetailsHandlerUtils.getDocumentCategoryDisplayName(category),
+            style: TextStyle(
+              fontSize: GlobalStyles.fontSizeBody1,
+              fontWeight: GlobalStyles.fontWeightSemiBold,
+              fontFamily: GlobalStyles.fontFamilyHeading,
+              color: GlobalStyles.textPrimary,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
       ),
     );
   }

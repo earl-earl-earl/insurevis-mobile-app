@@ -1,0 +1,484 @@
+================================================================================
+INSUREVIS - UI/UX & LAYOUT DESIGN PATTERN INSTRUCTIONS
+================================================================================
+Project: InsureVis - AI-Powered Vehicle Assessment Insurance App
+Framework: Flutter (Dart)
+Purpose: Guide for implementing consistent UI/UX patterns and layouts
+================================================================================
+
+CORE PRINCIPLE: Follow the established patterns to maintain consistency,
+enhance user experience, and ensure smooth, polished interactions throughout
+the application.
+
+================================================================================
+1. ANIMATION PATTERNS
+================================================================================
+
+ENTRY ANIMATIONS (Use on all new screens)
+------------------------------------------
+REQUIRED:
+- FadeTransition: Overall screen fade-in (600ms, Curves.easeOut)
+- SlideTransition: Content slide-up (800ms, Curves.easeOutCubic, Offset(0, 0.1))
+- Staggered delays: Each element delayed by 100-200ms
+
+IMPLEMENTATION TEMPLATE:
+```dart
+late AnimationController _fadeController;
+late AnimationController _slideController;
+late Animation<double> _fadeAnimation;
+late Animation<Offset> _slideAnimation;
+
+@override
+void initState() {
+  super.initState();
+  _fadeController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  );
+  _slideController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 800),
+  );
+  
+  _fadeAnimation = CurvedAnimation(
+    parent: _fadeController,
+    curve: Curves.easeOut,
+  );
+  _slideAnimation = Tween<Offset>(
+    begin: const Offset(0, 0.1),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(
+    parent: _slideController,
+    curve: Curves.easeOutCubic,
+  ));
+  
+  Future.delayed(const Duration(milliseconds: 100), () {
+    if (mounted) {
+      _fadeController.forward();
+      _slideController.forward();
+    }
+  });
+}
+```
+
+INTERACTION ANIMATIONS
+----------------------
+PRESS EFFECTS:
+- Scale down on press: AnimatedScale (scale: 0.96, 100ms)
+- Ripple effect: Use InkWell with splashColor and highlightColor
+- Haptic feedback: HapticFeedback.lightImpact() on tap
+
+LIST ITEM ANIMATIONS:
+- Use TweenAnimationBuilder for staggered entry
+- Delay = 400ms + (index * 100ms)
+- Offset: (0, (1 - value) * 30) for slide-up effect
+
+LOADING ANIMATIONS:
+- CircularProgressIndicator with branded color
+- AnimatedSwitcher for loading state transitions
+- Duration: 300ms with ScaleTransition
+
+
+================================================================================
+2. LAYOUT PATTERNS
+================================================================================
+
+SCREEN STRUCTURE (Apply to all screens)
+----------------------------------------
+REQUIRED LAYERS:
+1. Scaffold with backgroundColor: GlobalStyles.backgroundMain
+2. SafeArea for proper spacing
+3. FadeTransition + SlideTransition wrapper
+4. SingleChildScrollView for scrollable content
+5. Padding: EdgeInsets.all(16.w) or symmetric(horizontal: 20.w)
+
+TEMPLATE:
+```dart
+Scaffold(
+  backgroundColor: GlobalStyles.backgroundMain,
+  appBar: AppBar(...),
+  body: SafeArea(
+    child: FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.all(16.w),
+          child: Column(/* content */),
+        ),
+      ),
+    ),
+  ),
+)
+```
+
+CARD LAYOUTS
+------------
+INFORMATION CARDS:
+- Container with padding: EdgeInsets.all(16.w)
+- BorderRadius: BorderRadius.circular(GlobalStyles.radiusMd)
+- Gradient background: LinearGradient with alpha: 0.08 to 0.02
+- Border: Border.all(color: primaryColor.withValues(alpha: 0.1))
+
+STATUS CARDS:
+- Icon + content layout in Row
+- Icon container: padding 12.w, borderRadius 12.r, color.withValues(alpha: 0.15)
+- Content in Expanded Column
+- Status badge with borderRadius 6.r
+
+ACTION CARDS:
+- Material widget with elevation: 2
+- InkWell for tap interaction
+- Padding: 16.w
+- Ripple effect with status color
+
+SPACING STANDARDS
+-----------------
+VERTICAL SPACING:
+- Between major sections: 24.h
+- Between form fields: 20.h
+- Between label and input: 8.h
+- Between error and field: 8.h
+- Screen top padding (keyboard visible): 16.h
+- Screen top padding (no keyboard): 40.h
+
+HORIZONTAL PADDING:
+- Screen edges: 16.w or 20.w
+- Card internal: 16.w
+- Button text: GlobalStyles.paddingNormal
+
+
+================================================================================
+3. FORM & INPUT PATTERNS
+================================================================================
+
+TEXT FIELDS (Use AuthWidgetUtils.buildTextField or follow this pattern)
+------------------------------------------------------------------------
+STANDARD STRUCTURE:
+- Container with boxShadow: [GlobalStyles.shadowSm]
+- BorderRadius: GlobalStyles.inputBorderRadius
+- contentPadding: EdgeInsets.symmetric(vertical: 18.h, horizontal: paddingNormal)
+- fillColor: GlobalStyles.surfaceMain
+- Error state: red border (1.5.w), focused border (1.5.w)
+
+INPUT LABEL:
+- Use AuthWidgetUtils.buildInputLabel(text, required: bool)
+- Font: GlobalStyles.fontFamilyBody
+- Color: GlobalStyles.textTertiary
+- Size: GlobalStyles.fontSizeBody2
+- Required fields: Add red asterisk (*)
+
+ERROR DISPLAY:
+- Use AuthWidgetUtils.buildErrorText()
+- Icon: LucideIcons.circleAlert (iconSizeXs)
+- Color: GlobalStyles.errorMain
+- Font size: fontSizeCaption
+
+MULTI-STEP FORMS
+----------------
+STEP INDICATORS:
+- Show current step: "Step 1/2" or visual progress bar
+- Animate transitions with SlideTransition
+- Duration: 400ms, Curves.easeInOutCubic
+- Offset: begin Offset(-1.0, 0.0) for left slide
+
+VALIDATION:
+- Real-time validation on input change
+- Visual indicators (border color, icons)
+- Error messages below fields
+- Disable submit until valid
+
+
+================================================================================
+4. FEEDBACK PATTERNS
+================================================================================
+
+LOADING STATES
+--------------
+BUTTON LOADING:
+- AnimatedSwitcher for state change
+- CircularProgressIndicator: height 20.sp, width 20.sp, strokeWidth: 2.5
+- Color: white for primary buttons
+- Disable button interaction during loading
+
+SCREEN LOADING:
+- Full-screen: CircularProgressIndicator centered
+- List loading: Skeleton tiles (6 items)
+- Inline loading: Small spinner with text
+
+SKELETON SCREENS:
+- Container with color: textDisabled.withValues(alpha: 0.3)
+- BorderRadius: radiusSm
+- Shimmer effect optional
+
+SUCCESS/ERROR FEEDBACK
+---------------------
+SNACKBARS (Use AuthWidgetUtils.showSnackBar):
+- Icon + text in Row
+- Icons: LucideIcons.circleCheck (success), LucideIcons.circleAlert (error)
+- Background: successMain or errorMain
+- Behavior: SnackBarBehavior.floating
+- BorderRadius: radiusMd
+- Margin: EdgeInsets.all(paddingNormal)
+- Duration: 3 seconds default
+
+HAPTIC FEEDBACK:
+- Light tap: HapticFeedback.lightImpact()
+- Button press: HapticFeedback.selectionClick()
+- Error: HapticFeedback.mediumImpact()
+- Success: HapticFeedback.heavyImpact()
+
+PROGRESS INDICATORS:
+- Linear: Container with height 6.h, gradient fill
+- Circular: percentage text below
+- Color: primaryMain with gradient to primaryLight
+
+
+================================================================================
+5. NAVIGATION PATTERNS
+================================================================================
+
+PAGE TRANSITIONS
+----------------
+PUSH NAVIGATION:
+- PageRouteBuilder with SlideTransition
+- Offset: begin Offset(1.0, 0.0) for right-to-left
+- Curve: Curves.easeInOutCubic
+- Duration: 350ms
+
+POP NAVIGATION:
+- Navigator.pop() for standard back
+- WillPopScope for unsaved changes dialog
+- Confirm discard with AlertDialog
+
+STACK MANAGEMENT:
+- pushNamedAndRemoveUntil: For auth flow to home
+- pushReplacement: For lateral navigation
+- pushNamed: For standard navigation
+
+HERO ANIMATIONS:
+- Hero widget with unique tag
+- Shared elements: App logo, profile avatar, claim cards
+- Tag format: 'element_type_id' (e.g., 'claim_abc123')
+
+
+================================================================================
+6. RESPONSIVE DESIGN PATTERNS
+================================================================================
+
+KEYBOARD AWARENESS
+------------------
+DETECTION:
+```dart
+final bool isKeyboardVisible = 
+  MediaQuery.of(context).viewInsets.bottom > 0;
+```
+
+ADJUSTMENTS:
+- Reduce top spacing: 10.h instead of 30.h
+- Hide bottom sections: AnimatedOpacity (opacity: 0.0)
+- AnimatedContainer for smooth transitions
+- Duration: 300ms
+
+SCREEN SIZE ADAPTATION
+----------------------
+USE flutter_screenutil:
+- .sp for font sizes
+- .w for widths
+- .h for heights
+- .r for border radius
+
+FLEXIBLE LAYOUTS:
+- Expanded widgets for proportional sizing
+- Flexible for weighted distribution
+- MediaQuery.of(context).size for breakpoints
+
+
+================================================================================
+7. WIDGET COMPOSITION PATTERNS
+================================================================================
+
+BUILDER PATTERN (Create reusable widget builders in utils)
+----------------------------------------------------------
+STANDARD STRUCTURE:
+```dart
+class FeatureWidgetUtils {
+  static Widget buildComponentName({
+    required param1,
+    bool optional = false,
+  }) {
+    return Container(/* implementation */);
+  }
+}
+```
+
+COMMON BUILDERS TO CREATE:
+- buildTextField(): Consistent text inputs
+- buildPrimaryButton(): Standard action button
+- buildCard(): Information cards
+- buildIcon(): Status-based icons
+- buildEmptyState(): Empty state placeholders
+
+ANIMATED WRAPPER PATTERN
+------------------------
+WRAP CONTENT FOR ENTRY:
+```dart
+TweenAnimationBuilder<double>(
+  tween: Tween(begin: 0.0, end: 1.0),
+  duration: Duration(milliseconds: 600),
+  curve: Curves.easeOut,
+  builder: (context, value, child) {
+    return Transform.translate(
+      offset: Offset(0, (1 - value) * 20),
+      child: Opacity(opacity: value, child: child),
+    );
+  },
+  child: YourContent(),
+)
+```
+
+
+================================================================================
+8. COLOR & THEMING PATTERNS
+================================================================================
+
+COLOR USAGE (Always use GlobalStyles)
+--------------------------------------
+STATUS COLORS:
+- Success: GlobalStyles.successMain
+- Error: GlobalStyles.errorMain
+- Warning: GlobalStyles.warningMain
+- Info: GlobalStyles.infoMain
+
+TEXT HIERARCHY:
+- Primary: GlobalStyles.textPrimary (headings, important)
+- Secondary: GlobalStyles.textSecondary (body text)
+- Tertiary: GlobalStyles.textTertiary (hints, captions)
+- Disabled: GlobalStyles.textDisabled
+
+BACKGROUNDS:
+- Main: GlobalStyles.backgroundMain
+- Surface: GlobalStyles.surfaceMain
+- Elevated: GlobalStyles.surfaceElevated
+
+TRANSPARENCY USAGE:
+- Subtle backgrounds: .withValues(alpha: 0.08 to 0.1)
+- Borders: .withValues(alpha: 0.1 to 0.2)
+- Overlays: .withValues(alpha: 0.3 to 0.5)
+
+TYPOGRAPHY
+----------
+HIERARCHY:
+- H1: fontSizeH1 (32.sp) - Hero text
+- H2: fontSizeH2 (28.sp) - Screen titles
+- H3: fontSizeH3 (24.sp) - Section headers
+- H4: fontSizeH4 (20.sp) - Card headers
+- H5: fontSizeH5 (18.sp) - Subsections
+- H6: fontSizeH6 (16.sp) - Labels
+- Body1: fontSizeBody1 (16.sp) - Primary body
+- Body2: fontSizeBody2 (14.sp) - Secondary body
+- Caption: fontSizeCaption (12.sp) - Hints, labels
+
+WEIGHTS:
+- Bold: fontWeightBold (700) - Headings
+- SemiBold: fontWeightSemiBold (600) - Important text
+- Medium: fontWeightMedium (500) - Labels
+- Regular: fontWeightRegular (400) - Body
+
+
+================================================================================
+9. ACCESSIBILITY PATTERNS
+================================================================================
+
+TOUCH TARGETS
+-------------
+MINIMUM SIZE:
+- Buttons: 48.h minimum height
+- Icons: 44.w x 44.h minimum
+- List items: 56.h minimum
+
+SPACING:
+- Between tappable elements: 8.w minimum
+- Around primary actions: 16.w
+
+VISUAL FEEDBACK
+---------------
+ALWAYS PROVIDE:
+- Color changes on press
+- Scale animation on interaction
+- Loading states for async operations
+- Success/error confirmation
+- Haptic feedback for important actions
+
+
+================================================================================
+10. COMMON COMPONENTS CHECKLIST
+================================================================================
+
+EVERY NEW SCREEN MUST HAVE:
+- [ ] Entry animations (fade + slide)
+- [ ] Responsive spacing (keyboard awareness)
+- [ ] Proper SafeArea usage
+- [ ] Loading states
+- [ ] Error handling with user feedback
+- [ ] Consistent color scheme from GlobalStyles
+- [ ] Proper resource disposal (dispose method)
+
+FORMS MUST HAVE:
+- [ ] Real-time validation
+- [ ] Error messages below fields
+- [ ] Loading button state
+- [ ] Keyboard-aware layout
+- [ ] Focus management
+- [ ] Success/error feedback
+
+LISTS MUST HAVE:
+- [ ] Pull-to-refresh
+- [ ] Empty state placeholder
+- [ ] Loading skeleton
+- [ ] Staggered entry animations
+- [ ] Tap feedback
+
+CARDS MUST HAVE:
+- [ ] Consistent padding (16.w)
+- [ ] Rounded corners (radiusMd)
+- [ ] Subtle background gradient
+- [ ] Clear visual hierarchy
+- [ ] Tap feedback if interactive
+
+
+================================================================================
+QUICK REFERENCE
+================================================================================
+
+ANIMATION DURATIONS:
+- Entry fade: 600ms
+- Entry slide: 800ms
+- Press scale: 100ms
+- State transition: 300ms
+- Navigation: 350ms
+
+STANDARD SPACING:
+- Screen padding: 16.w or 20.w
+- Section gap: 24.h
+- Field gap: 20.h
+- Label-input gap: 8.h
+
+BORDER RADIUS:
+- Buttons: buttonBorderRadius (12.r)
+- Cards: radiusMd (12.r)
+- Inputs: inputBorderRadius (12.r)
+- Small elements: radiusSm (8.r)
+- Pills: radiusFull (9999.r)
+
+ICON SIZES:
+- Extra small: iconSizeXs (14.sp)
+- Small: iconSizeSm (18.sp)
+- Medium: iconSizeMd (20.sp)
+- Large: iconSizeLg (24.sp)
+- Extra large: iconSizeXl (32.sp)
+
+================================================================================
+END OF INSTRUCTIONS
+================================================================================

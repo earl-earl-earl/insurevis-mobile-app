@@ -23,19 +23,48 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 
-class _HomeState extends State<Home> with WidgetsBindingObserver {
+class _HomeState extends State<Home>
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   List<ClaimModel> _recentClaims = [];
   bool _isLoading = false;
   Timer? _refreshTimer;
   StreamSubscription<AuthState>? _authStreamSub;
   StreamSubscription<dynamic>? _claimsStreamSub;
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Initialize animation controllers
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeHomeClaims();
+      _fadeController.forward();
+      _slideController.forward();
     });
   }
 
@@ -69,6 +98,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     _refreshTimer?.cancel();
     _authStreamSub?.cancel();
     _claimsStreamSub?.cancel();
+    _fadeController.dispose();
+    _slideController.dispose();
     super.dispose();
   }
 
@@ -226,7 +257,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: GlobalStyles.surfaceMain,
+        backgroundColor: GlobalStyles.backgroundMain,
         automaticallyImplyLeading: false,
         title: RichText(
           text: TextSpan(
@@ -309,246 +340,297 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           SizedBox(width: GlobalStyles.paddingTight),
         ],
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 12.h),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                // Material feature card
-                _buildActionButton(
-                  icon: LucideIcons.camera,
-                  label: "Scan Image",
-                  iconColor: GlobalStyles.primaryMain,
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/gallery');
-                  },
-                ),
-                SizedBox(width: GlobalStyles.paddingTight),
-                // _buildActionButton(
-                //   icon: Icons.description_rounded,
-                //   label: "File Claim",
-                //   iconColor: Colors.green,
-                //   onPressed: () {
-                //     Navigator.pushNamed(context, '/claim_create');
-                //   },
-                // ),
-                // SizedBox(width: 15.w),
-                _buildActionButton(
-                  icon: LucideIcons.clipboardList,
-                  label: "Make Assessment",
-                  iconColor: GlobalStyles.accent1,
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/vehicle_info');
-                  },
-                ),
-                SizedBox(width: GlobalStyles.paddingTight),
-                _buildActionButton(
-                  icon: LucideIcons.info,
-                  label: "View FAQs",
-                  iconColor: GlobalStyles.accent2,
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/faq');
-                  },
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: GlobalStyles.spacingLg),
-          Container(
-            height: GlobalStyles.spacingSm,
-            color: GlobalStyles.backgroundAlternative,
-          ),
-          SizedBox(height: GlobalStyles.paddingTight),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(
-              horizontal: GlobalStyles.paddingTight,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Recent Claims",
-                      style: TextStyle(
-                        fontSize: GlobalStyles.fontSizeH4,
-                        fontWeight: GlobalStyles.fontWeightBold,
-                        fontFamily: GlobalStyles.fontFamilyHeading,
-                      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: RefreshIndicator(
+            onRefresh: _syncWithServer,
+            color: GlobalStyles.primaryMain,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: 16.w,
+                      right: 16.w,
+                      top: 20.h,
+                      bottom: 8.h,
                     ),
-                    // Add a "View All" button that navigates to the claims screen
-                  ],
-                ),
-                SizedBox(height: 12.h),
-
-                // Claims loading and display
-                if (_isLoading && _recentClaims.isEmpty) ...[
-                  SizedBox(
-                    height: 60.h,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: GlobalStyles.primaryMain,
-                        strokeWidth: 2.0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        // Material feature card
+                        _ActionButtonAnimated(
+                          delay: 0,
+                          icon: LucideIcons.camera,
+                          label: "Scan Image",
+                          iconColor: GlobalStyles.primaryMain,
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/gallery');
+                          },
+                        ),
+                        SizedBox(width: GlobalStyles.paddingTight),
+                        _ActionButtonAnimated(
+                          delay: 100,
+                          icon: LucideIcons.clipboardList,
+                          label: "Make Assessment",
+                          iconColor: GlobalStyles.accent1,
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/vehicle_info');
+                          },
+                        ),
+                        SizedBox(width: GlobalStyles.paddingTight),
+                        _ActionButtonAnimated(
+                          delay: 200,
+                          icon: LucideIcons.info,
+                          label: "View FAQs",
+                          iconColor: GlobalStyles.accent2,
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/faq');
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24.h),
+                  Container(
+                    height: 1,
+                    margin: EdgeInsets.symmetric(horizontal: 16.w),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          GlobalStyles.textDisabled.withValues(alpha: 0.0),
+                          GlobalStyles.textDisabled.withValues(alpha: 0.1),
+                          GlobalStyles.textDisabled.withValues(alpha: 0.0),
+                        ],
                       ),
                     ),
                   ),
-                ] else if (_recentClaims.isEmpty) ...[
-                  // Empty state
-                  if (!SupabaseService.isSignedIn) ...[
-                    // Sign-in CTA for non-authenticated users
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(16.w),
-                      decoration: BoxDecoration(
-                        color: GlobalStyles.primaryMain.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(
-                          GlobalStyles.radiusMd,
-                        ),
-                        border: Border.all(
-                          color: GlobalStyles.primaryMain.withValues(
-                            alpha: 0.1,
-                          ),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            LucideIcons.logIn,
-                            size: GlobalStyles.iconSizeXl,
-                            color: GlobalStyles.primaryMain,
-                          ),
-                          SizedBox(height: GlobalStyles.paddingTight),
-                          Text(
-                            'Sign in to view your claims',
-                            style: TextStyle(
-                              fontSize: GlobalStyles.fontSizeBody1,
-                              fontWeight: GlobalStyles.fontWeightSemiBold,
-                              color: GlobalStyles.textPrimary,
-                              fontFamily: GlobalStyles.fontFamilyBody,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            'Access your insurance claims and track their status',
-                            style: TextStyle(
-                              fontSize: GlobalStyles.fontSizeBody2,
-                              color: GlobalStyles.textSecondary,
-                              fontFamily: GlobalStyles.fontFamilyBody,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: GlobalStyles.paddingNormal),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/signin');
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: GlobalStyles.primaryMain,
-                              foregroundColor: GlobalStyles.surfaceMain,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: GlobalStyles.paddingNormal,
-                                vertical: GlobalStyles.paddingTight,
+                  SizedBox(height: 24.h),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Recent Claims",
+                              style: TextStyle(
+                                fontSize: GlobalStyles.fontSizeH4,
+                                fontWeight: GlobalStyles.fontWeightBold,
+                                fontFamily: GlobalStyles.fontFamilyHeading,
+                                color: GlobalStyles.textPrimary,
                               ),
-                              shape: RoundedRectangleBorder(
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 10.h),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: const Duration(milliseconds: 600),
+                          curve: Curves.easeOut,
+                          builder: (context, value, child) {
+                            return Container(
+                              height: 3.h,
+                              width: 50.w * value,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    GlobalStyles.primaryMain,
+                                    GlobalStyles.primaryMain.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(2.r),
+                              ),
+                            );
+                          },
+                        ),
+                        SizedBox(height: 16.h),
+
+                        if (_isLoading && _recentClaims.isEmpty) ...[
+                          SizedBox(
+                            height: 60.h,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: GlobalStyles.primaryMain,
+                                strokeWidth: 2.0,
+                              ),
+                            ),
+                          ),
+                        ] else if (_recentClaims.isEmpty) ...[
+                          // Empty state
+                          if (!SupabaseService.isSignedIn) ...[
+                            // Sign-in CTA for non-authenticated users
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.all(16.w),
+                              decoration: BoxDecoration(
+                                color: GlobalStyles.primaryMain.withValues(
+                                  alpha: 0.05,
+                                ),
                                 borderRadius: BorderRadius.circular(
                                   GlobalStyles.radiusMd,
                                 ),
+                                border: Border.all(
+                                  color: GlobalStyles.primaryMain.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    LucideIcons.logIn,
+                                    size: GlobalStyles.iconSizeXl,
+                                    color: GlobalStyles.primaryMain,
+                                  ),
+                                  SizedBox(height: GlobalStyles.paddingTight),
+                                  Text(
+                                    'Sign in to view your claims',
+                                    style: TextStyle(
+                                      fontSize: GlobalStyles.fontSizeBody1,
+                                      fontWeight:
+                                          GlobalStyles.fontWeightSemiBold,
+                                      color: GlobalStyles.textPrimary,
+                                      fontFamily: GlobalStyles.fontFamilyBody,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  Text(
+                                    'Access your insurance claims and track their status',
+                                    style: TextStyle(
+                                      fontSize: GlobalStyles.fontSizeBody2,
+                                      color: GlobalStyles.textSecondary,
+                                      fontFamily: GlobalStyles.fontFamilyBody,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: GlobalStyles.paddingNormal),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pushNamed(context, '/signin');
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: GlobalStyles.primaryMain,
+                                      foregroundColor: GlobalStyles.surfaceMain,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: GlobalStyles.paddingNormal,
+                                        vertical: GlobalStyles.paddingTight,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          GlobalStyles.radiusMd,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Sign In',
+                                      style: TextStyle(
+                                        fontSize: GlobalStyles.fontSizeButton,
+                                        fontWeight:
+                                            GlobalStyles.fontWeightSemiBold,
+                                        fontFamily: GlobalStyles.fontFamilyBody,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            child: Text(
-                              'Sign In',
-                              style: TextStyle(
-                                fontSize: GlobalStyles.fontSizeButton,
-                                fontWeight: GlobalStyles.fontWeightSemiBold,
-                                fontFamily: GlobalStyles.fontFamilyBody,
+                          ] else ...[
+                            // No claims for authenticated user
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.all(16.w),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    LucideIcons.fileText,
+                                    size: GlobalStyles.iconSizeXl,
+                                    color: GlobalStyles.textDisabled,
+                                  ),
+                                  SizedBox(height: GlobalStyles.paddingTight),
+                                  Text(
+                                    'No claims yet',
+                                    style: TextStyle(
+                                      fontSize: GlobalStyles.fontSizeBody1,
+                                      fontWeight:
+                                          GlobalStyles.fontWeightSemiBold,
+                                      color: GlobalStyles.textSecondary,
+                                      fontFamily: GlobalStyles.fontFamilyBody,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  Text(
+                                    'Your insurance claims will appear here',
+                                    style: TextStyle(
+                                      fontSize: GlobalStyles.fontSizeBody2,
+                                      color: GlobalStyles.textTertiary,
+                                      fontFamily: GlobalStyles.fontFamilyBody,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                          ],
+                        ] else ...[
+                          // Display recent claims
+                          Column(
+                            children: [
+                              for (
+                                var i = 0;
+                                i < _recentClaims.length;
+                                i++
+                              ) ...[
+                                _buildClaimTile(_recentClaims[i]),
+                                if (i < _recentClaims.length - 1)
+                                  SizedBox(height: 4.h),
+                              ],
+                            ],
                           ),
                         ],
-                      ),
-                    ),
-                  ] else ...[
-                    // No claims for authenticated user
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(16.w),
-                      child: Column(
-                        children: [
-                          Icon(
-                            LucideIcons.fileText,
-                            size: GlobalStyles.iconSizeXl,
-                            color: GlobalStyles.textDisabled,
-                          ),
-                          SizedBox(height: GlobalStyles.paddingTight),
-                          Text(
-                            'No claims yet',
-                            style: TextStyle(
-                              fontSize: GlobalStyles.fontSizeBody1,
-                              fontWeight: GlobalStyles.fontWeightSemiBold,
-                              color: GlobalStyles.textSecondary,
-                              fontFamily: GlobalStyles.fontFamilyBody,
-                            ),
-                          ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            'Your insurance claims will appear here',
-                            style: TextStyle(
-                              fontSize: GlobalStyles.fontSizeBody2,
-                              color: GlobalStyles.textTertiary,
-                              fontFamily: GlobalStyles.fontFamilyBody,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ] else ...[
-                  // Display recent claims
-                  Column(
-                    children: [
-                      for (var i = 0; i < _recentClaims.length; i++) ...[
-                        _buildClaimTile(_recentClaims[i]),
-                        if (i < _recentClaims.length - 1) SizedBox(height: 4.h),
-                      ],
-                    ],
-                  ),
-                ],
 
-                // Cache indicator for authenticated users (optional)
-                if (SupabaseService.isSignedIn &&
-                    _recentClaims.isNotEmpty &&
-                    !_isLoading) ...[
-                  SizedBox(height: GlobalStyles.paddingTight),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        LucideIcons.wifiOff,
-                        size: GlobalStyles.iconSizeXs,
-                        color: GlobalStyles.successMain,
-                      ),
-                      SizedBox(width: GlobalStyles.spacingXs),
-                      Text(
-                        'Synced with cache',
-                        style: TextStyle(
-                          fontSize: GlobalStyles.fontSizeCaption,
-                          color: GlobalStyles.textSecondary,
-                          fontFamily: GlobalStyles.fontFamilyBody,
-                        ),
-                      ),
-                    ],
+                        // Cache indicator for authenticated users (optional)
+                        if (SupabaseService.isSignedIn &&
+                            _recentClaims.isNotEmpty &&
+                            !_isLoading) ...[
+                          SizedBox(height: GlobalStyles.paddingTight),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                LucideIcons.wifiOff,
+                                size: GlobalStyles.iconSizeXs,
+                                color: GlobalStyles.successMain,
+                              ),
+                              SizedBox(width: GlobalStyles.spacingXs),
+                              Text(
+                                'Synced with cache',
+                                style: TextStyle(
+                                  fontSize: GlobalStyles.fontSizeCaption,
+                                  color: GlobalStyles.textSecondary,
+                                  fontFamily: GlobalStyles.fontFamilyBody,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ],
-              ],
+              ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -560,101 +642,313 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       claim.estimatedDamageCost,
     );
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _navigateToClaimDetails(claim),
         borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClaimsWidgetUtils.buildClaimIcon(claim.status, statusColor),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        claim.claimNumber,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: GlobalStyles.fontSizeBody2,
-                          fontWeight: GlobalStyles.fontWeightSemiBold,
-                          fontFamily: GlobalStyles.fontFamilyBody,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Text(
-                      formattedCurrency,
-                      style: TextStyle(
-                        fontWeight: GlobalStyles.fontWeightBold,
-                        fontSize: GlobalStyles.fontSizeBody2,
-                        color: GlobalStyles.primaryMain,
-                        fontFamily: GlobalStyles.fontFamilyBody,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      formattedStatus,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontSize: GlobalStyles.fontSizeCaption,
-                        fontWeight: GlobalStyles.fontWeightMedium,
-                        fontFamily: GlobalStyles.fontFamilyBody,
-                      ),
-                    ),
-                    Text(
-                      DateFormat.yMMMd().format(claim.createdAt),
-                      style: TextStyle(
-                        color: GlobalStyles.textSecondary,
-                        fontSize: GlobalStyles.fontSizeCaption,
-                        fontFamily: GlobalStyles.fontFamilyBody,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12.r),
           ),
-        ],
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClaimsWidgetUtils.buildClaimIcon(claim.status, statusColor),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            claim.claimNumber,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: GlobalStyles.fontSizeBody2,
+                              fontWeight: GlobalStyles.fontWeightSemiBold,
+                              fontFamily: GlobalStyles.fontFamilyBody,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8.w),
+                        Text(
+                          formattedCurrency,
+                          style: TextStyle(
+                            fontWeight: GlobalStyles.fontWeightBold,
+                            fontSize: GlobalStyles.fontSizeBody2,
+                            color: GlobalStyles.primaryMain,
+                            fontFamily: GlobalStyles.fontFamilyBody,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          formattedStatus,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: GlobalStyles.fontSizeCaption,
+                            fontWeight: GlobalStyles.fontWeightMedium,
+                            fontFamily: GlobalStyles.fontFamilyBody,
+                          ),
+                        ),
+                        Text(
+                          DateFormat.yMMMd().format(claim.createdAt),
+                          style: TextStyle(
+                            color: GlobalStyles.textSecondary,
+                            fontSize: GlobalStyles.fontSizeCaption,
+                            fontFamily: GlobalStyles.fontFamilyBody,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color iconColor,
-    required VoidCallback onPressed,
-  }) {
-    return Column(
-      children: [
-        _ActionButtonWidget(
-          icon: icon,
-          iconColor: iconColor,
-          onPressed: onPressed,
+  void _navigateToClaimDetails(ClaimModel claim) {
+    Navigator.pushNamed(context, '/claim_details', arguments: claim);
+  }
+}
+
+// Animated action button with staggered entry
+class _ActionButtonAnimated extends StatefulWidget {
+  final int delay;
+  final IconData icon;
+  final String label;
+  final Color iconColor;
+  final VoidCallback onPressed;
+
+  const _ActionButtonAnimated({
+    required this.delay,
+    required this.icon,
+    required this.label,
+    required this.iconColor,
+    required this.onPressed,
+  });
+
+  @override
+  State<_ActionButtonAnimated> createState() => _ActionButtonAnimatedState();
+}
+
+class _ActionButtonAnimatedState extends State<_ActionButtonAnimated>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Column(
+          children: [
+            _ActionButtonWidget(
+              icon: widget.icon,
+              iconColor: widget.iconColor,
+              onPressed: widget.onPressed,
+            ),
+            SizedBox(height: GlobalStyles.spacingSm),
+            Text(
+              widget.label,
+              style: TextStyle(
+                color: GlobalStyles.textPrimary,
+                fontSize: GlobalStyles.fontSizeBody2,
+                fontWeight: GlobalStyles.fontWeightBold,
+                fontFamily: GlobalStyles.fontFamilyBody,
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: GlobalStyles.spacingSm),
-        Text(
-          label,
-          style: TextStyle(
-            color: GlobalStyles.textPrimary,
-            fontSize: GlobalStyles.fontSizeBody2,
-            fontWeight: GlobalStyles.fontWeightBold,
-            fontFamily: GlobalStyles.fontFamilyBody,
+      ),
+    );
+  }
+}
+
+// Animated claim tile with staggered entry
+class _ClaimTileAnimated extends StatefulWidget {
+  final int delay;
+  final ClaimModel claim;
+  final VoidCallback onTap;
+
+  const _ClaimTileAnimated({
+    required this.delay,
+    required this.claim,
+    required this.onTap,
+  });
+
+  @override
+  State<_ClaimTileAnimated> createState() => _ClaimTileAnimatedState();
+}
+
+class _ClaimTileAnimatedState extends State<_ClaimTileAnimated>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(-0.2, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = ClaimsWidgetUtils.statusColor(widget.claim.status);
+    final formattedStatus = ClaimsWidgetUtils.formatStatus(widget.claim.status);
+    final formattedCurrency = ClaimsWidgetUtils.formatCurrency(
+      widget.claim.estimatedDamageCost,
+    );
+
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(12.r),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClaimsWidgetUtils.buildClaimIcon(
+                    widget.claim.status,
+                    statusColor,
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                widget.claim.claimNumber,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: GlobalStyles.fontSizeBody2,
+                                  fontWeight: GlobalStyles.fontWeightSemiBold,
+                                  fontFamily: GlobalStyles.fontFamilyBody,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8.w),
+                            Text(
+                              formattedCurrency,
+                              style: TextStyle(
+                                fontWeight: GlobalStyles.fontWeightBold,
+                                fontSize: GlobalStyles.fontSizeBody2,
+                                color: GlobalStyles.primaryMain,
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 4.h),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              formattedStatus,
+                              style: TextStyle(
+                                color: statusColor,
+                                fontSize: GlobalStyles.fontSizeCaption,
+                                fontWeight: GlobalStyles.fontWeightMedium,
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                              ),
+                            ),
+                            Text(
+                              DateFormat.yMMMd().format(widget.claim.createdAt),
+                              style: TextStyle(
+                                color: GlobalStyles.textSecondary,
+                                fontSize: GlobalStyles.fontSizeCaption,
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 }

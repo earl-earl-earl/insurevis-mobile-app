@@ -21,10 +21,81 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
-  // bool _notificationsEnabled = true;
-
+class _ProfileScreenState extends State<ProfileScreen>
+    with TickerProviderStateMixin {
   Color color = ProfileWidgetUtils.randomColor();
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+    _fadeController.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  /// Helper method to build animated section headers
+  Widget _buildAnimatedSectionHeader(String title) {
+    return SizedBox(
+      width: double.infinity,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOut,
+        builder: (context, value, child) {
+          return Opacity(opacity: value, child: child);
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: GlobalStyles.primaryMain,
+                fontSize: GlobalStyles.fontSizeBody1,
+                fontWeight: GlobalStyles.fontWeightBold,
+                fontFamily: GlobalStyles.fontFamilyHeading,
+              ),
+            ),
+            SizedBox(height: 8.h),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOut,
+              builder: (context, value, child) {
+                return Container(
+                  height: 3.h,
+                  width: 45.w * value,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        GlobalStyles.primaryMain,
+                        GlobalStyles.primaryMain.withValues(alpha: 0.4),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,314 +114,373 @@ class _ProfileScreenState extends State<ProfileScreen> {
         iconTheme: IconThemeData(color: GlobalStyles.textPrimary),
       ),
       backgroundColor: GlobalStyles.backgroundMain,
-      body: SingleChildScrollView(
-        child: Padding(
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: 20.w),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(height: 20.h),
-
-              // Profile picture container
-              Consumer<AuthProvider>(
-                builder: (context, authProvider, child) {
-                  final user = authProvider.currentUser;
-                  final initial = ProfileWidgetUtils.getFirstLetterOfName(
-                    user?.name,
-                  );
-                  return ProfileWidgetUtils.buildProfileAvatar(
-                    initial: initial,
-                    color: color,
+              // Animated profile header container
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOut,
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, (1 - value) * 30),
+                    child: Opacity(opacity: value, child: child),
                   );
                 },
-              ),
-              SizedBox(height: 20.h),
-              // Display user data from AuthProvider with fallback
-              Consumer<AuthProvider>(
-                builder: (context, authProvider, child) {
-                  final user = authProvider.currentUser;
-                  // Fallback to default values if no user is logged in
-                  final userName = user?.name ?? 'Demo User';
-                  final userEmail = user?.email ?? 'demo@insurevis.com';
-
-                  return Column(
+                child: Container(
+                  padding: EdgeInsets.all(24.w),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        GlobalStyles.primaryMain.withValues(alpha: 0.08),
+                        GlobalStyles.primaryMain.withValues(alpha: 0.04),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16.r),
+                    border: Border.all(
+                      color: GlobalStyles.primaryMain.withValues(alpha: 0.15),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Column(
                     children: [
-                      Text(
-                        userName,
-                        style: TextStyle(
-                          color: GlobalStyles.textPrimary,
-                          fontSize: GlobalStyles.fontSizeH4,
-                          fontWeight: GlobalStyles.fontWeightBold,
-                          fontFamily: GlobalStyles.fontFamilyHeading,
-                        ),
+                      // Profile picture container
+                      Consumer<AuthProvider>(
+                        builder: (context, authProvider, child) {
+                          final user = authProvider.currentUser;
+                          final initial =
+                              ProfileWidgetUtils.getFirstLetterOfName(
+                                user?.name,
+                              );
+                          return ProfileWidgetUtils.buildProfileAvatar(
+                            initial: initial,
+                            color: color,
+                          );
+                        },
                       ),
-                      Text(
-                        userEmail,
-                        style: TextStyle(
-                          color: GlobalStyles.textSecondary,
-                          fontSize: GlobalStyles.fontSizeBody2,
-                          fontFamily: GlobalStyles.fontFamilyBody,
-                        ),
+                      SizedBox(height: 16.h),
+                      // Display user data from AuthProvider with fallback
+                      Consumer<AuthProvider>(
+                        builder: (context, authProvider, child) {
+                          final user = authProvider.currentUser;
+                          final userName = user?.name ?? 'Demo User';
+                          final userEmail = user?.email ?? 'demo@insurevis.com';
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                userName,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: GlobalStyles.textPrimary,
+                                  fontSize: GlobalStyles.fontSizeH4,
+                                  fontWeight: GlobalStyles.fontWeightBold,
+                                  fontFamily: GlobalStyles.fontFamilyHeading,
+                                ),
+                              ),
+                              SizedBox(height: 6.h),
+                              Text(
+                                userEmail,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: GlobalStyles.textSecondary,
+                                  fontSize: GlobalStyles.fontSizeBody2,
+                                  fontFamily: GlobalStyles.fontFamilyBody,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
-                  );
-                },
+                  ),
+                ),
               ),
-
               SizedBox(height: 40.h),
 
-              // Text(
-              //   'General',
-              //   style: GoogleFonts.inter(
-              //     color: GlobalStyles.primaryColor,
-              //     fontSize: 16.sp,
-              //     fontWeight: FontWeight.bold,
-              //   ),
-              //   textAlign: TextAlign.left,
-              // ),
-
-              // SizedBox(height: 10.h),
-              ProfileWidgetUtils.buildSectionHeader('Personal Details'),
-
-              SizedBox(height: 10.h),
-
-              ProfileWidgetUtils.buildSettingItem(
-                icon: LucideIcons.user,
-                title: 'Personal Data',
-                subtitle: 'Change name, email, phone number',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PersonalDataScreen(),
-                    ),
+              // Personal Details Section
+              _buildAnimatedSectionHeader('Personal Details'),
+              SizedBox(height: 12.h),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOut,
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, (1 - value) * 20),
+                    child: Opacity(opacity: value, child: child),
                   );
                 },
-              ),
-
-              ProfileWidgetUtils.buildSectionHeader('Account Security'),
-
-              SizedBox(height: 10.h),
-
-              ProfileWidgetUtils.buildSettingItem(
-                icon: LucideIcons.lock,
-                title: 'Change Password',
-                subtitle: 'Change your account password',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ChangePasswordScreen(),
-                    ),
-                  );
-                },
-              ),
-
-              ProfileWidgetUtils.buildSettingItem(
-                icon: LucideIcons.trash2,
-                title: 'Delete Account',
-                subtitle: 'Permanently remove your account',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DeleteAccountScreen(),
-                    ),
-                  );
-                },
-              ),
-
-              // _buildSettingItem(
-              //   icon: Icons.backup_outlined,
-              //   title: 'Data Backup/Restore',
-              //   subtitle: 'Change number, email id',
-              //   onTap: () {
-              //     Navigator.push(
-              //       context,
-              //       MaterialPageRoute(
-              //         builder: (context) => const SettingsScreen(),
-              //       ),
-              //     );
-              //   },
-              // ),
-
-              // _buildSettingItem(
-              //   icon: Icons.settings_outlined,
-              //   title: 'Preferences',
-              //   subtitle: 'Theme, other preferences',
-              //   onTap: () {
-              //     Navigator.push(
-              //       context,
-              //       MaterialPageRoute(
-              //         builder: (context) => const SettingsScreen(),
-              //       ),
-              //     );
-              //   },
-              // ),
-
-              // _buildSettingItem(
-              //   icon: Icons.language_outlined,
-              //   title: 'Language',
-              //   subtitle: 'Change language preference',
-              //   onTap: () {
-              //     Navigator.push(
-              //       context,
-              //       MaterialPageRoute(
-              //         builder: (context) => const SettingsScreen(),
-              //       ),
-              //     );
-              //   },
-              // ),
-
-              // SizedBox(height: 20.h),
-
-              // Text(
-              //   'Notification',
-              //   style: GoogleFonts.inter(
-              //     color: GlobalStyles.primaryColor,
-              //     fontSize: 16.sp,
-              //     fontWeight: FontWeight.bold,
-              //   ),
-              //   textAlign: TextAlign.left,
-              // ),
-
-              // SizedBox(height: 10.h),
-
-              // _buildToggleItem(
-              //   icon: Icons.notifications_outlined,
-              //   title: 'Enable Notification',
-              //   subtitle: 'Turn on updates/verifications',
-              //   value: _notificationsEnabled,
-              //   onChanged: (value) {
-              //     setState(() {
-              //       _notificationsEnabled = value;
-              //     });
-              //   },
-              // ),
-              SizedBox(height: 20.h),
-
-              ProfileWidgetUtils.buildSectionHeader('App Info'),
-
-              SizedBox(height: 10.h),
-
-              ProfileWidgetUtils.buildSettingItem(
-                icon: LucideIcons.headphones,
-                title: 'Contact Us',
-                subtitle: 'Contact our Customer Service',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ContactUsScreen(),
-                    ),
-                  );
-                },
-              ),
-
-              ProfileWidgetUtils.buildSettingItem(
-                icon: LucideIcons.shield,
-                title: 'Privacy Policy',
-                subtitle: 'Security notifications',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PrivacyPolicyScreen(),
-                    ),
-                  );
-                },
-              ),
-
-              ProfileWidgetUtils.buildSettingItem(
-                icon: LucideIcons.bookOpen,
-                title: 'FAQ',
-                subtitle: 'Get in touch with us',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const FAQScreen()),
-                  );
-                },
-              ),
-
-              ProfileWidgetUtils.buildSettingItem(
-                icon: LucideIcons.file,
-                title: 'Terms of Service',
-                subtitle: 'Terms and conditions',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TermsOfServiceScreen(),
-                    ),
-                  );
-                },
-              ),
-
-              SizedBox(height: 20.h),
-
-              // Logout button placed at the bottom of the profile page
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: 20.h),
-                child: Consumer<AuthProvider>(
-                  builder: (context, authProvider, child) {
-                    return SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: GlobalStyles.errorMain,
-                          padding: EdgeInsets.symmetric(
-                            vertical: GlobalStyles.paddingNormal,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              GlobalStyles.radiusMd,
-                            ),
-                          ),
-                        ),
-                        onPressed:
-                            authProvider.isSigningOut
-                                ? null
-                                : () async {
-                                  final success = await authProvider.signOut();
-                                  if (success) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Signed out')),
-                                    );
-                                    // Navigate to sign-in and clear navigation stack
-                                    Navigator.pushNamedAndRemoveUntil(
-                                      context,
-                                      '/signin',
-                                      (route) => false,
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          authProvider.error ??
-                                              'Sign out failed',
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                        child: Text(
-                          authProvider.isSigningOut
-                              ? 'Signing out...'
-                              : 'Log out',
-                          style: TextStyle(
-                            color: GlobalStyles.surfaceMain,
-                            fontSize: GlobalStyles.fontSizeBody1,
-                            fontWeight: GlobalStyles.fontWeightSemiBold,
-                            fontFamily: GlobalStyles.fontFamilyBody,
-                          ),
-                        ),
+                child: ProfileWidgetUtils.buildSettingItem(
+                  icon: LucideIcons.user,
+                  title: 'Personal Data',
+                  subtitle: 'Change name, email, phone number',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PersonalDataScreen(),
                       ),
                     );
                   },
                 ),
               ),
+              SizedBox(height: 20.h),
 
+              // Account Security Section
+              _buildAnimatedSectionHeader('Account Security'),
+              SizedBox(height: 12.h),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.easeOut,
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, (1 - value) * 20),
+                    child: Opacity(opacity: value, child: child),
+                  );
+                },
+                child: Column(
+                  children: [
+                    ProfileWidgetUtils.buildSettingItem(
+                      icon: LucideIcons.lock,
+                      title: 'Change Password',
+                      subtitle: 'Change your account password',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ChangePasswordScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+                    ProfileWidgetUtils.buildSettingItem(
+                      icon: LucideIcons.trash2,
+                      title: 'Delete Account',
+                      subtitle: 'Permanently remove your account',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DeleteAccountScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20.h),
+
+              // App Info Section
+              _buildAnimatedSectionHeader('App Info'),
+              SizedBox(height: 12.h),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOut,
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, (1 - value) * 20),
+                    child: Opacity(opacity: value, child: child),
+                  );
+                },
+                child: Column(
+                  children: [
+                    ProfileWidgetUtils.buildSettingItem(
+                      icon: LucideIcons.headphones,
+                      title: 'Contact Us',
+                      subtitle: 'Contact our Customer Service',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ContactUsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+                    ProfileWidgetUtils.buildSettingItem(
+                      icon: LucideIcons.shield,
+                      title: 'Privacy Policy',
+                      subtitle: 'Security notifications',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PrivacyPolicyScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+                    ProfileWidgetUtils.buildSettingItem(
+                      icon: LucideIcons.bookOpen,
+                      title: 'FAQ',
+                      subtitle: 'Get in touch with us',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FAQScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+                    ProfileWidgetUtils.buildSettingItem(
+                      icon: LucideIcons.file,
+                      title: 'Terms of Service',
+                      subtitle: 'Terms and conditions',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TermsOfServiceScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 28.h),
+
+              // Logout button placed at the bottom of the profile page
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 16.h),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 900),
+                  curve: Curves.easeOut,
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: Offset(0, (1 - value) * 20),
+                      child: Opacity(opacity: value, child: child),
+                    );
+                  },
+                  child: Consumer<AuthProvider>(
+                    builder: (context, authProvider, child) {
+                      return SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: GlobalStyles.errorMain,
+                            disabledBackgroundColor: GlobalStyles.errorMain
+                                .withValues(alpha: 0.4),
+                            elevation: 2,
+                            shadowColor: GlobalStyles.errorMain.withValues(
+                              alpha: 0.3,
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              vertical: GlobalStyles.paddingNormal,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                GlobalStyles.radiusMd,
+                              ),
+                            ),
+                          ),
+                          onPressed:
+                              authProvider.isSigningOut
+                                  ? null
+                                  : () async {
+                                    final success =
+                                        await authProvider.signOut();
+                                    if (success) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Signed out'),
+                                        ),
+                                      );
+                                      // Navigate to sign-in and clear navigation stack
+                                      Navigator.pushNamedAndRemoveUntil(
+                                        context,
+                                        '/signin',
+                                        (route) => false,
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            authProvider.error ??
+                                                'Sign out failed',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            transitionBuilder: (child, animation) {
+                              return ScaleTransition(
+                                scale: animation,
+                                child: child,
+                              );
+                            },
+                            child:
+                                authProvider.isSigningOut
+                                    ? SizedBox(
+                                      key: const ValueKey('loading'),
+                                      height: 20.sp,
+                                      width: 20.sp,
+                                      child: const CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                    : Row(
+                                      key: const ValueKey('text'),
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          LucideIcons.logOut,
+                                          color: GlobalStyles.surfaceMain,
+                                          size: GlobalStyles.iconSizeSm,
+                                        ),
+                                        SizedBox(width: 8.w),
+                                        Text(
+                                          'Log out',
+                                          style: TextStyle(
+                                            color: GlobalStyles.surfaceMain,
+                                            fontSize:
+                                                GlobalStyles.fontSizeBody1,
+                                            fontWeight:
+                                                GlobalStyles.fontWeightSemiBold,
+                                            fontFamily:
+                                                GlobalStyles.fontFamilyBody,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
               SizedBox(height: 40.h),
             ],
           ),

@@ -74,10 +74,15 @@ class _MainContainerState extends State<MainContainer>
       extendBody: true,
       body: Stack(
         children: [
-          // Main content
+          // Main content with swipe gestures
           PageView(
             controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
+            physics: const BouncingScrollPhysics(),
+            onPageChanged: (index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+            },
             children: _screens,
           ),
 
@@ -119,25 +124,28 @@ class _MainContainerState extends State<MainContainer>
         ],
       ),
       bottomNavigationBar: _buildSimpleBottomNav(),
-      floatingActionButton:
-          _selectedIndex == 0 ? _buildFloatingActionButton() : null,
+      floatingActionButton: _selectedIndex == 0 ? _buildAnimatedFAB() : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
-  // Floating action button for camera
-  Widget _buildFloatingActionButton() {
-    return FloatingActionButton(
-      onPressed: () {
-        HapticFeedback.mediumImpact();
-        Navigator.pushNamed(context, '/camera');
-      },
-      backgroundColor: GlobalStyles.primaryMain,
-      elevation: 6,
-      child: Icon(
-        LucideIcons.camera,
-        color: GlobalStyles.surfaceMain,
-        size: GlobalStyles.iconSizeLg,
+  // Animated floating action button with scale effect
+  Widget _buildAnimatedFAB() {
+    return AnimatedScale(
+      scale: 1.0,
+      duration: const Duration(milliseconds: 200),
+      child: FloatingActionButton(
+        onPressed: () {
+          HapticFeedback.mediumImpact();
+          Navigator.pushNamed(context, '/camera');
+        },
+        backgroundColor: GlobalStyles.primaryMain,
+        elevation: 6,
+        child: Icon(
+          LucideIcons.camera,
+          color: GlobalStyles.surfaceMain,
+          size: GlobalStyles.iconSizeLg,
+        ),
       ),
     );
   }

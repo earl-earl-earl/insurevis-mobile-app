@@ -23,7 +23,8 @@ class ClaimsScreen extends StatefulWidget {
   State<ClaimsScreen> createState() => _ClaimsScreenState();
 }
 
-class _ClaimsScreenState extends State<ClaimsScreen> {
+class _ClaimsScreenState extends State<ClaimsScreen>
+    with TickerProviderStateMixin {
   List<ClaimModel> _allClaims = [];
   List<ClaimModel> _filtered = [];
   String _query = '';
@@ -31,19 +32,44 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
   String? _errorMessage;
   StreamSubscription<List<Map<String, dynamic>>>? _realtimeSubscription;
   SortOption _currentSort = SortOption.dateNewest;
+  late AnimationController _fadeController;
+  late AnimationController _listController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize animations
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _listController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+
     _loadSortPreference();
     _filtered = List.from(_allClaims);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initializeClaims());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeClaims();
+      _fadeController.forward();
+      _listController.forward();
+    });
     _setupRealtimeUpdates();
   }
 
   @override
   void dispose() {
     _realtimeSubscription?.cancel();
+    _fadeController.dispose();
+    _listController.dispose();
     super.dispose();
   }
 
@@ -351,6 +377,21 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
     }
   }
 
+  Widget _buildAnimatedClaimTile(ClaimModel claim, int index) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 400 + (index * 100)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, (1 - value) * 30),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: _buildClaimTile(claim),
+    );
+  }
+
   Widget _buildClaimTile(ClaimModel claim) {
     final statusColor = ClaimsWidgetUtils.statusColor(claim.status);
     final formattedStatus = ClaimsWidgetUtils.formatStatus(claim.status);
@@ -358,77 +399,85 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
       claim.estimatedDamageCost,
     );
 
-    return InkWell(
-      onTap: () => _showClaimDetails(claim),
-      borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 15.h),
-        decoration: BoxDecoration(
-          color: Colors.transparent,
+    return Hero(
+      tag: 'claim_${claim.id}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showClaimDetails(claim),
           borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Icon
-            ClaimsWidgetUtils.buildClaimIcon(claim.status, statusColor),
-            SizedBox(width: 12.w),
-            // Details column takes remaining width
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          claim.claimNumber,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: GlobalStyles.fontWeightSemiBold,
-                            fontFamily: GlobalStyles.fontFamilyBody,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        formattedCurrency,
-                        style: TextStyle(
-                          fontWeight: GlobalStyles.fontWeightBold,
-                          fontSize: 14.sp,
-                          color: GlobalStyles.primaryMain,
-                          fontFamily: GlobalStyles.fontFamilyBody,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 6.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        formattedStatus,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: GlobalStyles.fontSizeCaption,
-                          fontFamily: GlobalStyles.fontFamilyBody,
-                        ),
-                      ),
-                      Text(
-                        DateFormat.yMMMd().format(claim.createdAt),
-                        style: TextStyle(
-                          color: GlobalStyles.textTertiary,
-                          fontSize: GlobalStyles.fontSizeCaption,
-                          fontFamily: GlobalStyles.fontFamilyBody,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+          splashColor: GlobalStyles.primaryMain.withValues(alpha: 0.1),
+          highlightColor: GlobalStyles.primaryMain.withValues(alpha: 0.05),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 18.h),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
             ),
-          ],
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Icon
+                ClaimsWidgetUtils.buildClaimIcon(claim.status, statusColor),
+                SizedBox(width: 12.w),
+                // Details column takes remaining width
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              claim.claimNumber,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: GlobalStyles.fontWeightSemiBold,
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Text(
+                            formattedCurrency,
+                            style: TextStyle(
+                              fontWeight: GlobalStyles.fontWeightBold,
+                              fontSize: 14.sp,
+                              color: GlobalStyles.primaryMain,
+                              fontFamily: GlobalStyles.fontFamilyBody,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 6.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            formattedStatus,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: GlobalStyles.fontSizeCaption,
+                              fontFamily: GlobalStyles.fontFamilyBody,
+                            ),
+                          ),
+                          Text(
+                            DateFormat.yMMMd().format(claim.createdAt),
+                            style: TextStyle(
+                              color: GlobalStyles.textTertiary,
+                              fontSize: GlobalStyles.fontSizeCaption,
+                              fontFamily: GlobalStyles.fontFamilyBody,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -439,7 +488,7 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
     return Scaffold(
       backgroundColor: GlobalStyles.backgroundMain,
       appBar: AppBar(
-        backgroundColor: GlobalStyles.surfaceMain,
+        backgroundColor: GlobalStyles.backgroundMain,
         elevation: 0,
         title: Text(
           'Claims',
@@ -505,11 +554,18 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
           children: [
             // Search bar with improved styling
             Padding(
-              padding: EdgeInsets.all(16.w),
+              padding: EdgeInsets.fromLTRB(16.w, 16.w, 16.w, 12.w),
               child: Container(
                 decoration: BoxDecoration(
                   color: GlobalStyles.surfaceElevated,
                   borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 8.0,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: TextField(
                   key: const Key('claims_search'),
@@ -555,67 +611,89 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
             // Cache status indicator (only show when not loading and has data)
             if (!_loading && _allClaims.isNotEmpty) ...[
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.w),
-                child: Row(
-                  children: [
-                    Icon(
-                      LucideIcons.database,
-                      size: GlobalStyles.iconSizeXs,
-                      color: GlobalStyles.successMain,
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12.w,
+                    vertical: 10.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: GlobalStyles.successMain.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
+                    border: Border.all(
+                      color: GlobalStyles.successMain.withValues(alpha: 0.2),
+                      width: 1.0,
                     ),
-                    SizedBox(width: 4.w),
-                    Text(
-                      'Using cached data',
-                      style: TextStyle(
-                        fontSize: GlobalStyles.fontSizeCaption,
-                        color: GlobalStyles.textSecondary,
-                        fontFamily: GlobalStyles.fontFamilyBody,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        LucideIcons.database,
+                        size: GlobalStyles.iconSizeXs,
+                        color: GlobalStyles.successMain,
                       ),
-                    ),
-                    Spacer(),
-                    FutureBuilder<String>(
-                      future: _getLastSyncTime(),
-                      builder: (context, snapshot) {
-                        return Text(
-                          'Last sync: ${snapshot.data ?? 'Loading...'}',
-                          style: TextStyle(
-                            fontSize: GlobalStyles.fontSizeCaption,
-                            color: GlobalStyles.textTertiary,
-                            fontFamily: GlobalStyles.fontFamilyBody,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                      SizedBox(width: 6.w),
+                      Text(
+                        'Using cached data',
+                        style: TextStyle(
+                          fontSize: GlobalStyles.fontSizeCaption,
+                          color: GlobalStyles.textSecondary,
+                          fontWeight: GlobalStyles.fontWeightMedium,
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                        ),
+                      ),
+                      Spacer(),
+                      FutureBuilder<String>(
+                        future: _getLastSyncTime(),
+                        builder: (context, snapshot) {
+                          return Text(
+                            'Last sync: ${snapshot.data ?? 'Loading...'}',
+                            style: TextStyle(
+                              fontSize: GlobalStyles.fontSizeCaption,
+                              color: GlobalStyles.textTertiary,
+                              fontFamily: GlobalStyles.fontFamilyBody,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              SizedBox(height: 8.h),
             ],
 
-            // Sort indicator
+            // Sort indicator with animation
             if (_filtered.isNotEmpty) ...[
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.w),
-                child: Row(
-                  children: [
-                    Icon(
-                      ClaimsWidgetUtils.getSortOptionIcon(_currentSort),
-                      size: GlobalStyles.iconSizeXs,
-                      color: GlobalStyles.textSecondary,
-                    ),
-                    SizedBox(width: 4.w),
-                    Text(
-                      'Sorted by ${ClaimsWidgetUtils.getSortOptionLabel(_currentSort)}',
-                      style: TextStyle(
-                        fontSize: GlobalStyles.fontSizeCaption,
-                        color: GlobalStyles.textSecondary,
-                        fontFamily: GlobalStyles.fontFamilyBody,
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOut,
+                  builder: (context, value, child) {
+                    return Opacity(opacity: value, child: child);
+                  },
+                  child: Row(
+                    children: [
+                      Icon(
+                        ClaimsWidgetUtils.getSortOptionIcon(_currentSort),
+                        size: GlobalStyles.iconSizeXs,
+                        color: GlobalStyles.primaryMain,
                       ),
-                    ),
-                  ],
+                      SizedBox(width: 6.w),
+                      Text(
+                        'Sorted by ${ClaimsWidgetUtils.getSortOptionLabel(_currentSort)}',
+                        style: TextStyle(
+                          fontSize: GlobalStyles.fontSizeCaption,
+                          color: GlobalStyles.textSecondary,
+                          fontWeight: GlobalStyles.fontWeightMedium,
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              SizedBox(height: 8.h),
             ],
 
             // Claims list
@@ -681,14 +759,14 @@ class _ClaimsScreenState extends State<ClaimsScreen> {
                             )
                             : ListView.separated(
                               itemCount: _filtered.length,
-                              separatorBuilder: (_, _) => SizedBox(height: 4.h),
+                              separatorBuilder: (_, _) => SizedBox(height: 8.h),
                               itemBuilder: (context, index) {
                                 final claim = _filtered[index];
-                                return _buildClaimTile(claim);
+                                return _buildAnimatedClaimTile(claim, index);
                               },
                               padding: EdgeInsets.symmetric(
                                 horizontal: 16.w,
-                                vertical: 8.h,
+                                vertical: 12.h,
                               ),
                             )),
               ),

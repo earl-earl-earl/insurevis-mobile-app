@@ -47,6 +47,8 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
   // Animation
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  late AnimationController _slideController;
+  late Animation<Offset> _slideAnimation;
   // Step transition controller (for sliding between steps)
   late AnimationController _stepController;
   Animation<Offset>? _step1Offset;
@@ -68,23 +70,42 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
     _confirmPasswordController.addListener(() => setState(() {}));
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    _animationController.forward();
+    // Slide up animation
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
+
+    // Start animations with slight delay
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        _animationController.forward();
+        _slideController.forward();
+      }
+    });
 
     _stepController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 400),
     );
 
     final stepCurve = CurvedAnimation(
       parent: _stepController,
-      curve: Curves.easeInOut,
+      curve: Curves.easeInOutCubic,
     );
     _step1Offset = Tween<Offset>(
       begin: Offset.zero,
@@ -120,6 +141,7 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
     _passwordFocusNode.dispose();
     _confirmPasswordFocusNode.dispose();
     _animationController.dispose();
+    _slideController.dispose();
     _stepController.dispose();
     super.dispose();
   }
@@ -161,16 +183,24 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
   void _handleSignUp() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
+    // Haptic feedback
+    HapticFeedback.lightImpact();
+
+    // Dismiss keyboard
+    FocusScope.of(context).unfocus();
+
     setState(() {
       _errorMessage = null;
     });
 
     // Validate form
     if (!_formKey.currentState!.validate()) {
+      HapticFeedback.mediumImpact();
       return;
     }
 
     if (!_agreeToTerms) {
+      HapticFeedback.mediumImpact();
       setState(() {
         _errorMessage =
             "Please agree to the Terms of Service and Privacy Policy";
@@ -197,13 +227,19 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
       setState(() => _isLoading = false);
 
       if (result['success'] && mounted) {
+        // Success haptic
+        HapticFeedback.heavyImpact();
+
         // If auto sign-in succeeded, navigate directly to home
         if (result['autoSignedIn']) {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            '/home',
-            (Route<dynamic> route) => false,
-          );
+          await Future.delayed(const Duration(milliseconds: 300));
+          if (mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/home',
+              (Route<dynamic> route) => false,
+            );
+          }
           return;
         }
 
@@ -213,12 +249,18 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
           "Account created successfully! Please sign in to continue.",
         );
 
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/signin',
-          (Route<dynamic> route) => false,
-        );
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/signin',
+            (Route<dynamic> route) => false,
+          );
+        }
       } else if (mounted) {
+        // Error haptic
+        HapticFeedback.mediumImpact();
+
         // Show error message
         setState(() {
           _errorMessage =
@@ -227,6 +269,7 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
         AuthWidgetUtils.showSnackBar(context, _errorMessage!, isError: true);
       }
     } catch (e) {
+      HapticFeedback.mediumImpact();
       setState(() {
         _errorMessage = 'An unexpected error occurred. Please try again.';
         _isLoading = false;
@@ -241,7 +284,7 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    final double topSpacingHeight = isKeyboardVisible ? 20.h : 60.h;
+    final double topSpacingHeight = isKeyboardVisible ? 0.h : 20.h;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -252,277 +295,285 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
           icon: Icon(LucideIcons.arrowLeft, color: GlobalStyles.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        centerTitle: false,
+        title: Text(
+          "Create Account",
+          style: TextStyle(
+            fontFamily: GlobalStyles.fontFamilyHeading,
+            color: GlobalStyles.textPrimary,
+            fontSize: GlobalStyles.fontSizeH3,
+            fontWeight: GlobalStyles.fontWeightBold,
+          ),
+        ),
       ),
       body: SafeArea(
         child: Container(
           height: double.infinity,
           width: double.infinity,
           decoration: BoxDecoration(color: GlobalStyles.backgroundMain),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.all(GlobalStyles.paddingNormal),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: topSpacingHeight),
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.all(GlobalStyles.paddingNormal),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: topSpacingHeight),
 
-                          // Header Section
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(height: 20.h),
-                              Text(
-                                "Create Account",
-                                style: TextStyle(
-                                  fontFamily: GlobalStyles.fontFamilyHeading,
-                                  color: GlobalStyles.textPrimary,
-                                  fontSize: GlobalStyles.fontSizeH1,
-                                  fontWeight: GlobalStyles.fontWeightBold,
+                            // Error Message Display
+                            if (_errorMessage != null) ...[
+                              Container(
+                                padding: EdgeInsets.all(
+                                  GlobalStyles.paddingTight,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: GlobalStyles.errorLight.withOpacity(
+                                    0.2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    GlobalStyles.radiusMd,
+                                  ),
+                                  border: Border.all(
+                                    color: GlobalStyles.errorMain.withOpacity(
+                                      0.3,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      LucideIcons.circleAlert,
+                                      color: GlobalStyles.errorMain,
+                                      size: GlobalStyles.iconSizeSm,
+                                    ),
+                                    SizedBox(width: GlobalStyles.spacingSm),
+                                    Expanded(
+                                      child: Text(
+                                        _errorMessage!,
+                                        style: TextStyle(
+                                          fontFamily:
+                                              GlobalStyles.fontFamilyBody,
+                                          color: GlobalStyles.errorMain,
+                                          fontSize: GlobalStyles.fontSizeBody2,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              Text(
-                                "Join InsureVis today",
-                                style: TextStyle(
-                                  fontFamily: GlobalStyles.fontFamilyBody,
-                                  color: GlobalStyles.textSecondary,
-                                  fontSize: GlobalStyles.fontSizeBody1,
-                                ),
-                              ),
+                              SizedBox(height: 8.h),
                             ],
-                          ),
 
-                          // Error Message Display
-                          if (_errorMessage != null) ...[
-                            Container(
-                              padding: EdgeInsets.all(
-                                GlobalStyles.paddingTight,
+                            SizedBox(height: isKeyboardVisible ? 20.h : 40.h),
+
+                            // Step Indicator Heading
+                            Text(
+                              _currentStep == 1
+                                  ? "Personal Information"
+                                  : "Security Details",
+                              style: TextStyle(
+                                fontFamily: GlobalStyles.fontFamilyHeading,
+                                color: GlobalStyles.textPrimary,
+                                fontSize: GlobalStyles.fontSizeH4,
+                                fontWeight: GlobalStyles.fontWeightSemiBold,
                               ),
-                              decoration: BoxDecoration(
-                                color: GlobalStyles.errorLight.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(
-                                  GlobalStyles.radiusMd,
-                                ),
-                                border: Border.all(
-                                  color: GlobalStyles.errorMain.withOpacity(
-                                    0.3,
-                                  ),
-                                ),
+                            ),
+
+                            SizedBox(height: 4.h),
+                            Text(
+                              _currentStep == 1
+                                  ? "Tell us about yourself"
+                                  : "Create a secure password",
+                              style: TextStyle(
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                                color: GlobalStyles.textTertiary,
+                                fontSize: GlobalStyles.fontSizeCaption,
                               ),
-                              child: Row(
+                            ),
+
+                            SizedBox(height: 24.h),
+
+                            // Form Content - No background container
+                            SizedBox(
+                              child: Stack(
+                                clipBehavior: Clip.none,
                                 children: [
-                                  Icon(
-                                    LucideIcons.circleAlert,
-                                    color: GlobalStyles.errorMain,
-                                    size: GlobalStyles.iconSizeSm,
-                                  ),
-                                  SizedBox(width: GlobalStyles.spacingSm),
-                                  Expanded(
-                                    child: Text(
-                                      _errorMessage!,
-                                      style: TextStyle(
-                                        fontFamily: GlobalStyles.fontFamilyBody,
-                                        color: GlobalStyles.errorMain,
-                                        fontSize: GlobalStyles.fontSizeBody2,
+                                  // Step 1 (slides left when advancing)
+                                  Offstage(
+                                    offstage:
+                                        _currentStep != 1 &&
+                                        !_stepController.isAnimating,
+                                    child: SlideTransition(
+                                      position:
+                                          _step1Offset ??
+                                          AlwaysStoppedAnimation(Offset.zero)
+                                              as Animation<Offset>,
+                                      child: FadeTransition(
+                                        opacity:
+                                            _step1Opacity ??
+                                            const AlwaysStoppedAnimation<
+                                              double
+                                            >(1.0),
+                                        child: _buildStepContentFor(1),
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: 8.h),
-                          ],
 
-                          SizedBox(height: 50.h),
-                          // Form Container with animated step transitions
-                          Container(
-                            decoration: BoxDecoration(
-                              color: GlobalStyles.surfaceMain.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(
-                                GlobalStyles.radiusXl,
-                              ),
-                              border: Border.all(
-                                color: GlobalStyles.inputBorderColor
-                                    .withOpacity(0.3),
-                                width: 1.w,
-                              ),
-                            ),
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                // Step 1 (slides left when advancing)
-                                Offstage(
-                                  offstage:
-                                      _currentStep != 1 &&
-                                      !_stepController.isAnimating,
-                                  child: SlideTransition(
-                                    position:
-                                        _step1Offset ??
-                                        AlwaysStoppedAnimation(Offset.zero)
-                                            as Animation<Offset>,
-                                    child: FadeTransition(
-                                      opacity:
-                                          _step1Opacity ??
-                                          const AlwaysStoppedAnimation<double>(
-                                            1.0,
-                                          ),
-                                      child: _buildStepContentFor(1),
+                                  // Step 2 (slides in from right)
+                                  Offstage(
+                                    offstage:
+                                        _currentStep != 2 &&
+                                        !_stepController.isAnimating,
+                                    child: SlideTransition(
+                                      position:
+                                          _step2Offset ??
+                                          AlwaysStoppedAnimation(
+                                                const Offset(1.0, 0.0),
+                                              )
+                                              as Animation<Offset>,
+                                      child: FadeTransition(
+                                        opacity:
+                                            _step2Opacity ??
+                                            const AlwaysStoppedAnimation<
+                                              double
+                                            >(0.0),
+                                        child: _buildStepContentFor(2),
+                                      ),
                                     ),
                                   ),
-                                ),
 
-                                // Step 2 (slides in from right)
-                                Offstage(
-                                  offstage:
-                                      _currentStep != 2 &&
-                                      !_stepController.isAnimating,
-                                  child: SlideTransition(
-                                    position:
-                                        _step2Offset ??
-                                        AlwaysStoppedAnimation(
-                                              const Offset(1.0, 0.0),
-                                            )
-                                            as Animation<Offset>,
-                                    child: FadeTransition(
-                                      opacity:
-                                          _step2Opacity ??
-                                          const AlwaysStoppedAnimation<double>(
-                                            0.0,
-                                          ),
-                                      child: _buildStepContentFor(2),
-                                    ),
-                                  ),
-                                ),
-
-                                // Back button for step 2 (larger tappable area)
-                                if (_currentStep == 2)
-                                  Positioned(
-                                    right: 0.w,
-                                    top: 0.h,
-
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        _stepController.reverse().then((_) {
-                                          if (mounted) {
-                                            setState(() {
-                                              _currentStep = 1;
-                                            });
-                                            FocusScope.of(
-                                              context,
-                                            ).requestFocus(_nameFocusNode);
-                                          }
-                                        });
-                                      },
-                                      child: Center(
-                                        child: Text(
-                                          'Go Back',
-                                          style: TextStyle(
-                                            fontFamily:
-                                                GlobalStyles.fontFamilyBody,
-                                            color: GlobalStyles.primaryMain,
-                                            fontSize:
-                                                GlobalStyles.fontSizeBody2,
-                                            fontWeight:
-                                                GlobalStyles.fontWeightSemiBold,
-                                            decoration:
-                                                TextDecoration.underline,
-                                            decorationColor:
-                                                GlobalStyles.primaryMain,
+                                  // Back button for step 2 (larger tappable area)
+                                  if (_currentStep == 2)
+                                    Positioned(
+                                      right: 0.w,
+                                      top: 0.h,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          _stepController.reverse().then((_) {
+                                            if (mounted) {
+                                              setState(() {
+                                                _currentStep = 1;
+                                              });
+                                              FocusScope.of(
+                                                context,
+                                              ).requestFocus(_nameFocusNode);
+                                            }
+                                          });
+                                        },
+                                        child: Center(
+                                          child: Text(
+                                            'Go Back',
+                                            style: TextStyle(
+                                              fontFamily:
+                                                  GlobalStyles.fontFamilyBody,
+                                              color: GlobalStyles.primaryMain,
+                                              fontSize:
+                                                  GlobalStyles.fontSizeBody2,
+                                              fontWeight:
+                                                  GlobalStyles
+                                                      .fontWeightSemiBold,
+                                              decoration:
+                                                  TextDecoration.underline,
+                                              decorationColor:
+                                                  GlobalStyles.primaryMain,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                          ),
-
-                          // Terms moved into step 2 content inside _buildStepContentFor(2)
-
-                          // Bottom Button area
-                          _isLoading
-                              ? AuthWidgetUtils.buildLoadingButton()
-                              : AuthWidgetUtils.buildPrimaryButton(
-                                onPressed:
-                                    _currentStep == 1
-                                        ? () {
-                                          if (!(_formKey.currentState
-                                                  ?.validate() ??
-                                              false)) {
-                                            return;
-                                          }
-                                          _handleNext();
-                                        }
-                                        : () {
-                                          if (!(_formKey.currentState
-                                                  ?.validate() ??
-                                              false)) {
-                                            return;
-                                          }
-                                          _handleSignUp();
-                                        },
-                                text:
-                                    _currentStep == 1
-                                        ? "Next"
-                                        : "Create Account",
+                                ],
                               ),
-                        ],
+                            ),
+
+                            // Terms moved into step 2 content inside _buildStepContentFor(2)
+                            SizedBox(height: 20.h),
+
+                            // Bottom Button area
+                            _isLoading
+                                ? AuthWidgetUtils.buildLoadingButton()
+                                : AuthWidgetUtils.buildPrimaryButton(
+                                  onPressed:
+                                      _currentStep == 1
+                                          ? () {
+                                            if (!(_formKey.currentState
+                                                    ?.validate() ??
+                                                false)) {
+                                              return;
+                                            }
+                                            _handleNext();
+                                          }
+                                          : () {
+                                            if (!(_formKey.currentState
+                                                    ?.validate() ??
+                                                false)) {
+                                              return;
+                                            }
+                                            _handleSignUp();
+                                          },
+                                  text:
+                                      _currentStep == 1
+                                          ? "Next"
+                                          : "Create Account",
+                                ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ), // Already have an account section
-                AnimatedOpacity(
-                  opacity: isKeyboardVisible ? 0.0 : 1.0,
-                  duration: const Duration(milliseconds: 250),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    height: isKeyboardVisible ? 0 : null,
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(vertical: 30.h),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Already have an account? ",
-                            style: TextStyle(
-                              fontFamily: GlobalStyles.fontFamilyBody,
-                              color: GlobalStyles.textSecondary,
-                              fontSize: GlobalStyles.fontSizeBody2,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pushReplacementNamed(
-                                context,
-                                '/signin',
-                              );
-                            },
-                            child: Text(
-                              "Sign In",
+                  ), // Already have an account section
+                  AnimatedOpacity(
+                    opacity: isKeyboardVisible ? 0.0 : 1.0,
+                    duration: const Duration(milliseconds: 250),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      height: isKeyboardVisible ? 0 : null,
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 30.h),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "Already have an account? ",
                               style: TextStyle(
                                 fontFamily: GlobalStyles.fontFamilyBody,
-                                color: GlobalStyles.primaryMain,
-                                fontWeight: GlobalStyles.fontWeightBold,
+                                color: GlobalStyles.textSecondary,
                                 fontSize: GlobalStyles.fontSizeBody2,
-                                decoration: TextDecoration.underline,
-                                decorationColor: GlobalStyles.primaryMain,
                               ),
                             ),
-                          ),
-                        ],
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  '/signin',
+                                );
+                              },
+                              child: Text(
+                                "Sign In",
+                                style: TextStyle(
+                                  fontFamily: GlobalStyles.fontFamilyBody,
+                                  color: GlobalStyles.primaryMain,
+                                  fontWeight: GlobalStyles.fontWeightBold,
+                                  fontSize: GlobalStyles.fontSizeBody2,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: GlobalStyles.primaryMain,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -586,10 +637,13 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
             color: GlobalStyles.textTertiary,
             fontSize: GlobalStyles.fontSizeBody2,
           ),
-          contentPadding: GlobalStyles.inputPadding,
+          contentPadding: EdgeInsets.symmetric(
+            vertical: 18.h,
+            horizontal: GlobalStyles.paddingNormal,
+          ),
           suffixIcon: suffixIcon,
           filled: true,
-          fillColor: GlobalStyles.inputBackground,
+          fillColor: GlobalStyles.surfaceMain,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(GlobalStyles.inputBorderRadius),
             borderSide: BorderSide.none,
@@ -776,6 +830,9 @@ class SignUpState extends State<SignUp> with TickerProviderStateMixin {
   }
 
   void _handleNext() {
+    // Haptic feedback
+    HapticFeedback.selectionClick();
+
     // At this point the form should already be validated (onPressed does that).
     // Move to step 2 immediately so the UI responds, then run the slide animation
     if (mounted) {

@@ -7,21 +7,38 @@ import 'package:insurevis/global_ui_variables.dart';
 /// Utility class for common auth UI widgets
 class AuthWidgetUtils {
   /// Shows a snackbar with a message
+  /// Supports custom duration and optional action button
   static void showSnackBar(
     BuildContext context,
     String message, {
     bool isError = false,
+    Duration duration = const Duration(seconds: 3),
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: TextStyle(
-            fontFamily: GlobalStyles.fontFamilyBody,
-            fontSize: GlobalStyles.fontSizeBody2,
-            fontWeight: GlobalStyles.fontWeightMedium,
-            color: GlobalStyles.surfaceMain,
-          ),
+        content: Row(
+          children: [
+            Icon(
+              isError ? LucideIcons.circleAlert : LucideIcons.circleCheck,
+              color: GlobalStyles.surfaceMain,
+              size: GlobalStyles.iconSizeSm,
+            ),
+            SizedBox(width: GlobalStyles.spacingSm),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontFamily: GlobalStyles.fontFamilyBody,
+                  fontSize: GlobalStyles.fontSizeBody2,
+                  fontWeight: GlobalStyles.fontWeightMedium,
+                  color: GlobalStyles.surfaceMain,
+                ),
+              ),
+            ),
+          ],
         ),
         backgroundColor:
             isError ? GlobalStyles.errorMain : GlobalStyles.successMain,
@@ -30,6 +47,16 @@ class AuthWidgetUtils {
           borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
         ),
         margin: EdgeInsets.all(GlobalStyles.paddingNormal),
+        duration: duration,
+        action:
+            actionLabel != null && onAction != null
+                ? SnackBarAction(
+                  label: actionLabel,
+                  textColor: GlobalStyles.surfaceMain,
+                  onPressed: onAction,
+                )
+                : null,
+        elevation: 4,
       ),
     );
   }
@@ -160,8 +187,8 @@ class AuthWidgetUtils {
     );
   }
 
-  /// Builds a loading button
-  static Widget buildLoadingButton() {
+  /// Builds a loading button with animated spinner
+  static Widget buildLoadingButton({String? loadingText}) {
     return Container(
       height: 60.h,
       decoration: BoxDecoration(
@@ -170,35 +197,172 @@ class AuthWidgetUtils {
         boxShadow: [GlobalStyles.buttonShadow],
       ),
       child: Center(
-        child: SizedBox(
-          width: GlobalStyles.iconSizeMd,
-          height: GlobalStyles.iconSizeMd,
-          child: CircularProgressIndicator(
-            color: GlobalStyles.surfaceMain,
-            strokeWidth: 2.5,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: GlobalStyles.iconSizeMd,
+              height: GlobalStyles.iconSizeMd,
+              child: CircularProgressIndicator(
+                color: GlobalStyles.surfaceMain,
+                strokeWidth: 2.5,
+              ),
+            ),
+            if (loadingText != null) ...[
+              SizedBox(width: GlobalStyles.spacingSm),
+              Text(
+                loadingText,
+                style: TextStyle(
+                  fontFamily: GlobalStyles.fontFamilyBody,
+                  color: GlobalStyles.surfaceMain,
+                  fontSize: GlobalStyles.fontSizeBody2,
+                  fontWeight: GlobalStyles.fontWeightMedium,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Builds a primary button with consistent styling and press animation
+  static Widget buildPrimaryButton({
+    required VoidCallback onPressed,
+    required String text,
+    bool isEnabled = true,
+    IconData? leadingIcon,
+    IconData? trailingIcon,
+  }) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(GlobalStyles.buttonBorderRadius),
+        child: ElevatedButton(
+          onPressed: isEnabled ? onPressed : null,
+          style: ButtonStyle(
+            backgroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.disabled)) {
+                return GlobalStyles.componentDisabled;
+              }
+              if (states.contains(WidgetState.pressed)) {
+                return GlobalStyles.primaryPressed;
+              }
+              return GlobalStyles.primaryMain;
+            }),
+            padding: WidgetStatePropertyAll(
+              EdgeInsets.symmetric(
+                vertical: 14.h,
+                horizontal: GlobalStyles.paddingNormal,
+              ),
+            ),
+            elevation: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.pressed)) return 0;
+              if (states.contains(WidgetState.disabled)) return 0;
+              return 3;
+            }),
+            shadowColor: WidgetStatePropertyAll(
+              GlobalStyles.primaryMain.withValues(alpha: 0.3),
+            ),
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  GlobalStyles.buttonBorderRadius,
+                ),
+              ),
+            ),
+            minimumSize: WidgetStatePropertyAll(Size(double.infinity, 50.h)),
+            overlayColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.pressed)) {
+                return GlobalStyles.surfaceMain.withValues(alpha: 0.2);
+              }
+              return GlobalStyles.surfaceMain.withValues(alpha: 0.1);
+            }),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (leadingIcon != null) ...[
+                Icon(
+                  leadingIcon,
+                  color:
+                      isEnabled
+                          ? GlobalStyles.surfaceMain
+                          : GlobalStyles.textOnDisabled,
+                  size: GlobalStyles.iconSizeSm,
+                ),
+                SizedBox(width: GlobalStyles.spacingSm),
+              ],
+              Text(
+                text,
+                style: TextStyle(
+                  fontFamily: GlobalStyles.fontFamilyBody,
+                  color:
+                      isEnabled
+                          ? GlobalStyles.surfaceMain
+                          : GlobalStyles.textOnDisabled,
+                  fontSize: GlobalStyles.fontSizeH6,
+                  fontWeight: GlobalStyles.fontWeightSemiBold,
+                  letterSpacing: GlobalStyles.letterSpacingButton,
+                ),
+              ),
+              if (trailingIcon != null) ...[
+                SizedBox(width: GlobalStyles.spacingSm),
+                Icon(
+                  trailingIcon,
+                  color:
+                      isEnabled
+                          ? GlobalStyles.surfaceMain
+                          : GlobalStyles.textOnDisabled,
+                  size: GlobalStyles.iconSizeSm,
+                ),
+              ],
+            ],
           ),
         ),
       ),
     );
   }
 
-  /// Builds a primary button with consistent styling
-  static Widget buildPrimaryButton({
+  /// Builds a secondary/outline button variant
+  static Widget buildSecondaryButton({
     required VoidCallback onPressed,
     required String text,
+    bool isEnabled = true,
+    IconData? leadingIcon,
   }) {
-    return ElevatedButton(
-      onPressed: onPressed,
+    return OutlinedButton(
+      onPressed: isEnabled ? onPressed : null,
       style: ButtonStyle(
-        backgroundColor: WidgetStatePropertyAll(GlobalStyles.primaryMain),
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) {
+            return GlobalStyles.primaryLight.withOpacity(0.1);
+          }
+          return Colors.transparent;
+        }),
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return GlobalStyles.textDisabled;
+          }
+          return GlobalStyles.primaryMain;
+        }),
         padding: WidgetStatePropertyAll(
           EdgeInsets.symmetric(
             vertical: 20.h,
             horizontal: GlobalStyles.paddingNormal,
           ),
         ),
-        elevation: WidgetStatePropertyAll(2),
-        shadowColor: WidgetStatePropertyAll(Colors.black.withOpacity(0.06)),
+        side: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return BorderSide(
+              color: GlobalStyles.componentDisabled,
+              width: 1.5.w,
+            );
+          }
+          return BorderSide(color: GlobalStyles.primaryMain, width: 1.5.w);
+        }),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(
@@ -208,15 +372,24 @@ class AuthWidgetUtils {
         ),
         minimumSize: WidgetStatePropertyAll(Size(double.infinity, 60.h)),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontFamily: GlobalStyles.fontFamilyBody,
-          color: GlobalStyles.surfaceMain,
-          fontSize: GlobalStyles.fontSizeH6,
-          fontWeight: GlobalStyles.fontWeightSemiBold,
-          letterSpacing: GlobalStyles.letterSpacingButton,
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (leadingIcon != null) ...[
+            Icon(leadingIcon, size: GlobalStyles.iconSizeSm),
+            SizedBox(width: GlobalStyles.spacingSm),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              fontFamily: GlobalStyles.fontFamilyBody,
+              fontSize: GlobalStyles.fontSizeH6,
+              fontWeight: GlobalStyles.fontWeightSemiBold,
+              letterSpacing: GlobalStyles.letterSpacingButton,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -236,21 +409,31 @@ class AuthWidgetUtils {
     );
   }
 
-  /// Builds a password requirement checker row
+  /// Builds a password requirement checker row with animation
   static Widget buildPasswordRequirement(String requirement, bool isMet) {
-    return Padding(
-      padding: EdgeInsets.only(left: GlobalStyles.spacingSm, bottom: 2.h),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      padding: EdgeInsets.only(left: GlobalStyles.spacingSm, bottom: 4.h),
       child: Row(
         children: [
-          Icon(
-            isMet ? LucideIcons.circleCheck : LucideIcons.circle,
-            size: isMet ? GlobalStyles.iconSizeXs : 6.sp,
-            color: isMet ? GlobalStyles.successMain : GlobalStyles.textTertiary,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            transitionBuilder: (child, animation) {
+              return ScaleTransition(scale: animation, child: child);
+            },
+            child: Icon(
+              isMet ? LucideIcons.circleCheck : LucideIcons.circle,
+              key: ValueKey<bool>(isMet),
+              size: isMet ? GlobalStyles.iconSizeXs : 6.sp,
+              color:
+                  isMet ? GlobalStyles.successMain : GlobalStyles.textTertiary,
+            ),
           ),
           SizedBox(width: GlobalStyles.spacingSm),
           Expanded(
-            child: Text(
-              requirement,
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
               style: TextStyle(
                 fontFamily: GlobalStyles.fontFamilyBody,
                 color:
@@ -263,6 +446,7 @@ class AuthWidgetUtils {
                         ? GlobalStyles.fontWeightSemiBold
                         : GlobalStyles.fontWeightRegular,
               ),
+              child: Text(requirement),
             ),
           ),
         ],
@@ -396,6 +580,63 @@ class AuthWidgetUtils {
           ),
         ],
       ),
+    );
+  }
+
+  /// Builds a text link button with hover/press states
+  static Widget buildTextLink({
+    required String text,
+    required VoidCallback onTap,
+    Color? color,
+    bool underline = true,
+    FontWeight? fontWeight,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: GlobalStyles.spacingXs,
+          vertical: GlobalStyles.spacingXs,
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontFamily: GlobalStyles.fontFamilyBody,
+            color: color ?? GlobalStyles.primaryMain,
+            fontSize: GlobalStyles.fontSizeBody2,
+            fontWeight: fontWeight ?? GlobalStyles.fontWeightSemiBold,
+            decoration: underline ? TextDecoration.underline : null,
+            decorationColor: color ?? GlobalStyles.primaryMain,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Builds an animated divider with text
+  static Widget buildDividerWithText(String text) {
+    return Row(
+      children: [
+        Expanded(
+          child: Divider(color: GlobalStyles.inputBorderColor, thickness: 1),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingSm),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontFamily: GlobalStyles.fontFamilyBody,
+              color: GlobalStyles.textTertiary,
+              fontSize: GlobalStyles.fontSizeCaption,
+              fontWeight: GlobalStyles.fontWeightMedium,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Divider(color: GlobalStyles.inputBorderColor, thickness: 1),
+        ),
+      ],
     );
   }
 

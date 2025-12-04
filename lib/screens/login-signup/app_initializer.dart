@@ -17,10 +17,12 @@ class AppInitializer extends StatefulWidget {
 }
 
 class AppInitializerState extends State<AppInitializer>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
+  late AnimationController _pulseController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  late Animation<double> _pulseAnimation;
 
   // Loading state management
   // ignore: unused_field
@@ -46,18 +48,35 @@ class AppInitializerState extends State<AppInitializer>
 
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    _scaleAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
 
+    // Pulse animation for logo
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
     _animationController.forward();
+
+    // Start pulse animation with delay
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        _pulseController.repeat(reverse: true);
+      }
+    });
 
     // Start the loading process
     _startLoadingProcess();
@@ -66,6 +85,7 @@ class AppInitializerState extends State<AppInitializer>
   @override
   void dispose() {
     _animationController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -289,15 +309,21 @@ class AppInitializerState extends State<AppInitializer>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // App logo
-                    Container(
-                      decoration: const BoxDecoration(
-                        image: DecorationImage(
-                          image: AssetImage("assets/images/logo/4.png"),
-                          fit: BoxFit.contain,
+                    ScaleTransition(
+                      scale: _pulseAnimation,
+                      child: Hero(
+                        tag: 'app_logo_icon',
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            image: DecorationImage(
+                              image: AssetImage("assets/images/logo/4.png"),
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                          height: 120.h,
+                          width: 120.w,
                         ),
                       ),
-                      height: 120.h,
-                      width: 120.w,
                     ),
 
                     SizedBox(height: 40.h),
@@ -353,21 +379,54 @@ class AppInitializerState extends State<AppInitializer>
                             width: double.infinity,
                             height: 6.h,
                             decoration: BoxDecoration(
-                              color: GlobalStyles.inputBorderColor,
+                              color: GlobalStyles.inputBorderColor.withOpacity(
+                                0.3,
+                              ),
                               borderRadius: BorderRadius.circular(
                                 GlobalStyles.radiusFull,
                               ),
-                            ),
-                            child: FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: _loadingProgress,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: GlobalStyles.primaryMain,
-                                  borderRadius: BorderRadius.circular(
-                                    GlobalStyles.radiusFull,
-                                  ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
                                 ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                GlobalStyles.radiusFull,
+                              ),
+                              child: TweenAnimationBuilder<double>(
+                                duration: const Duration(milliseconds: 400),
+                                curve: Curves.easeInOut,
+                                tween: Tween<double>(
+                                  begin: 0,
+                                  end: _loadingProgress,
+                                ),
+                                builder:
+                                    (context, value, _) => FractionallySizedBox(
+                                      alignment: Alignment.centerLeft,
+                                      widthFactor: value,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              GlobalStyles.primaryMain,
+                                              GlobalStyles.primaryLight,
+                                            ],
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: GlobalStyles.primaryMain
+                                                  .withOpacity(0.3),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 0),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                               ),
                             ),
                           ),
