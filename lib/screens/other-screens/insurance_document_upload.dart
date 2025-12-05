@@ -65,6 +65,9 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   // Manual damages added by user via "Add Damage" UI
   final List<Map<String, String>> _manualDamages = [];
 
+  // Track which document categories are expanded
+  final Map<String, bool> _expandedCategories = {};
+
   // Note: Manual entry does not capture a specific damage type at this time.
 
   // Document categories and their uploaded files
@@ -323,60 +326,47 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: GlobalStyles.spacingMd),
-                      if (widget.vehicleData != null)
-                        _buildVehicleInfoSection(),
-                      if (widget.vehicleData != null)
-                        SizedBox(height: GlobalStyles.spacingLg),
-                      _buildInstructions(),
-                      SizedBox(height: GlobalStyles.spacingLg),
-                      _buildIncidentInformationSection(),
-                      SizedBox(height: GlobalStyles.spacingMd),
-                      _buildDamageAssessmentImagesSection(),
-                      SizedBox(height: GlobalStyles.spacingLg),
-                      _buildRepairOptionsSection(),
-                      SizedBox(height: GlobalStyles.spacingLg),
-                      _buildEstimatedCostSection(),
-                      SizedBox(height: GlobalStyles.spacingLg),
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: GlobalStyles.paddingNormal,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Document Upload',
-                              style: TextStyle(
-                                fontFamily: GlobalStyles.fontFamilyHeading,
-                                fontSize: GlobalStyles.fontSizeH4,
-                                fontWeight: GlobalStyles.fontWeightSemiBold,
-                                color: GlobalStyles.textPrimary,
-                                letterSpacing: GlobalStyles.letterSpacingH4,
-                              ),
-                            ),
-                            SizedBox(height: GlobalStyles.spacingSm),
-                            Text(
-                              'Please upload all required documents listed below.',
-                              style: TextStyle(
-                                fontFamily: GlobalStyles.fontFamilyBody,
-                                fontSize: GlobalStyles.fontSizeBody2,
-                                color: GlobalStyles.textTertiary,
-                                height:
-                                    GlobalStyles.lineHeightBody2 /
-                                    GlobalStyles.fontSizeBody2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(height: GlobalStyles.spacingMd),
-                      _buildDocumentCategories(),
-                      SizedBox(height: GlobalStyles.spacingXl),
-                    ],
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: GlobalStyles.paddingNormal,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: GlobalStyles.spacingMd),
+                        // Vehicle Info Section
+                        if (widget.vehicleData != null)
+                          _buildVehicleInfoSection(),
+                        if (widget.vehicleData != null)
+                          SizedBox(height: GlobalStyles.spacingMd),
+                        // Instructions
+                        _buildInstructions(),
+                        SizedBox(height: GlobalStyles.spacingMd),
+                        // Incident Information
+                        _buildIncidentInformationSection(),
+                        SizedBox(height: GlobalStyles.spacingMd),
+                        // Damage Assessment Images
+                        _buildDamageAssessmentImagesSection(),
+                        if (widget.imagePaths.isNotEmpty)
+                          SizedBox(height: GlobalStyles.spacingMd),
+                        // Repair Options
+                        if (!_isDamageSevere &&
+                            _selectedRepairOptions.isNotEmpty)
+                          _buildRepairOptionsSection(),
+                        if (!_isDamageSevere &&
+                            _selectedRepairOptions.isNotEmpty)
+                          SizedBox(height: GlobalStyles.spacingMd),
+                        // Estimated Cost
+                        _buildEstimatedCostSection(),
+                        SizedBox(height: GlobalStyles.spacingMd),
+                        // Document Upload Header
+                        _buildDocumentUploadHeader(),
+                        SizedBox(height: GlobalStyles.spacingMd),
+                        // Document Categories
+                        _buildDocumentCategories(),
+                        SizedBox(height: GlobalStyles.spacingXl),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -396,6 +386,36 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
       uploadedDocuments: uploadedDocuments,
       originalImagePaths: widget.imagePaths,
       tempJobEstimatePdfPath: widget.tempJobEstimatePdfPath,
+    );
+  }
+
+  /// Builds the document upload section header
+  Widget _buildDocumentUploadHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Document Upload',
+          style: TextStyle(
+            fontFamily: GlobalStyles.fontFamilyHeading,
+            fontSize: GlobalStyles.fontSizeH5,
+            fontWeight: GlobalStyles.fontWeightSemiBold,
+            color: GlobalStyles.textPrimary,
+            letterSpacing: GlobalStyles.letterSpacingH4,
+          ),
+        ),
+        SizedBox(height: GlobalStyles.spacingSm),
+        Text(
+          'Upload all required documents marked with *',
+          style: TextStyle(
+            fontFamily: GlobalStyles.fontFamilyBody,
+            fontSize: GlobalStyles.fontSizeCaption,
+            color: GlobalStyles.textTertiary,
+            height:
+                GlobalStyles.lineHeightCaption / GlobalStyles.fontSizeCaption,
+          ),
+        ),
+      ],
     );
   }
 
@@ -574,52 +594,82 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     final plateNumber = widget.vehicleData!['plate_number'] ?? 'N/A';
 
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: GlobalStyles.paddingNormal),
-      padding: GlobalStyles.cardPadding,
       decoration: BoxDecoration(
         color: GlobalStyles.surfaceMain,
-        borderRadius: BorderRadius.circular(GlobalStyles.cardBorderRadius),
-        boxShadow: [GlobalStyles.cardShadow],
+        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+        border: Border.all(
+          color: GlobalStyles.primaryMain.withAlpha(25),
+          width: 1,
+        ),
+        boxShadow: [GlobalStyles.shadowSm],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                LucideIcons.car,
-                color: GlobalStyles.primaryMain,
-                size: GlobalStyles.iconSizeMd,
+          // Header with icon
+          Container(
+            padding: EdgeInsets.all(GlobalStyles.spacingMd),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(GlobalStyles.radiusMd),
+                topRight: Radius.circular(GlobalStyles.radiusMd),
               ),
-              SizedBox(width: GlobalStyles.spacingSm),
-              Text(
-                'Vehicle Information',
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyHeading,
-                  fontSize: GlobalStyles.fontSizeH6,
-                  fontWeight: GlobalStyles.fontWeightSemiBold,
-                  color: GlobalStyles.textPrimary,
+              color: GlobalStyles.primaryMain.withAlpha(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  LucideIcons.car,
+                  color: GlobalStyles.primaryMain,
+                  size: GlobalStyles.iconSizeMd,
                 ),
-              ),
-            ],
+                SizedBox(width: GlobalStyles.spacingMd),
+                Text(
+                  'Vehicle Information',
+                  style: TextStyle(
+                    fontFamily: GlobalStyles.fontFamilyHeading,
+                    fontSize: GlobalStyles.fontSizeH5,
+                    fontWeight: GlobalStyles.fontWeightSemiBold,
+                    color: GlobalStyles.textPrimary,
+                    letterSpacing: GlobalStyles.letterSpacingH4,
+                  ),
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          _buildVehicleInfoRow('Make', make),
-          Divider(
-            height: GlobalStyles.spacingLg,
-            color: GlobalStyles.inputBorderColor,
+          // Vehicle details
+          Container(
+            padding: EdgeInsets.all(GlobalStyles.spacingMd),
+            child: Column(
+              children: [
+                _buildVehicleInfoRow('Make', make),
+                Container(
+                  margin: EdgeInsets.symmetric(
+                    vertical: GlobalStyles.spacingMd,
+                  ),
+                  height: 1,
+                  color: GlobalStyles.textSecondary.withAlpha(25),
+                ),
+                _buildVehicleInfoRow('Model', model),
+                Container(
+                  margin: EdgeInsets.symmetric(
+                    vertical: GlobalStyles.spacingMd,
+                  ),
+                  height: 1,
+                  color: GlobalStyles.textSecondary.withAlpha(25),
+                ),
+                _buildVehicleInfoRow('Year', year),
+                Container(
+                  margin: EdgeInsets.symmetric(
+                    vertical: GlobalStyles.spacingMd,
+                  ),
+                  height: 1,
+                  color: GlobalStyles.textSecondary.withAlpha(25),
+                ),
+                _buildVehicleInfoRow('Plate Number', plateNumber),
+              ],
+            ),
           ),
-          _buildVehicleInfoRow('Model', model),
-          Divider(
-            height: GlobalStyles.spacingLg,
-            color: GlobalStyles.inputBorderColor,
-          ),
-          _buildVehicleInfoRow('Year', year),
-          Divider(
-            height: GlobalStyles.spacingLg,
-            color: GlobalStyles.inputBorderColor,
-          ),
-          _buildVehicleInfoRow('Plate Number', plateNumber),
         ],
       ),
     );
@@ -653,48 +703,63 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   Widget _buildInstructions() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: GlobalStyles.paddingNormal),
-      padding: GlobalStyles.cardPadding,
       decoration: BoxDecoration(
-        color: GlobalStyles.infoMain.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(GlobalStyles.cardBorderRadius),
+        color: GlobalStyles.infoMain.withAlpha(10),
+        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
         border: Border.all(
-          color: GlobalStyles.infoMain.withOpacity(0.3),
-          width: 1,
+          color: GlobalStyles.infoMain.withAlpha(40),
+          width: 1.5,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                LucideIcons.info,
-                color: GlobalStyles.infoMain,
-                size: GlobalStyles.iconSizeMd,
+          // Header with icon
+          Container(
+            padding: EdgeInsets.all(GlobalStyles.spacingMd),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(GlobalStyles.radiusMd),
+                topRight: Radius.circular(GlobalStyles.radiusMd),
               ),
-              SizedBox(width: GlobalStyles.spacingSm),
-              Text(
-                'Required Documents',
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyHeading,
-                  fontSize: GlobalStyles.fontSizeH6,
-                  fontWeight: GlobalStyles.fontWeightSemiBold,
-                  color: GlobalStyles.textPrimary,
+              color: GlobalStyles.infoMain.withAlpha(15),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  LucideIcons.info,
+                  color: GlobalStyles.infoMain,
+                  size: GlobalStyles.iconSizeMd,
                 ),
-              ),
-            ],
+                SizedBox(width: GlobalStyles.spacingMd),
+                Expanded(
+                  child: Text(
+                    'Required Documents',
+                    style: TextStyle(
+                      fontFamily: GlobalStyles.fontFamilyHeading,
+                      fontSize: GlobalStyles.fontSizeH5,
+                      fontWeight: GlobalStyles.fontWeightSemiBold,
+                      color: GlobalStyles.textPrimary,
+                      letterSpacing: GlobalStyles.letterSpacingH4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Text(
-            'Please upload the following documents to process your insurance claim. '
-            'All documents marked with * are required. Ensure documents are clear, readable, '
-            'and in PDF format when possible (photocopies should be scanned as PDF).',
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              color: GlobalStyles.textSecondary,
-              height: GlobalStyles.lineHeightBody2 / GlobalStyles.fontSizeBody2,
+          // Instructions content
+          Padding(
+            padding: EdgeInsets.all(GlobalStyles.spacingMd),
+            child: Text(
+              'Please upload all required documents marked with *. Ensure documents are clear, '
+              'readable, and in PDF or image format.',
+              style: TextStyle(
+                fontFamily: GlobalStyles.fontFamilyBody,
+                fontSize: GlobalStyles.fontSizeBody2,
+                color: GlobalStyles.textSecondary,
+                height:
+                    GlobalStyles.lineHeightBody2 / GlobalStyles.fontSizeBody2,
+              ),
             ),
           ),
         ],
@@ -704,53 +769,70 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   Widget _buildIncidentInformationSection() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: GlobalStyles.paddingNormal),
+      decoration: BoxDecoration(
+        color: GlobalStyles.surfaceMain,
+        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+        border: Border.all(
+          color: GlobalStyles.primaryMain.withAlpha(25),
+          width: 1,
+        ),
+        boxShadow: [GlobalStyles.shadowSm],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                LucideIcons.mapPin,
-                color: GlobalStyles.primaryMain,
-                size: GlobalStyles.iconSizeMd,
+          // Header
+          Container(
+            padding: EdgeInsets.all(GlobalStyles.spacingMd),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(GlobalStyles.radiusMd),
+                topRight: Radius.circular(GlobalStyles.radiusMd),
               ),
-              SizedBox(width: GlobalStyles.spacingSm),
-              Text(
-                'Incident Information',
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyHeading,
-                  fontSize: GlobalStyles.fontSizeH5,
-                  fontWeight: GlobalStyles.fontWeightSemiBold,
-                  color: GlobalStyles.textPrimary,
-                  letterSpacing: GlobalStyles.letterSpacingH4,
+              color: GlobalStyles.primaryMain.withAlpha(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  LucideIcons.mapPin,
+                  color: GlobalStyles.primaryMain,
+                  size: GlobalStyles.iconSizeMd,
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: GlobalStyles.spacingSm),
-          Text(
-            'Please provide details about when and where the incident occurred.',
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              color: GlobalStyles.textTertiary,
-              height: GlobalStyles.lineHeightBody2 / GlobalStyles.fontSizeBody2,
+                SizedBox(width: GlobalStyles.spacingMd),
+                Text(
+                  'Incident Information',
+                  style: TextStyle(
+                    fontFamily: GlobalStyles.fontFamilyHeading,
+                    fontSize: GlobalStyles.fontSizeH5,
+                    fontWeight: GlobalStyles.fontWeightSemiBold,
+                    color: GlobalStyles.textPrimary,
+                    letterSpacing: GlobalStyles.letterSpacingH4,
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: GlobalStyles.spacingLg),
 
-          // Incident Location
-          _buildIncidentInputField(
-            controller: _incidentLocationController,
-            label: 'Incident Location',
-            hint: 'e.g., EDSA Quezon City, Makati Avenue',
-            icon: LucideIcons.mapPin,
+          // Content
+          Padding(
+            padding: EdgeInsets.all(GlobalStyles.spacingMd),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Location field
+                _buildIncidentInputField(
+                  controller: _incidentLocationController,
+                  label: 'Incident Location',
+                  hint: 'e.g., EDSA Quezon City, Makati Avenue',
+                  icon: LucideIcons.mapPin,
+                ),
+                SizedBox(height: GlobalStyles.spacingMd),
+
+                // Date field
+                _buildIncidentDateField(),
+              ],
+            ),
           ),
-          SizedBox(height: GlobalStyles.spacingMd),
-
-          // Incident Date
-          _buildIncidentDateField(),
         ],
       ),
     );
@@ -936,118 +1018,102 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   Widget _buildEstimatedCostSection() {
     return Container(
-      padding: EdgeInsets.all(GlobalStyles.spacingMd),
+      decoration: BoxDecoration(
+        color: GlobalStyles.surfaceMain,
+        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+        border: Border.all(
+          color: GlobalStyles.primaryMain.withAlpha(25),
+          width: 1,
+        ),
+        boxShadow: [GlobalStyles.shadowSm],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                'Estimated Cost',
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyBody,
-                  fontSize: GlobalStyles.fontSizeBody2,
-                  fontWeight: GlobalStyles.fontWeightBold,
-                  color: GlobalStyles.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Text(
-            'This is the estimated cost based on your repair options.',
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              color: GlobalStyles.textTertiary,
-            ),
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
+          // Header
           Container(
-            width: double.infinity,
             padding: EdgeInsets.all(GlobalStyles.spacingMd),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-              color: GlobalStyles.primaryMain.withAlpha(38),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(GlobalStyles.radiusMd),
+                topRight: Radius.circular(GlobalStyles.radiusMd),
+              ),
+              color: GlobalStyles.primaryMain.withAlpha(8),
             ),
+            child: Row(
+              children: [
+                Icon(
+                  LucideIcons.chartBar,
+                  color: GlobalStyles.primaryMain,
+                  size: GlobalStyles.iconSizeMd,
+                ),
+                SizedBox(width: GlobalStyles.spacingMd),
+                Expanded(
+                  child: Text(
+                    'Estimated Damage Cost',
+                    style: TextStyle(
+                      fontFamily: GlobalStyles.fontFamilyHeading,
+                      fontSize: GlobalStyles.fontSizeH5,
+                      fontWeight: GlobalStyles.fontWeightSemiBold,
+                      color: GlobalStyles.textPrimary,
+                      letterSpacing: GlobalStyles.letterSpacingH4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Cost display
+          Padding(
+            padding: EdgeInsets.all(GlobalStyles.spacingMd),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Total Estimated Cost',
+                  'Based on your selected repair options',
                   style: TextStyle(
                     fontFamily: GlobalStyles.fontFamilyBody,
-                    fontSize: GlobalStyles.fontSizeBody2,
+                    fontSize: GlobalStyles.fontSizeCaption,
                     color: GlobalStyles.textTertiary,
-                    fontWeight: GlobalStyles.fontWeightMedium,
                   ),
                 ),
                 SizedBox(height: GlobalStyles.spacingMd),
-                if (_isDamageSevere) ...[
-                  Text(
-                    'Severe damage. Final cost will be provided by the mechanic.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: GlobalStyles.fontFamilyBody,
-                      fontSize: GlobalStyles.fontSizeBody2,
-                      color: GlobalStyles.errorMain,
-                      fontWeight: GlobalStyles.fontWeightSemiBold,
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(GlobalStyles.spacingMd),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+                    color: GlobalStyles.successMain.withAlpha(15),
+                    border: Border.all(
+                      color: GlobalStyles.successMain.withAlpha(50),
+                      width: 2,
                     ),
                   ),
-                ] else ...[
-                  if (_isLoadingPricing.values.any((loading) => loading)) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: GlobalStyles.spacingMd,
-                          height: GlobalStyles.spacingMd,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: GlobalStyles.primaryMain,
-                          ),
+                  child: Column(
+                    children: [
+                      Text(
+                        _currencyFormat.format(_estimatedDamageCost),
+                        style: TextStyle(
+                          fontFamily: GlobalStyles.fontFamilyHeading,
+                          fontSize: GlobalStyles.fontSizeH4,
+                          fontWeight: GlobalStyles.fontWeightBold,
+                          color: GlobalStyles.successMain,
+                          letterSpacing: GlobalStyles.letterSpacingH3,
                         ),
-                        SizedBox(width: GlobalStyles.spacingMd),
-                        Text(
-                          'Calculating pricing...',
-                          style: TextStyle(
-                            fontFamily: GlobalStyles.fontFamilyBody,
-                            fontSize: GlobalStyles.fontSizeBody2,
-                            color: GlobalStyles.primaryMain,
-                            fontWeight: GlobalStyles.fontWeightMedium,
-                          ),
+                      ),
+                      SizedBox(height: GlobalStyles.spacingXs),
+                      Text(
+                        'estimated total',
+                        style: TextStyle(
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                          fontSize: GlobalStyles.fontSizeCaption,
+                          color: GlobalStyles.textTertiary,
                         ),
-                      ],
-                    ),
-                  ] else ...[
-                    Text(
-                      _estimatedDamageCost == 0.0
-                          ? 'N/A'
-                          : _currencyFormat.format(_estimatedDamageCost),
-                      style: TextStyle(
-                        fontFamily: GlobalStyles.fontFamilyBody,
-                        fontSize: GlobalStyles.fontSizeBody2,
-                        color: GlobalStyles.primaryMain,
-                        fontWeight: GlobalStyles.fontWeightBold,
                       ),
-                    ),
-                  ],
-                  if (_estimatedDamageCost == 0 &&
-                      !_isLoadingPricing.values.any((loading) => loading)) ...[
-                    SizedBox(height: GlobalStyles.spacingMd),
-                    Text(
-                      _selectedRepairOptions.isEmpty
-                          ? 'Select repair/replace options to calculate cost'
-                          : 'Cost will be calculated based on repair options',
-                      style: TextStyle(
-                        fontFamily: GlobalStyles.fontFamilyBody,
-                        fontSize: GlobalStyles.fontSizeBody2,
-                        color: GlobalStyles.textTertiary,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ],
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -1058,57 +1124,78 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
   Widget _buildDamageAssessmentImagesSection() {
     if (widget.imagePaths.isEmpty) {
-      return Container(); // Don't show section if no images
+      return const SizedBox.shrink();
     }
 
     return Container(
       padding: EdgeInsets.all(GlobalStyles.spacingMd),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+        color: GlobalStyles.surfaceMain,
+        border: Border.all(
+          color: GlobalStyles.textSecondary.withAlpha(25),
+          width: 1,
+        ),
+        boxShadow: [GlobalStyles.shadowSm],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header with count
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Damage Assessment\nImages',
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyBody,
-                  fontSize: GlobalStyles.fontSizeBody2,
-                  fontWeight: GlobalStyles.fontWeightBold,
-                  color: GlobalStyles.textPrimary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Damage Assessment',
+                      style: TextStyle(
+                        fontFamily: GlobalStyles.fontFamilyHeading,
+                        fontSize: GlobalStyles.fontSizeH5,
+                        fontWeight: GlobalStyles.fontWeightSemiBold,
+                        color: GlobalStyles.textPrimary,
+                        letterSpacing: GlobalStyles.letterSpacingH4,
+                      ),
+                    ),
+                    SizedBox(height: GlobalStyles.spacingXs),
+                    Text(
+                      '${widget.imagePaths.length} photo${widget.imagePaths.length > 1 ? 's' : ''} taken',
+                      style: TextStyle(
+                        fontFamily: GlobalStyles.fontFamilyBody,
+                        fontSize: GlobalStyles.fontSizeCaption,
+                        color: GlobalStyles.textTertiary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               SizedBox(width: GlobalStyles.spacingMd),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: GlobalStyles.spacingMd,
-                  vertical: GlobalStyles.spacingMd,
-                ),
-                decoration: BoxDecoration(
-                  color: GlobalStyles.primaryMain.withAlpha(51),
-                  borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-                ),
-                child: Text(
-                  '${widget.imagePaths.length}',
-                  style: TextStyle(
-                    fontFamily: GlobalStyles.fontFamilyBody,
-                    fontSize: GlobalStyles.fontSizeBody2,
-                    color: GlobalStyles.primaryMain,
-                    fontWeight: GlobalStyles.fontWeightBold,
+              AnimatedScale(
+                scale: 1.0,
+                duration: GlobalStyles.durationNormal,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: GlobalStyles.spacingSm,
+                    vertical: GlobalStyles.spacingXs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: GlobalStyles.successMain,
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
+                  ),
+                  child: Text(
+                    '${widget.imagePaths.length}',
+                    style: TextStyle(
+                      fontFamily: GlobalStyles.fontFamilyHeading,
+                      fontSize: GlobalStyles.fontSizeCaption,
+                      color: GlobalStyles.surfaceMain,
+                      fontWeight: GlobalStyles.fontWeightBold,
+                    ),
                   ),
                 ),
               ),
             ],
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Text(
-            'These are the images you took for damage assessment. They have been automatically included as damage proof for your claim.',
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              color: GlobalStyles.textTertiary,
-              height: 1.5,
-            ),
           ),
           SizedBox(height: GlobalStyles.spacingMd),
 
@@ -1127,7 +1214,7 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         crossAxisCount: 2,
         crossAxisSpacing: GlobalStyles.spacingMd,
         mainAxisSpacing: GlobalStyles.spacingMd,
-        childAspectRatio: 1.2,
+        childAspectRatio: 1.0,
       ),
       itemCount: widget.imagePaths.length,
       itemBuilder: (context, index) {
@@ -1138,97 +1225,125 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   }
 
   Widget _buildAssessmentImageItem(String imagePath, int index) {
-    return Container(
+    return AnimatedContainer(
+      duration: GlobalStyles.durationNormal,
+      curve: GlobalStyles.easingDefault,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
         border: Border.all(
           color: GlobalStyles.successMain.withAlpha(76),
           width: 2,
         ),
+        boxShadow: [GlobalStyles.shadowMd],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
         child: Stack(
           children: [
-            // Image
-            Image.file(
-              File(imagePath),
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: GlobalStyles.backgroundMain,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          LucideIcons.imageOff,
-                          color: GlobalStyles.textTertiary,
-                          size: GlobalStyles.fontSizeBody2,
-                        ),
-                        SizedBox(height: GlobalStyles.spacingMd),
-                        Text(
-                          'Image Error',
-                          style: TextStyle(
-                            fontFamily: GlobalStyles.fontFamilyBody,
+            // Image with fade-in
+            AnimatedOpacity(
+              opacity: 1.0,
+              duration: GlobalStyles.durationNormal,
+              child: Image.file(
+                File(imagePath),
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: GlobalStyles.backgroundMain,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            LucideIcons.imageOff,
                             color: GlobalStyles.textTertiary,
-                            fontSize: GlobalStyles.fontSizeBody2,
+                            size: GlobalStyles.iconSizeLg,
                           ),
-                        ),
-                      ],
+                          SizedBox(height: GlobalStyles.spacingMd),
+                          Text(
+                            'Image Error',
+                            style: TextStyle(
+                              fontFamily: GlobalStyles.fontFamilyBody,
+                              color: GlobalStyles.textTertiary,
+                              fontSize: GlobalStyles.fontSizeCaption,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
 
-            // Overlay with assessment indicator
+            // Top-right assessment badge with slide-in animation
             Positioned(
               top: GlobalStyles.spacingMd,
               right: GlobalStyles.spacingMd,
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: GlobalStyles.spacingMd,
-                  vertical: GlobalStyles.spacingMd,
-                ),
-                decoration: BoxDecoration(
-                  color: GlobalStyles.successMain,
-                  borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-                ),
-                child: Text(
-                  'ASSESSED',
-                  style: TextStyle(
-                    fontFamily: GlobalStyles.fontFamilyBody,
-                    color: GlobalStyles.surfaceMain,
-                    fontSize: GlobalStyles.fontSizeBody2,
-                    fontWeight: GlobalStyles.fontWeightBold,
+              child: AnimatedSlide(
+                offset: Offset.zero,
+                duration: GlobalStyles.durationNormal,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: GlobalStyles.spacingSm,
+                    vertical: GlobalStyles.spacingXs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: GlobalStyles.successMain,
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
+                    boxShadow: [GlobalStyles.shadowMd],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        LucideIcons.check,
+                        color: GlobalStyles.surfaceMain,
+                        size: GlobalStyles.iconSizeXs,
+                      ),
+                      SizedBox(width: GlobalStyles.spacingXs),
+                      Text(
+                        'ASSESSED',
+                        style: TextStyle(
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                          color: GlobalStyles.surfaceMain,
+                          fontSize: GlobalStyles.fontSizeCaption,
+                          fontWeight: GlobalStyles.fontWeightBold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
 
-            // Image number
+            // Bottom-left image counter with fade-in animation
             Positioned(
               bottom: GlobalStyles.spacingMd,
               left: GlobalStyles.spacingMd,
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: GlobalStyles.spacingMd,
-                  vertical: GlobalStyles.spacingMd,
-                ),
-                decoration: BoxDecoration(
-                  color: GlobalStyles.primaryMain.withAlpha(178),
-                  borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-                ),
-                child: Text(
-                  '${index + 1}',
-                  style: TextStyle(
-                    fontFamily: GlobalStyles.fontFamilyBody,
-                    color: GlobalStyles.surfaceMain,
-                    fontSize: GlobalStyles.fontSizeBody2,
-                    fontWeight: GlobalStyles.fontWeightBold,
+              child: AnimatedOpacity(
+                opacity: 1.0,
+                duration: GlobalStyles.durationNormal,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: GlobalStyles.spacingSm,
+                    vertical: GlobalStyles.spacingXs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: GlobalStyles.primaryMain,
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
+                    boxShadow: [GlobalStyles.shadowMd],
+                  ),
+                  child: Text(
+                    '${index + 1}',
+                    style: TextStyle(
+                      fontFamily: GlobalStyles.fontFamilyHeading,
+                      color: GlobalStyles.surfaceMain,
+                      fontSize: GlobalStyles.fontSizeCaption,
+                      fontWeight: GlobalStyles.fontWeightBold,
+                    ),
                   ),
                 ),
               ),
@@ -1357,25 +1472,25 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
 
     // Show summary of selected repair options
     return Container(
-      padding: EdgeInsets.all(GlobalStyles.spacingMd),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Damage Assessment Summary',
+            'Damage Assessment',
             style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              fontWeight: GlobalStyles.fontWeightBold,
+              fontFamily: GlobalStyles.fontFamilyHeading,
+              fontSize: GlobalStyles.fontSizeH5,
+              fontWeight: GlobalStyles.fontWeightSemiBold,
               color: GlobalStyles.textPrimary,
+              letterSpacing: GlobalStyles.letterSpacingH4,
             ),
           ),
-          SizedBox(height: GlobalStyles.spacingMd),
+          SizedBox(height: GlobalStyles.spacingSm),
           Text(
-            'Review your selected repair options and pricing below.',
+            '${damagesList.length + _manualDamages.length} damage${(damagesList.length + _manualDamages.length) > 1 ? 's' : ''} detected',
             style: TextStyle(
               fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
+              fontSize: GlobalStyles.fontSizeCaption,
               color: GlobalStyles.textTertiary,
             ),
           ),
@@ -1445,62 +1560,92 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     final repairPricing = _repairPricingData[index];
     final replacePricing = _replacePricingData[index];
 
-    return Container(
-      padding: EdgeInsets.all(GlobalStyles.spacingMd),
+    return AnimatedContainer(
+      duration: GlobalStyles.durationNormal,
+      curve: GlobalStyles.easingDefault,
+      padding: EdgeInsets.symmetric(
+        horizontal: GlobalStyles.spacingMd,
+        vertical: GlobalStyles.spacingSm,
+      ),
+      margin: EdgeInsets.only(bottom: GlobalStyles.spacingSm),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryMain.withAlpha(15),
+        color: GlobalStyles.surfaceMain,
         borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-        border: Border.all(color: GlobalStyles.primaryMain.withAlpha(76)),
+        border: Border.all(
+          color: GlobalStyles.primaryMain.withAlpha(40),
+          width: 1,
+        ),
+        boxShadow: [GlobalStyles.shadowSm],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Compact header with option badge
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      damagedPart,
+                      style: TextStyle(
+                        fontFamily: GlobalStyles.fontFamilyBody,
+                        fontSize: GlobalStyles.fontSizeBody2,
+                        fontWeight: GlobalStyles.fontWeightSemiBold,
+                        color: GlobalStyles.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (damageType.isNotEmpty)
+                      Text(
+                        damageType,
+                        style: TextStyle(
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                          fontSize: GlobalStyles.fontSizeCaption,
+                          color: GlobalStyles.textTertiary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                ),
+              ),
+              SizedBox(width: GlobalStyles.spacingMd),
               Container(
                 padding: EdgeInsets.symmetric(
-                  horizontal: GlobalStyles.spacingMd,
-                  vertical: GlobalStyles.spacingMd,
+                  horizontal: GlobalStyles.spacingSm,
+                  vertical: GlobalStyles.spacingXs,
                 ),
                 decoration: BoxDecoration(
-                  color: GlobalStyles.successMain.withAlpha(51),
-                  borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+                  color:
+                      selectedOption == 'repair'
+                          ? GlobalStyles.infoMain
+                          : GlobalStyles.warningMain,
+                  borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
                 ),
                 child: Text(
                   selectedOption.toUpperCase(),
                   style: TextStyle(
                     fontFamily: GlobalStyles.fontFamilyBody,
-                    color: GlobalStyles.successMain,
-                    fontSize: GlobalStyles.fontSizeBody2,
+                    color: GlobalStyles.surfaceMain,
+                    fontSize: GlobalStyles.fontSizeCaption,
                     fontWeight: GlobalStyles.fontWeightBold,
                   ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Text(
-            damagedPart,
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              fontWeight: GlobalStyles.fontWeightBold,
-              color: GlobalStyles.textPrimary,
+          if (repairPricing != null || replacePricing != null) ...[
+            SizedBox(height: GlobalStyles.spacingSm),
+            _buildCompactPricingSummary(
+              selectedOption,
+              repairPricing,
+              replacePricing,
             ),
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Text(
-            damageType,
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              color: GlobalStyles.textTertiary,
-            ),
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Divider(color: GlobalStyles.textSecondary.withAlpha(76)),
-          SizedBox(height: GlobalStyles.spacingMd),
-          _buildPricingSummary(selectedOption, repairPricing, replacePricing),
+          ],
         ],
       ),
     );
@@ -1517,283 +1662,636 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     final repairPricing = _repairPricingData[globalIndex];
     final replacePricing = _replacePricingData[globalIndex];
 
-    return Container(
-      padding: EdgeInsets.all(GlobalStyles.spacingMd),
+    return AnimatedContainer(
+      duration: GlobalStyles.durationNormal,
+      curve: GlobalStyles.easingDefault,
+      padding: EdgeInsets.symmetric(
+        horizontal: GlobalStyles.spacingMd,
+        vertical: GlobalStyles.spacingSm,
+      ),
+      margin: EdgeInsets.only(bottom: GlobalStyles.spacingSm),
       decoration: BoxDecoration(
-        color: GlobalStyles.primaryMain.withAlpha(15),
+        color: GlobalStyles.surfaceMain,
         borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-        border: Border.all(color: GlobalStyles.primaryMain.withAlpha(76)),
+        border: Border.all(
+          color: GlobalStyles.purpleMain.withAlpha(40),
+          width: 1,
+        ),
+        boxShadow: [GlobalStyles.shadowSm],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header with manual badge and option
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: GlobalStyles.spacingSm,
+                            vertical: GlobalStyles.spacingXs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: GlobalStyles.purpleMain.withAlpha(20),
+                            borderRadius: BorderRadius.circular(
+                              GlobalStyles.radiusSm,
+                            ),
+                            border: Border.all(
+                              color: GlobalStyles.purpleMain.withAlpha(50),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            'MANUAL',
+                            style: TextStyle(
+                              fontFamily: GlobalStyles.fontFamilyBody,
+                              color: GlobalStyles.purpleMain,
+                              fontSize: GlobalStyles.fontSizeCaption,
+                              fontWeight: GlobalStyles.fontWeightBold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: GlobalStyles.spacingSm),
+                    Text(
+                      damagedPart,
+                      style: TextStyle(
+                        fontFamily: GlobalStyles.fontFamilyBody,
+                        fontSize: GlobalStyles.fontSizeBody2,
+                        fontWeight: GlobalStyles.fontWeightSemiBold,
+                        color: GlobalStyles.textPrimary,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      maxLines: 1,
+                    ),
+                    if (damageType.isNotEmpty) ...[
+                      SizedBox(height: GlobalStyles.spacingXs),
+                      Text(
+                        damageType,
+                        style: TextStyle(
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                          fontSize: GlobalStyles.fontSizeCaption,
+                          color: GlobalStyles.textTertiary,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              SizedBox(width: GlobalStyles.spacingMd),
               Container(
                 padding: EdgeInsets.symmetric(
-                  horizontal: GlobalStyles.spacingMd,
-                  vertical: GlobalStyles.spacingMd,
+                  horizontal: GlobalStyles.spacingSm,
+                  vertical: GlobalStyles.spacingXs,
                 ),
                 decoration: BoxDecoration(
-                  color: GlobalStyles.successMain.withAlpha(51),
-                  borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+                  color:
+                      selectedOption == 'repair'
+                          ? GlobalStyles.infoMain
+                          : GlobalStyles.warningMain,
+                  borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
                 ),
                 child: Text(
                   selectedOption.toUpperCase(),
                   style: TextStyle(
                     fontFamily: GlobalStyles.fontFamilyBody,
-                    color: GlobalStyles.successMain,
-                    fontSize: GlobalStyles.fontSizeBody2,
+                    color: GlobalStyles.surfaceMain,
+                    fontSize: GlobalStyles.fontSizeCaption,
                     fontWeight: GlobalStyles.fontWeightBold,
                   ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Text(
-            damagedPart,
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              fontWeight: GlobalStyles.fontWeightBold,
-              color: GlobalStyles.textPrimary,
+          if (repairPricing != null || replacePricing != null) ...[
+            SizedBox(height: GlobalStyles.spacingSm),
+            _buildCompactPricingSummary(
+              selectedOption,
+              repairPricing,
+              replacePricing,
             ),
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Text(
-            damageType,
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              color: GlobalStyles.textTertiary,
-            ),
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Divider(color: GlobalStyles.textSecondary.withAlpha(76)),
-          SizedBox(height: GlobalStyles.spacingMd),
-          _buildPricingSummary(selectedOption, repairPricing, replacePricing),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildPricingSummary(
+  Widget _buildCompactPricingSummary(
     String option,
     Map<String, dynamic>? repairPricing,
     Map<String, dynamic>? replacePricing,
   ) {
-    double laborFee = 0.0;
     double finalPrice = 0.0;
-    double bodyPaintPrice = 0.0;
-    double thinsmithPrice = 0.0;
 
     if (option == 'replace') {
-      thinsmithPrice =
+      final thinsmithPrice =
           (replacePricing?['insurance'] as num?)?.toDouble() ?? 0.0;
-      laborFee =
-          (replacePricing?['cost_installation_personal'] as num?)?.toDouble() ??
-          (repairPricing?['cost_installation_personal'] as num?)?.toDouble() ??
-          0.0;
-      if (repairPricing != null) {
-        bodyPaintPrice =
-            (repairPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-      }
+      final bodyPaintPrice =
+          repairPricing != null
+              ? (repairPricing['srp_insurance'] as num?)?.toDouble() ?? 0.0
+              : 0.0;
       finalPrice = thinsmithPrice + bodyPaintPrice;
     } else {
-      laborFee =
-          (repairPricing?['cost_installation_personal'] as num?)?.toDouble() ??
-          0.0;
-      bodyPaintPrice =
-          (repairPricing?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
-      finalPrice = bodyPaintPrice;
+      finalPrice = (repairPricing?['srp_insurance'] as num?)?.toDouble() ?? 0.0;
     }
 
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildCostItem('Labor Fee', laborFee),
-        if (option == 'repair') ...[
-          SizedBox(height: GlobalStyles.spacingMd),
-          _buildCostItem('Paint Price', bodyPaintPrice),
-        ] else if (option == 'replace') ...[
-          SizedBox(height: GlobalStyles.spacingMd),
-          _buildCostItem('Part Price', thinsmithPrice),
-          _buildCostItem('Paint Price', bodyPaintPrice),
-        ],
-        SizedBox(height: GlobalStyles.spacingMd),
-        Divider(color: GlobalStyles.textSecondary.withAlpha(76)),
-        SizedBox(height: GlobalStyles.spacingMd),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'TOTAL',
-              style: TextStyle(
-                fontFamily: GlobalStyles.fontFamilyBody,
-                color: GlobalStyles.textPrimary,
-                fontSize: GlobalStyles.fontSizeBody2,
-                fontWeight: GlobalStyles.fontWeightBold,
-              ),
-            ),
-            Text(
-              _currencyFormat.format(finalPrice + laborFee),
-              style: TextStyle(
-                fontFamily: GlobalStyles.fontFamilyBody,
-                color: GlobalStyles.primaryMain,
-                fontSize: GlobalStyles.fontSizeBody2,
-                fontWeight: GlobalStyles.fontWeightBold,
-              ),
-            ),
-          ],
+        Text(
+          'Total:',
+          style: TextStyle(
+            fontFamily: GlobalStyles.fontFamilyBody,
+            color: GlobalStyles.textPrimary,
+            fontSize: GlobalStyles.fontSizeBody2,
+            fontWeight: GlobalStyles.fontWeightSemiBold,
+          ),
+        ),
+        Text(
+          _currencyFormat.format(finalPrice),
+          style: TextStyle(
+            fontFamily: GlobalStyles.fontFamilyBody,
+            color: GlobalStyles.primaryMain,
+            fontSize: GlobalStyles.fontSizeBody2,
+            fontWeight: GlobalStyles.fontWeightBold,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildCostItem(String label, double amount) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: GlobalStyles.spacingMd),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              color: GlobalStyles.textPrimary.withAlpha(178),
-              fontSize: GlobalStyles.fontSizeBody2,
-            ),
-          ),
-          Text(
-            _currencyFormat.format(amount),
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              color: GlobalStyles.textPrimary,
-              fontSize: GlobalStyles.fontSizeBody2,
-              fontWeight: GlobalStyles.fontWeightMedium,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDocumentCategories() {
+    final documentCategories = [
+      {
+        'title': 'LTO O.R (Official Receipt)',
+        'key': 'lto_or',
+        'description':
+            'Upload photocopy/PDF of LTO Official Receipt with number',
+        'required': true,
+      },
+      {
+        'title': 'LTO C.R (Certificate of Registration)',
+        'key': 'lto_cr',
+        'description':
+            'Upload photocopy/PDF of LTO Certificate of Registration with number',
+        'required': true,
+      },
+      {
+        'title': 'Driver\'s License',
+        'key': 'drivers_license',
+        'description': 'Upload photocopy/PDF of driver\'s license',
+        'required': true,
+      },
+      {
+        'title': 'Valid ID of Owner',
+        'key': 'owner_valid_id',
+        'description': 'Upload photocopy/PDF of owner\'s valid government ID',
+        'required': true,
+      },
+      {
+        'title': 'Police Report/Affidavit',
+        'key': 'police_report',
+        'description': 'Upload original police report or affidavit',
+        'required': true,
+      },
+      {
+        'title': 'Insurance Policy',
+        'key': 'insurance_policy',
+        'description': 'Upload photocopy/PDF of your insurance policy',
+        'required': true,
+      },
+      {
+        'title': 'Job Estimate',
+        'key': 'job_estimate',
+        'description': 'Upload repair/job estimate from service provider',
+        'required': true,
+      },
+      {
+        'title': 'Pictures of Damage',
+        'key': 'damage_photos',
+        'description':
+            'Assessment photos are already included. You can add more damage photos or PDF documents if needed.',
+        'required': true,
+      },
+      {
+        'title': 'Stencil Strips',
+        'key': 'stencil_strips',
+        'description': 'Upload stencil strips documentation',
+        'required': true,
+      },
+      {
+        'title': 'Additional Documents',
+        'key': 'additional_documents',
+        'description': 'Upload any other relevant documents (Optional)',
+        'required': false,
+      },
+    ];
+
+    int totalUploaded = uploadedDocuments.values.fold(
+      0,
+      (sum, files) => sum + files.length,
+    );
+    int requiredCount =
+        documentCategories.where((cat) => cat['required'] as bool).length;
+    int uploadedRequired = 0;
+    for (final cat in documentCategories.where((c) => c['required'] as bool)) {
+      if ((uploadedDocuments[cat['key']] ?? []).isNotEmpty) {
+        uploadedRequired++;
+      }
+    }
+
     return Column(
       children: [
-        _buildDocumentCategory(
-          'LTO O.R (Official Receipt)',
-          'lto_or',
-          'Upload photocopy/PDF of LTO Official Receipt with number',
-        ),
-        SizedBox(
-          height: GlobalStyles.spacingMd,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingMd),
-            child: Divider(color: GlobalStyles.textTertiary.withAlpha(68)),
+        // Document upload progress header
+        Container(
+          padding: EdgeInsets.all(GlobalStyles.spacingMd),
+          decoration: BoxDecoration(
+            color: GlobalStyles.primaryMain.withAlpha(8),
+            borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+            border: Border.all(
+              color: GlobalStyles.primaryMain.withAlpha(25),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Documents Uploaded',
+                          style: TextStyle(
+                            fontFamily: GlobalStyles.fontFamilyHeading,
+                            fontSize: GlobalStyles.fontSizeBody2,
+                            fontWeight: GlobalStyles.fontWeightSemiBold,
+                            color: GlobalStyles.textPrimary,
+                          ),
+                        ),
+                        SizedBox(height: GlobalStyles.spacingXs),
+                        Text(
+                          '$uploadedRequired of $requiredCount required documents',
+                          style: TextStyle(
+                            fontFamily: GlobalStyles.fontFamilyBody,
+                            fontSize: GlobalStyles.fontSizeCaption,
+                            color: GlobalStyles.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: GlobalStyles.spacingMd),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: GlobalStyles.spacingSm,
+                      vertical: GlobalStyles.spacingXs,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          uploadedRequired == requiredCount
+                              ? GlobalStyles.successMain
+                              : GlobalStyles.warningMain,
+                      borderRadius: BorderRadius.circular(
+                        GlobalStyles.radiusSm,
+                      ),
+                    ),
+                    child: Text(
+                      '$totalUploaded',
+                      style: TextStyle(
+                        fontFamily: GlobalStyles.fontFamilyHeading,
+                        fontSize: GlobalStyles.fontSizeCaption,
+                        color: GlobalStyles.surfaceMain,
+                        fontWeight: GlobalStyles.fontWeightBold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: GlobalStyles.spacingMd),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
+                child: LinearProgressIndicator(
+                  value:
+                      requiredCount > 0 ? uploadedRequired / requiredCount : 0,
+                  minHeight: 4,
+                  backgroundColor: GlobalStyles.textSecondary.withAlpha(25),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    uploadedRequired == requiredCount
+                        ? GlobalStyles.successMain
+                        : GlobalStyles.primaryMain,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        _buildDocumentCategory(
-          'LTO C.R (Certificate of Registration)',
-          'lto_cr',
-          'Upload photocopy/PDF of LTO Certificate of Registration with number',
-        ),
-        SizedBox(
-          height: GlobalStyles.spacingMd,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingMd),
-            child: Divider(color: GlobalStyles.textTertiary.withAlpha(68)),
-          ),
-        ),
-        _buildDocumentCategory(
-          'Driver\'s License',
-          'drivers_license',
-          'Upload photocopy/PDF of driver\'s license',
-        ),
-        SizedBox(
-          height: GlobalStyles.spacingMd,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingMd),
-            child: Divider(color: GlobalStyles.textTertiary.withAlpha(68)),
-          ),
-        ),
-        _buildDocumentCategory(
-          'Valid ID of Owner',
-          'owner_valid_id',
-          'Upload photocopy/PDF of owner\'s valid government ID',
-        ),
-        SizedBox(
-          height: GlobalStyles.spacingMd,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingMd),
-            child: Divider(color: GlobalStyles.textTertiary.withAlpha(68)),
-          ),
-        ),
-        _buildDocumentCategory(
-          'Police Report/Affidavit',
-          'police_report',
-          'Upload original police report or affidavit',
-        ),
-        SizedBox(
-          height: GlobalStyles.spacingMd,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingMd),
-            child: Divider(color: GlobalStyles.textTertiary.withAlpha(68)),
-          ),
-        ),
-        _buildDocumentCategory(
-          'Insurance Policy',
-          'insurance_policy',
-          'Upload photocopy/PDF of your insurance policy',
-        ),
-        SizedBox(
-          height: GlobalStyles.spacingMd,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingMd),
-            child: Divider(color: GlobalStyles.textTertiary.withAlpha(68)),
-          ),
-        ),
-        _buildDocumentCategory(
-          'Job Estimate',
-          'job_estimate',
-          'Upload repair/job estimate from service provider',
-        ),
-        SizedBox(
-          height: GlobalStyles.spacingMd,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingMd),
-            child: Divider(color: GlobalStyles.textTertiary.withAlpha(68)),
-          ),
-        ),
-        _buildDocumentCategory(
-          'Pictures of Damage',
-          'damage_photos',
-          'Assessment photos are already included. You can add more damage photos or PDF documents if needed.',
-        ),
-        SizedBox(
-          height: GlobalStyles.spacingMd,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingMd),
-            child: Divider(color: GlobalStyles.textTertiary.withAlpha(68)),
-          ),
-        ),
-        _buildDocumentCategory(
-          'Stencil Strips',
-          'stencil_strips',
-          'Upload stencil strips documentation',
-        ),
-        SizedBox(
-          height: GlobalStyles.spacingMd,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingMd),
-            child: Divider(color: GlobalStyles.textTertiary.withAlpha(68)),
-          ),
-        ),
-        _buildDocumentCategory(
-          'Additional Documents',
-          'additional_documents',
-          'Upload any other relevant documents (Optional)',
-        ),
+        SizedBox(height: GlobalStyles.spacingMd),
+
+        // Collapsible document categories
+        ...documentCategories.map((cat) {
+          final key = cat['key'] as String;
+          final isExpanded = _expandedCategories[key] ?? false;
+          final files = uploadedDocuments[key] ?? [];
+          final hasFiles = files.isNotEmpty;
+
+          return Padding(
+            padding: EdgeInsets.only(bottom: GlobalStyles.spacingMd),
+            child: Column(
+              children: [
+                // Category header (clickable to expand/collapse)
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _expandedCategories[key] = !isExpanded;
+                      });
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(GlobalStyles.spacingMd),
+                      decoration: BoxDecoration(
+                        color:
+                            hasFiles
+                                ? GlobalStyles.successMain.withAlpha(8)
+                                : GlobalStyles.surfaceMain,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(GlobalStyles.radiusMd),
+                          topRight: Radius.circular(GlobalStyles.radiusMd),
+                        ),
+                        border: Border.all(
+                          color:
+                              hasFiles
+                                  ? GlobalStyles.successMain.withAlpha(50)
+                                  : GlobalStyles.textSecondary.withAlpha(25),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        cat['title'] as String,
+                                        style: TextStyle(
+                                          fontFamily:
+                                              GlobalStyles.fontFamilyBody,
+                                          fontSize: GlobalStyles.fontSizeBody2,
+                                          fontWeight:
+                                              GlobalStyles.fontWeightSemiBold,
+                                          color: GlobalStyles.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    if (cat['required'] as bool)
+                                      Padding(
+                                        padding: EdgeInsets.only(
+                                          left: GlobalStyles.spacingSm,
+                                        ),
+                                        child: Text(
+                                          '*',
+                                          style: TextStyle(
+                                            fontFamily:
+                                                GlobalStyles.fontFamilyBody,
+                                            fontSize:
+                                                GlobalStyles.fontSizeBody2,
+                                            color: GlobalStyles.errorMain,
+                                            fontWeight:
+                                                GlobalStyles.fontWeightBold,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: GlobalStyles.spacingMd),
+                          if (hasFiles)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: GlobalStyles.spacingSm,
+                                vertical: GlobalStyles.spacingXs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: GlobalStyles.successMain,
+                                borderRadius: BorderRadius.circular(
+                                  GlobalStyles.radiusSm,
+                                ),
+                              ),
+                              child: Text(
+                                '${files.length}',
+                                style: TextStyle(
+                                  fontFamily: GlobalStyles.fontFamilyBody,
+                                  fontSize: GlobalStyles.fontSizeCaption,
+                                  color: GlobalStyles.surfaceMain,
+                                  fontWeight: GlobalStyles.fontWeightBold,
+                                ),
+                              ),
+                            ),
+                          SizedBox(width: GlobalStyles.spacingMd),
+                          AnimatedRotation(
+                            turns: isExpanded ? 0.5 : 0,
+                            duration: GlobalStyles.durationNormal,
+                            child: Icon(
+                              LucideIcons.chevronDown,
+                              size: GlobalStyles.iconSizeMd,
+                              color: GlobalStyles.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Expanded content
+                if (isExpanded)
+                  Container(
+                    padding: EdgeInsets.all(GlobalStyles.spacingMd),
+                    decoration: BoxDecoration(
+                      color: GlobalStyles.surfaceMain,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(GlobalStyles.radiusMd),
+                        bottomRight: Radius.circular(GlobalStyles.radiusMd),
+                      ),
+                      border: Border(
+                        left: BorderSide(
+                          color:
+                              hasFiles
+                                  ? GlobalStyles.successMain.withAlpha(50)
+                                  : GlobalStyles.textSecondary.withAlpha(25),
+                          width: 1,
+                        ),
+                        right: BorderSide(
+                          color:
+                              hasFiles
+                                  ? GlobalStyles.successMain.withAlpha(50)
+                                  : GlobalStyles.textSecondary.withAlpha(25),
+                          width: 1,
+                        ),
+                        bottom: BorderSide(
+                          color:
+                              hasFiles
+                                  ? GlobalStyles.successMain.withAlpha(50)
+                                  : GlobalStyles.textSecondary.withAlpha(25),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cat['description'] as String,
+                          style: TextStyle(
+                            fontFamily: GlobalStyles.fontFamilyBody,
+                            fontSize: GlobalStyles.fontSizeCaption,
+                            color: GlobalStyles.textTertiary,
+                            height:
+                                GlobalStyles.lineHeightCaption /
+                                GlobalStyles.fontSizeCaption,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: GlobalStyles.spacingMd),
+
+                        // Uploaded files
+                        if (hasFiles) ...[
+                          _buildUploadedFilesList(key, files),
+                          SizedBox(height: GlobalStyles.spacingMd),
+                        ],
+
+                        // Upload buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => _pickDocument(key),
+                                  borderRadius: BorderRadius.circular(
+                                    GlobalStyles.radiusMd,
+                                  ),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: GlobalStyles.spacingSm,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(
+                                        GlobalStyles.radiusMd,
+                                      ),
+                                      border: Border.all(
+                                        color: GlobalStyles.primaryMain,
+                                        width: 1,
+                                      ),
+                                      color: GlobalStyles.primaryMain.withAlpha(
+                                        8,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          LucideIcons.upload,
+                                          size: GlobalStyles.iconSizeSm,
+                                          color: GlobalStyles.primaryMain,
+                                        ),
+                                        SizedBox(width: GlobalStyles.spacingXs),
+                                        Text(
+                                          'File',
+                                          style: TextStyle(
+                                            fontFamily:
+                                                GlobalStyles.fontFamilyBody,
+                                            fontSize:
+                                                GlobalStyles.fontSizeCaption,
+                                            fontWeight:
+                                                GlobalStyles.fontWeightSemiBold,
+                                            color: GlobalStyles.primaryMain,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: GlobalStyles.spacingMd),
+                            Expanded(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => _takePhoto(key),
+                                  borderRadius: BorderRadius.circular(
+                                    GlobalStyles.radiusMd,
+                                  ),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: GlobalStyles.spacingSm,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(
+                                        GlobalStyles.radiusMd,
+                                      ),
+                                      color: GlobalStyles.successMain,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          LucideIcons.camera,
+                                          size: GlobalStyles.iconSizeSm,
+                                          color: GlobalStyles.surfaceMain,
+                                        ),
+                                        SizedBox(width: GlobalStyles.spacingXs),
+                                        Text(
+                                          'Photo',
+                                          style: TextStyle(
+                                            fontFamily:
+                                                GlobalStyles.fontFamilyBody,
+                                            fontSize:
+                                                GlobalStyles.fontSizeCaption,
+                                            fontWeight:
+                                                GlobalStyles.fontWeightSemiBold,
+                                            color: GlobalStyles.surfaceMain,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
       ],
     );
   }
@@ -1808,151 +2306,229 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
     final hasFiles = uploadedFiles.isNotEmpty;
 
     return Container(
-      padding: EdgeInsets.all(GlobalStyles.fontSizeBody2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-        color: GlobalStyles.textSecondary.withAlpha(25),
+        color: GlobalStyles.surfaceMain,
+        border: Border.all(
+          color: GlobalStyles.textSecondary.withAlpha(25),
+          width: 1,
+        ),
+        boxShadow: [GlobalStyles.shadowSm],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            fontFamily: GlobalStyles.fontFamilyBody,
-                            fontSize: GlobalStyles.fontSizeBody2,
-                            fontWeight: GlobalStyles.fontWeightBold,
-                            color: GlobalStyles.textPrimary,
-                          ),
-                        ),
-                        if (isRequired) ...[
-                          SizedBox(width: GlobalStyles.spacingMd),
-                          Text(
-                            '*',
-                            style: TextStyle(
-                              fontFamily: GlobalStyles.fontFamilyBody,
-                              fontSize: GlobalStyles.fontSizeBody2,
-                              color: GlobalStyles.errorMain,
-                              fontWeight: GlobalStyles.fontWeightBold,
+          // Header with title and file count
+          Container(
+            padding: EdgeInsets.all(GlobalStyles.spacingMd),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(GlobalStyles.radiusMd),
+                topRight: Radius.circular(GlobalStyles.radiusMd),
+              ),
+              color:
+                  isRequired
+                      ? GlobalStyles.errorMain.withAlpha(10)
+                      : GlobalStyles.primaryMain.withAlpha(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: TextStyle(
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                                fontSize: GlobalStyles.fontSizeBody2,
+                                fontWeight: GlobalStyles.fontWeightSemiBold,
+                                color: GlobalStyles.textPrimary,
+                              ),
                             ),
                           ),
+                          if (isRequired)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                left: GlobalStyles.spacingSm,
+                              ),
+                              child: Text(
+                                '*',
+                                style: TextStyle(
+                                  fontFamily: GlobalStyles.fontFamilyBody,
+                                  fontSize: GlobalStyles.fontSizeBody2,
+                                  color: GlobalStyles.errorMain,
+                                  fontWeight: GlobalStyles.fontWeightBold,
+                                ),
+                              ),
+                            ),
                         ],
-                      ],
-                    ),
-                    SizedBox(height: GlobalStyles.spacingMd),
-                    Text(
-                      description,
-                      style: TextStyle(
-                        fontFamily: GlobalStyles.fontFamilyBody,
-                        fontSize: GlobalStyles.fontSizeBody2,
-                        color: GlobalStyles.textTertiary,
+                      ),
+                      SizedBox(height: GlobalStyles.spacingSm),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                          fontSize: GlobalStyles.fontSizeCaption,
+                          color: GlobalStyles.textTertiary,
+                          height:
+                              GlobalStyles.lineHeightCaption /
+                              GlobalStyles.fontSizeCaption,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                if (hasFiles) ...[
+                  SizedBox(width: GlobalStyles.spacingMd),
+                  AnimatedScale(
+                    scale: hasFiles ? 1.0 : 0.8,
+                    duration: GlobalStyles.durationNormal,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: GlobalStyles.spacingSm,
+                        vertical: GlobalStyles.spacingXs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: GlobalStyles.successMain,
+                        borderRadius: BorderRadius.circular(
+                          GlobalStyles.radiusSm,
+                        ),
+                      ),
+                      child: Text(
+                        '${uploadedFiles.length}',
+                        style: TextStyle(
+                          fontFamily: GlobalStyles.fontFamilyBody,
+                          fontSize: GlobalStyles.fontSizeCaption,
+                          color: GlobalStyles.surfaceMain,
+                          fontWeight: GlobalStyles.fontWeightBold,
+                        ),
                       ),
                     ),
-                  ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // Uploaded files list
+          if (hasFiles) ...[
+            Container(
+              padding: EdgeInsets.all(GlobalStyles.spacingMd),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: GlobalStyles.textSecondary.withAlpha(25),
+                    width: 1,
+                  ),
                 ),
               ),
-              if (hasFiles)
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: GlobalStyles.spacingMd,
-                    vertical: GlobalStyles.spacingMd,
-                  ),
-                  decoration: BoxDecoration(
-                    color: GlobalStyles.primaryMain.withAlpha(51),
-                    borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-                  ),
-                  child: Text(
-                    '${uploadedFiles.length}',
-                    style: TextStyle(
-                      fontFamily: GlobalStyles.fontFamilyBody,
-                      fontSize: GlobalStyles.fontSizeBody2,
-                      color: GlobalStyles.primaryMain,
-                      fontWeight: GlobalStyles.fontWeightBold,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-
-          // Show uploaded files
-          if (hasFiles) ...[
-            _buildUploadedFilesList(category, uploadedFiles),
-            SizedBox(height: GlobalStyles.spacingMd),
+              child: _buildUploadedFilesList(category, uploadedFiles),
+            ),
           ],
 
           // Upload buttons
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _pickDocument(category),
-                  icon: Icon(
-                    LucideIcons.upload,
-                    size: GlobalStyles.fontSizeBody2,
-                  ),
-                  label: Text(
-                    'Upload File',
-                    style: TextStyle(
-                      fontFamily: GlobalStyles.fontFamilyBody,
-                      fontSize: GlobalStyles.fontSizeBody2,
-                      fontWeight: GlobalStyles.fontWeightSemiBold,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GlobalStyles.successMain,
-                    foregroundColor: GlobalStyles.surfaceMain,
-                    padding: EdgeInsets.symmetric(
-                      vertical: GlobalStyles.spacingMd,
-                    ),
-                    shape: RoundedRectangleBorder(
+          Padding(
+            padding: EdgeInsets.all(GlobalStyles.spacingMd),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _pickDocument(category),
                       borderRadius: BorderRadius.circular(
                         GlobalStyles.radiusMd,
+                      ),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          vertical: GlobalStyles.spacingMd,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(
+                            GlobalStyles.radiusMd,
+                          ),
+                          border: Border.all(
+                            color: GlobalStyles.primaryMain,
+                            width: 1.5,
+                          ),
+                          color: GlobalStyles.primaryMain.withAlpha(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              LucideIcons.upload,
+                              size: GlobalStyles.iconSizeSm,
+                              color: GlobalStyles.primaryMain,
+                            ),
+                            SizedBox(width: GlobalStyles.spacingXs),
+                            Text(
+                              'File',
+                              style: TextStyle(
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                                fontSize: GlobalStyles.fontSizeCaption,
+                                fontWeight: GlobalStyles.fontWeightSemiBold,
+                                color: GlobalStyles.primaryMain,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(width: GlobalStyles.spacingMd),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _takePhoto(category),
-                  icon: Icon(
-                    LucideIcons.camera,
-                    size: GlobalStyles.fontSizeBody2,
-                  ),
-                  label: Text(
-                    'Take Photo',
-                    style: TextStyle(
-                      fontFamily: GlobalStyles.fontFamilyBody,
-                      fontSize: GlobalStyles.fontSizeBody2,
-                      fontWeight: GlobalStyles.fontWeightSemiBold,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GlobalStyles.successMain,
-                    foregroundColor: GlobalStyles.surfaceMain,
-                    padding: EdgeInsets.symmetric(
-                      vertical: GlobalStyles.spacingMd,
-                    ),
-                    shape: RoundedRectangleBorder(
+                SizedBox(width: GlobalStyles.spacingMd),
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _takePhoto(category),
                       borderRadius: BorderRadius.circular(
                         GlobalStyles.radiusMd,
+                      ),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          vertical: GlobalStyles.spacingMd,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(
+                            GlobalStyles.radiusMd,
+                          ),
+                          color: GlobalStyles.successMain,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              LucideIcons.camera,
+                              size: GlobalStyles.iconSizeSm,
+                              color: GlobalStyles.surfaceMain,
+                            ),
+                            SizedBox(width: GlobalStyles.spacingXs),
+                            Text(
+                              'Photo',
+                              style: TextStyle(
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                                fontSize: GlobalStyles.fontSizeCaption,
+                                fontWeight: GlobalStyles.fontWeightSemiBold,
+                                color: GlobalStyles.surfaceMain,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -1960,23 +2536,21 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   }
 
   Widget _buildUploadedFilesList(String category, List<File> files) {
-    return SizedBox(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Uploaded Files:',
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              fontWeight: GlobalStyles.fontWeightSemiBold,
-              color: GlobalStyles.primaryMain,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Uploaded Files:',
+          style: TextStyle(
+            fontFamily: GlobalStyles.fontFamilyBody,
+            fontSize: GlobalStyles.fontSizeCaption,
+            fontWeight: GlobalStyles.fontWeightSemiBold,
+            color: GlobalStyles.primaryMain,
           ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          ...files.map((file) => _buildFileItem(category, file)),
-        ],
-      ),
+        ),
+        SizedBox(height: GlobalStyles.spacingSm),
+        ...files.map((file) => _buildFileItem(category, file)),
+      ],
     );
   }
 
@@ -1998,145 +2572,212 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
         widget.tempJobEstimatePdfPath != null &&
         file.path == widget.tempJobEstimatePdfPath;
 
-    return Container(
-      margin: EdgeInsets.only(bottom: GlobalStyles.spacingMd),
-      padding: EdgeInsets.all(GlobalStyles.spacingMd),
-      decoration: BoxDecoration(
-        color: GlobalStyles.primaryMain.withAlpha(15),
-        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Icon(
-            isImage ? LucideIcons.image : LucideIcons.fileText,
-            color: GlobalStyles.primaryMain,
-            size: GlobalStyles.fontSizeBody2,
+    return AnimatedSlide(
+      offset: Offset.zero,
+      duration: GlobalStyles.durationNormal,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          margin: EdgeInsets.only(bottom: GlobalStyles.spacingSm),
+          padding: EdgeInsets.symmetric(
+            horizontal: GlobalStyles.spacingMd,
+            vertical: GlobalStyles.spacingSm,
           ),
-          SizedBox(width: GlobalStyles.spacingMd),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fileName,
-                  style: TextStyle(
-                    fontFamily: GlobalStyles.fontFamilyBody,
-                    fontSize: GlobalStyles.fontSizeBody2,
-                    color: GlobalStyles.primaryMain,
-                    fontWeight: GlobalStyles.fontWeightBold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (isAssessmentImage) ...[
-                  SizedBox(height: GlobalStyles.spacingMd),
-                  Text(
-                    'Assessment Image',
-                    style: TextStyle(
-                      fontFamily: GlobalStyles.fontFamilyBody,
-                      fontSize: GlobalStyles.fontSizeBody2,
-                      color: GlobalStyles.primaryMain,
-                      fontWeight: GlobalStyles.fontWeightMedium,
-                    ),
-                  ),
-                ],
-                if (isAutoGeneratedJobEstimate) ...[
-                  SizedBox(height: GlobalStyles.spacingMd),
-                  Text(
-                    'Auto-generated',
-                    style: TextStyle(
-                      fontFamily: GlobalStyles.fontFamilyBody,
-                      fontSize: GlobalStyles.fontSizeBody2,
-                      color: GlobalStyles.primaryMain,
-                      fontWeight: GlobalStyles.fontWeightMedium,
-                    ),
-                  ),
-                ],
-              ],
+          decoration: BoxDecoration(
+            color: GlobalStyles.surfaceMain,
+            borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+            border: Border.all(
+              color:
+                  isAssessmentImage
+                      ? GlobalStyles.successMain.withAlpha(50)
+                      : GlobalStyles.textSecondary.withAlpha(25),
+              width: 1,
             ),
+            boxShadow: [GlobalStyles.shadowSm],
           ),
-          if (isAssessmentImage)
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: GlobalStyles.spacingMd,
-                vertical: GlobalStyles.spacingMd,
-              ),
-              decoration: BoxDecoration(
-                color: GlobalStyles.primaryMain,
-                borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-              ),
-              child: Text(
-                'PROOF',
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyBody,
-                  color: GlobalStyles.surfaceMain,
-                  fontSize: GlobalStyles.fontSizeBody2,
-                  fontWeight: GlobalStyles.fontWeightBold,
-                ),
-              ),
-            )
-          else if (isAutoGeneratedJobEstimate && isPdf)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // View button
-                Container(
-                  height: GlobalStyles.spacingMd,
-                  width: GlobalStyles.spacingMd,
-                  decoration: BoxDecoration(
-                    color: GlobalStyles.infoMain.withAlpha(51),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () => _viewPdf(file.path),
-                    icon: Icon(
-                      LucideIcons.eye,
-                      color: GlobalStyles.infoMain,
-                      size: GlobalStyles.fontSizeBody2,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // File icon and name
+              Expanded(
+                child: Row(
+                  children: [
+                    // File icon
+                    Container(
+                      padding: EdgeInsets.all(GlobalStyles.spacingXs),
+                      decoration: BoxDecoration(
+                        color:
+                            isImage
+                                ? GlobalStyles.infoMain.withAlpha(15)
+                                : GlobalStyles.primaryMain.withAlpha(15),
+                        borderRadius: BorderRadius.circular(
+                          GlobalStyles.radiusSm,
+                        ),
+                      ),
+                      child: Icon(
+                        isImage ? LucideIcons.image : LucideIcons.fileText,
+                        color:
+                            isImage
+                                ? GlobalStyles.infoMain
+                                : GlobalStyles.primaryMain,
+                        size: GlobalStyles.iconSizeSm,
+                      ),
                     ),
-                    tooltip: 'View PDF',
-                  ),
+                    SizedBox(width: GlobalStyles.spacingMd),
+                    // File name and metadata
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fileName,
+                            style: TextStyle(
+                              fontFamily: GlobalStyles.fontFamilyBody,
+                              fontSize: GlobalStyles.fontSizeCaption,
+                              color: GlobalStyles.textPrimary,
+                              fontWeight: GlobalStyles.fontWeightSemiBold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          if (isAssessmentImage) ...[
+                            SizedBox(height: GlobalStyles.spacingXs),
+                            Row(
+                              children: [
+                                Icon(
+                                  LucideIcons.check,
+                                  size: GlobalStyles.iconSizeXs,
+                                  color: GlobalStyles.successMain,
+                                ),
+                                SizedBox(width: GlobalStyles.spacingXs),
+                                Text(
+                                  'Assessment Image',
+                                  style: TextStyle(
+                                    fontFamily: GlobalStyles.fontFamilyBody,
+                                    fontSize: GlobalStyles.fontSizeCaption,
+                                    color: GlobalStyles.successMain,
+                                    fontWeight: GlobalStyles.fontWeightMedium,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else if (isAutoGeneratedJobEstimate) ...[
+                            SizedBox(height: GlobalStyles.spacingXs),
+                            Row(
+                              children: [
+                                Icon(
+                                  LucideIcons.sparkles,
+                                  size: GlobalStyles.iconSizeXs,
+                                  color: GlobalStyles.warningMain,
+                                ),
+                                SizedBox(width: GlobalStyles.spacingXs),
+                                Text(
+                                  'Auto-generated',
+                                  style: TextStyle(
+                                    fontFamily: GlobalStyles.fontFamilyBody,
+                                    fontSize: GlobalStyles.fontSizeCaption,
+                                    color: GlobalStyles.warningMain,
+                                    fontWeight: GlobalStyles.fontWeightMedium,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(width: GlobalStyles.spacingMd),
-                // Download button
+              ),
+              SizedBox(width: GlobalStyles.spacingMd),
+              // Action buttons
+              if (isAssessmentImage)
                 Container(
-                  height: GlobalStyles.spacingMd,
-                  width: GlobalStyles.spacingMd,
-                  decoration: BoxDecoration(
-                    color: GlobalStyles.successMain.withAlpha(51),
-                    shape: BoxShape.circle,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: GlobalStyles.spacingSm,
+                    vertical: GlobalStyles.spacingXs,
                   ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () => _downloadPdf(file.path),
-                    icon: Icon(
-                      LucideIcons.download,
+                  decoration: BoxDecoration(
+                    color: GlobalStyles.successMain.withAlpha(15),
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
+                    border: Border.all(
+                      color: GlobalStyles.successMain.withAlpha(50),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    'PROOF',
+                    style: TextStyle(
+                      fontFamily: GlobalStyles.fontFamilyBody,
                       color: GlobalStyles.successMain,
-                      size: GlobalStyles.fontSizeBody2,
+                      fontSize: GlobalStyles.fontSizeCaption,
+                      fontWeight: GlobalStyles.fontWeightBold,
                     ),
-                    tooltip: 'Download PDF',
+                  ),
+                )
+              else if (isAutoGeneratedJobEstimate && isPdf)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // View button with ripple effect
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _viewPdf(file.path),
+                        borderRadius: BorderRadius.circular(
+                          GlobalStyles.radiusSm,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(GlobalStyles.spacingXs),
+                          child: Icon(
+                            LucideIcons.eye,
+                            color: GlobalStyles.infoMain,
+                            size: GlobalStyles.iconSizeSm,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: GlobalStyles.spacingSm),
+                    // Download button with ripple effect
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _downloadPdf(file.path),
+                        borderRadius: BorderRadius.circular(
+                          GlobalStyles.radiusSm,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(GlobalStyles.spacingXs),
+                          child: Icon(
+                            LucideIcons.download,
+                            color: GlobalStyles.successMain,
+                            size: GlobalStyles.iconSizeSm,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                // Remove button with ripple effect
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => _removeFile(category, file),
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
+                    child: Padding(
+                      padding: EdgeInsets.all(GlobalStyles.spacingXs),
+                      child: Icon(
+                        LucideIcons.trash2,
+                        color: GlobalStyles.errorMain,
+                        size: GlobalStyles.iconSizeSm,
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            )
-          else
-            Container(
-              height: GlobalStyles.spacingMd,
-              decoration: BoxDecoration(
-                color: GlobalStyles.errorMain.withAlpha(51),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                onPressed: () => _removeFile(category, file),
-                icon: Icon(
-                  LucideIcons.x,
-                  color: GlobalStyles.errorMain,
-                  size: GlobalStyles.fontSizeBody2,
-                ),
-              ),
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -2144,33 +2785,68 @@ class _InsuranceDocumentUploadState extends State<InsuranceDocumentUpload> {
   Widget _buildBottomActions() {
     return Container(
       padding: EdgeInsets.all(GlobalStyles.spacingMd),
-      child: Column(
-        children: [
-          // Validation errors are shown via SnackBar when the Submit button is tapped
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              // Always allow tap; validation happens in _onSubmitPressed
-              onPressed: _onSubmitPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: GlobalStyles.primaryMain,
-                padding: EdgeInsets.symmetric(vertical: GlobalStyles.spacingMd),
-                shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        color: GlobalStyles.surfaceMain,
+        border: Border(
+          top: BorderSide(
+            color: GlobalStyles.textSecondary.withAlpha(25),
+            width: 1,
+          ),
+        ),
+        boxShadow: [GlobalStyles.shadowMd],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Primary Submit Button
+            SizedBox(
+              width: double.infinity,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _onSubmitPressed,
                   borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-                ),
-              ),
-              child: Text(
-                'Submit Insurance Claim',
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyBody,
-                  fontSize: GlobalStyles.fontSizeBody2,
-                  fontWeight: GlobalStyles.fontWeightBold,
-                  color: GlobalStyles.surfaceMain,
+                  child: AnimatedContainer(
+                    duration: GlobalStyles.durationNormal,
+                    curve: GlobalStyles.easingDefault,
+                    padding: EdgeInsets.symmetric(
+                      vertical: GlobalStyles.spacingMd,
+                    ),
+                    decoration: BoxDecoration(
+                      color: GlobalStyles.primaryMain,
+                      borderRadius: BorderRadius.circular(
+                        GlobalStyles.radiusMd,
+                      ),
+                      boxShadow: [GlobalStyles.shadowMd],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          LucideIcons.send,
+                          color: GlobalStyles.surfaceMain,
+                          size: GlobalStyles.iconSizeSm,
+                        ),
+                        SizedBox(width: GlobalStyles.spacingMd),
+                        Text(
+                          'Submit Insurance Claim',
+                          style: TextStyle(
+                            fontFamily: GlobalStyles.fontFamilyBody,
+                            fontSize: GlobalStyles.fontSizeBody2,
+                            fontWeight: GlobalStyles.fontWeightSemiBold,
+                            color: GlobalStyles.surfaceMain,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

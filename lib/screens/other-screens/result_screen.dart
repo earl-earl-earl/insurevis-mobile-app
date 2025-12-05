@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:insurevis/global_ui_variables.dart';
@@ -26,7 +27,8 @@ class ResultsScreen extends StatefulWidget {
   ResultsScreenState createState() => ResultsScreenState();
 }
 
-class ResultsScreenState extends State<ResultsScreen> {
+class ResultsScreenState extends State<ResultsScreen>
+    with TickerProviderStateMixin {
   String? _apiResponse;
   bool _isLoading = true;
 
@@ -41,9 +43,20 @@ class ResultsScreenState extends State<ResultsScreen> {
   // Add this to track expanded state for damage cards
   final Map<int, bool> _expandedCards = {};
 
+  // Animation controllers
+  late AnimationController _appBarAnimationController;
+  late AnimationController _contentAnimationController;
+  late AnimationController _imageAnimationController;
+  late Animation<double> _appBarFadeAnimation;
+  late Animation<double> _contentFadeAnimation;
+  late Animation<Offset> _contentSlideAnimation;
+  late Animation<double> _imageFadeAnimation;
+  late Animation<double> _imageScaleAnimation;
+
   @override
   void initState() {
     super.initState();
+    _initializeAnimations();
     _imageFile = File(widget.imagePath); // Pre-load file reference
 
     if (widget.apiResponseData != null) {
@@ -58,6 +71,71 @@ class ResultsScreenState extends State<ResultsScreen> {
     }
   }
 
+  void _initializeAnimations() {
+    _appBarAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _contentAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
+    );
+
+    _imageAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _appBarFadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _appBarAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _contentFadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _contentAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _contentSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.03),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _contentAnimationController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    _imageFadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _imageAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _imageScaleAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _imageAnimationController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    _appBarAnimationController.forward();
+    Future.delayed(
+      const Duration(milliseconds: 200),
+      () => _imageAnimationController.forward(),
+    );
+    Future.delayed(
+      const Duration(milliseconds: 400),
+      () => _contentAnimationController.forward(),
+    );
+  }
+
   void _processApiResponseData(Map<String, dynamic> responseData) {
     // Process the response data immediately without any API calls
     _processApiResponse(jsonEncode(responseData));
@@ -66,6 +144,14 @@ class ResultsScreenState extends State<ResultsScreen> {
       _cachedResultData = responseData;
       _isLoading = false;
     });
+  }
+
+  @override
+  void dispose() {
+    _appBarAnimationController.dispose();
+    _contentAnimationController.dispose();
+    _imageAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> _uploadImage() async {
@@ -221,21 +307,25 @@ class ResultsScreenState extends State<ResultsScreen> {
             color: GlobalStyles.textPrimary,
             size: GlobalStyles.iconSizeMd,
           ),
-          onPressed: () {
-            Navigator.of(context).pop();
+          onPressed: () async {
+            await HapticFeedback.lightImpact();
+            if (mounted) Navigator.of(context).pop();
           },
         ),
         backgroundColor: GlobalStyles.surfaceMain,
         elevation: 0,
         shadowColor: GlobalStyles.shadowSm.color,
-        title: Text(
-          'Assessment Result',
-          style: TextStyle(
-            fontFamily: GlobalStyles.fontFamilyHeading,
-            color: GlobalStyles.textPrimary,
-            fontWeight: GlobalStyles.fontWeightSemiBold,
-            fontSize: GlobalStyles.fontSizeH4,
-            letterSpacing: GlobalStyles.letterSpacingH4,
+        title: FadeTransition(
+          opacity: _appBarFadeAnimation,
+          child: Text(
+            'Assessment Result',
+            style: TextStyle(
+              fontFamily: GlobalStyles.fontFamilyHeading,
+              color: GlobalStyles.textPrimary,
+              fontWeight: GlobalStyles.fontWeightSemiBold,
+              fontSize: GlobalStyles.fontSizeH4,
+              letterSpacing: GlobalStyles.letterSpacingH4,
+            ),
           ),
         ),
       ),
@@ -250,56 +340,92 @@ class ResultsScreenState extends State<ResultsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircularProgressIndicator(
-                        color: GlobalStyles.primaryMain,
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: 1),
+                        duration: const Duration(milliseconds: 800),
+                        curve: Curves.easeInOut,
+                        builder:
+                            (context, value, child) => Opacity(
+                              opacity: value,
+                              child: Transform.scale(
+                                scale: 0.8 + (value * 0.2),
+                                child: child,
+                              ),
+                            ),
+                        child: CircularProgressIndicator(
+                          color: GlobalStyles.primaryMain,
+                          strokeWidth: 3.w,
+                        ),
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Analyzing damage...',
-                        style: TextStyle(
-                          fontFamily: GlobalStyles.fontFamilyBody,
-                          color: GlobalStyles.textPrimary,
-                          fontSize: GlobalStyles.fontSizeBody1,
+                      SizedBox(height: 20.h),
+                      FadeTransition(
+                        opacity: Tween<double>(begin: 0, end: 1).animate(
+                          CurvedAnimation(
+                            parent: _contentAnimationController,
+                            curve: const Interval(0.3, 1.0),
+                          ),
+                        ),
+                        child: Text(
+                          'Analyzing damage...',
+                          style: TextStyle(
+                            fontFamily: GlobalStyles.fontFamilyBody,
+                            color: GlobalStyles.textPrimary,
+                            fontSize: GlobalStyles.fontSizeBody1,
+                            fontWeight: GlobalStyles.fontWeightMedium,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 )
                 : SafeArea(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            _imageFile,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            cacheHeight:
-                                400, // Reduced from 600 to reduce memory usage
-                            filterQuality:
-                                FilterQuality.low, // Reduced from medium to low
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: double.infinity,
-                                height: 200,
-                                color: Colors.grey[300],
-                                child: const Center(
-                                  child: Icon(
-                                    LucideIcons.circleAlert,
-                                    color: Colors.black,
-                                    size: 50,
+                  child: SlideTransition(
+                    position: _contentSlideAnimation,
+                    child: FadeTransition(
+                      opacity: _contentFadeAnimation,
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(16.w),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ScaleTransition(
+                              scale: _imageScaleAnimation,
+                              child: FadeTransition(
+                                opacity: _imageFadeAnimation,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  child: Image.file(
+                                    _imageFile,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    cacheHeight:
+                                        400, // Reduced from 600 to reduce memory usage
+                                    filterQuality:
+                                        FilterQuality
+                                            .low, // Reduced from medium to low
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: double.infinity,
+                                        height: 200.h,
+                                        color: Colors.grey[300],
+                                        child: const Center(
+                                          child: Icon(
+                                            LucideIcons.circleAlert,
+                                            color: Colors.black,
+                                            size: 50,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                            ),
+                            SizedBox(height: 24.h),
+                            _buildResultsContent(),
+                          ],
                         ),
-                        const SizedBox(height: 24),
-                        _buildResultsContent(),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -312,32 +438,74 @@ class ResultsScreenState extends State<ResultsScreen> {
     required IconData icon,
     required Widget content,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(GlobalStyles.paddingNormal),
-      decoration: BoxDecoration(
-        color: GlobalStyles.surfaceMain,
-        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyHeading,
-                  color: GlobalStyles.textPrimary,
-                  fontSize: GlobalStyles.fontSizeH3,
-                  fontWeight: GlobalStyles.fontWeightBold,
-                ),
-              ),
-            ],
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+      builder:
+          (context, value, child) => Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, (1 - value) * 10),
+              child: child,
+            ),
           ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          content,
-        ],
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: GlobalStyles.surfaceMain,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: GlobalStyles.textPrimary.withValues(alpha: 0.06),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: GlobalStyles.textPrimary.withValues(alpha: 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+            BoxShadow(
+              color: GlobalStyles.textPrimary.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(6.w),
+                  decoration: BoxDecoration(
+                    color: GlobalStyles.primaryMain.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: GlobalStyles.primaryMain,
+                    size: GlobalStyles.iconSizeSm,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: GlobalStyles.fontFamilyHeading,
+                    color: GlobalStyles.textPrimary,
+                    fontSize: GlobalStyles.fontSizeH5,
+                    fontWeight: GlobalStyles.fontWeightSemiBold,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16.h),
+            content,
+          ],
+        ),
       ),
     );
   }
@@ -345,38 +513,52 @@ class ResultsScreenState extends State<ResultsScreen> {
   Widget _buildErrorCard(String message) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(GlobalStyles.paddingNormal),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: GlobalStyles.errorMain.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: GlobalStyles.errorMain.withValues(alpha: 0.3),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: GlobalStyles.errorMain.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                LucideIcons.circleAlert,
-                color: GlobalStyles.errorMain,
-                size: GlobalStyles.iconSizeMd,
+              Container(
+                padding: EdgeInsets.all(6.w),
+                decoration: BoxDecoration(
+                  color: GlobalStyles.errorMain.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  LucideIcons.circleAlert,
+                  color: GlobalStyles.errorMain,
+                  size: GlobalStyles.iconSizeSm,
+                ),
               ),
-              SizedBox(width: 8.w),
+              SizedBox(width: 12.w),
               Text(
                 'Error',
                 style: TextStyle(
                   fontFamily: GlobalStyles.fontFamilyHeading,
-                  color: Colors.red,
+                  color: GlobalStyles.errorMain,
                   fontSize: GlobalStyles.fontSizeH5,
-                  fontWeight: GlobalStyles.fontWeightBold,
+                  fontWeight: GlobalStyles.fontWeightSemiBold,
                 ),
               ),
             ],
           ),
-          SizedBox(height: GlobalStyles.spacingSm),
+          SizedBox(height: 12.h),
           Text(
             message,
             style: TextStyle(

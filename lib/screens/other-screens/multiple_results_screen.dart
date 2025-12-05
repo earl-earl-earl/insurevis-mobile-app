@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:insurevis/global_ui_variables.dart';
@@ -19,7 +20,8 @@ class MultipleResultsScreen extends StatefulWidget {
   State<MultipleResultsScreen> createState() => _MultipleResultsScreenState();
 }
 
-class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
+class _MultipleResultsScreenState extends State<MultipleResultsScreen>
+    with TickerProviderStateMixin {
   final Map<String, String> _uploadResults =
       {}; // Track upload status for each image
   final Map<String, String> _assessmentIds = {}; // Track assessment IDs
@@ -28,14 +30,33 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   final Map<String, bool> _expandedCards =
       {}; // Track expanded state for each card
   final Map<String, Widget> _cachedImages = {}; // Cache for image widgets
+  late AnimationController _listAnimationController;
+  late Animation<double> _listFade;
 
   @override
   void initState() {
     super.initState();
+    _listAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _listFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _listAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
     _cachedImages.addAll(
       MultipleResultsUtils.preloadImages(widget.imagePaths, 80),
     );
     _uploadAllImages();
+  }
+
+  @override
+  void dispose() {
+    _listAnimationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -190,66 +211,115 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       children: [
         Tooltip(
           message: 'Home',
-          child: IconButton(
-            onPressed: () {
-              Navigator.popUntil(context, (route) => route.isFirst);
-            },
-            icon: Icon(
-              LucideIcons.house,
-              color: GlobalStyles.primaryMain,
-              size: GlobalStyles.iconSizeMd,
-            ),
-            iconSize: GlobalStyles.iconSizeMd,
-            style: ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(
-                GlobalStyles.primaryMain.withValues(alpha: 0.06),
-              ),
-              padding: WidgetStatePropertyAll(
-                EdgeInsets.all(GlobalStyles.paddingNormal),
-              ),
-              shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: EdgeInsets.all(GlobalStyles.paddingNormal),
+                decoration: BoxDecoration(
+                  color: GlobalStyles.primaryMain.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: GlobalStyles.primaryMain.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Icon(
+                  LucideIcons.house,
+                  color: GlobalStyles.primaryMain,
+                  size: GlobalStyles.iconSizeMd,
+                ),
               ),
             ),
           ),
         ),
         SizedBox(width: 12.w),
         Expanded(
-          child: ElevatedButton(
-            onPressed:
-                anyUploading
-                    ? null
-                    : () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => VehicleInformationForm(
-                                imagePaths: widget.imagePaths,
-                                apiResponses: _apiResponses,
-                                assessmentIds: _assessmentIds,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap:
+                  anyUploading
+                      ? null
+                      : () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            transitionDuration: const Duration(
+                              milliseconds: 400,
+                            ),
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    VehicleInformationForm(
+                                      imagePaths: widget.imagePaths,
+                                      apiResponses: _apiResponses,
+                                      assessmentIds: _assessmentIds,
+                                    ),
+                            transitionsBuilder: (
+                              context,
+                              animation,
+                              secondaryAnimation,
+                              child,
+                            ) {
+                              return SlideTransition(
+                                position: animation.drive(
+                                  Tween(
+                                    begin: const Offset(1.0, 0.0),
+                                    end: Offset.zero,
+                                  ).chain(
+                                    CurveTween(curve: Curves.easeOutCubic),
+                                  ),
+                                ),
+                                child: child,
+                              );
+                            },
+                          ),
+                        );
+                      },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 20.w),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors:
+                        anyUploading
+                            ? [Colors.grey.shade300, Colors.grey.shade400]
+                            : [
+                              GlobalStyles.primaryMain,
+                              GlobalStyles.primaryDark,
+                            ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow:
+                      anyUploading
+                          ? []
+                          : [
+                            BoxShadow(
+                              color: GlobalStyles.primaryMain.withValues(
+                                alpha: 0.3,
                               ),
-                        ),
-                      );
-                    },
-            style: ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(
-                anyUploading ? Colors.grey : GlobalStyles.primaryMain,
-              ),
-              padding: const WidgetStatePropertyAll(
-                EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-              ),
-              shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            child: Text(
-              "View Assessment Report",
-              style: TextStyle(
-                fontFamily: GlobalStyles.fontFamilyBody,
-                color: GlobalStyles.surfaceMain,
-                fontSize: GlobalStyles.fontSizeBody1,
-                fontWeight: GlobalStyles.fontWeightSemiBold,
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                ),
+                child: Text(
+                  "View Assessment Report",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: GlobalStyles.fontFamilyBody,
+                    color: GlobalStyles.surfaceMain,
+                    fontSize: GlobalStyles.fontSizeBody1,
+                    fontWeight: GlobalStyles.fontWeightSemiBold,
+                  ),
+                ),
               ),
             ),
           ),
@@ -268,20 +338,20 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
     final bool isUploading = status == 'uploading';
     final bool isQueued = status == null; // Queued images have no status yet
     final bool showLoader = isUploading || isQueued;
-    Color borderColor = GlobalStyles.surfaceMain.withValues(alpha: 0.3);
     Widget statusWidget = Container();
     bool canTap = false;
     bool isExpanded = _expandedCards[imagePath] ?? false;
 
     if (status == 'success' && assessmentId != null) {
-      borderColor = GlobalStyles.primaryMain.withAlpha(127);
       canTap = true;
       statusWidget = Container(
         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
         decoration: BoxDecoration(
-          color: GlobalStyles.primaryMain.withAlpha(51),
+          color: GlobalStyles.successMain.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: GlobalStyles.primaryMain.withAlpha(76)),
+          border: Border.all(
+            color: GlobalStyles.successMain.withValues(alpha: 0.3),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -296,7 +366,7 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
               'Analysis Complete',
               style: TextStyle(
                 fontFamily: GlobalStyles.fontFamilyBody,
-                color: GlobalStyles.primaryMain,
+                color: GlobalStyles.successMain,
                 fontSize: GlobalStyles.fontSizeCaption,
                 fontWeight: GlobalStyles.fontWeightMedium,
               ),
@@ -305,7 +375,6 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
         ),
       );
     } else if (status == 'error') {
-      borderColor = Colors.red;
       statusWidget = Container(
         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
         decoration: BoxDecoration(
@@ -336,151 +405,227 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
       );
     }
 
-    final cardContent = Container(
-      margin: EdgeInsets.only(bottom: 16.h),
-      decoration: BoxDecoration(
-        color:
-            status == 'error'
-                ? Colors.red.withAlpha(25)
-                : GlobalStyles.primaryMain.withAlpha(25),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: borderColor, width: 2),
-      ),
-      child: Column(
-        children: [
-          // Main card content - tappable for navigation
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap:
-                  canTap
-                      ? () => _viewResult(imagePath, assessmentId!, apiResponse)
-                      : null,
-              borderRadius: BorderRadius.circular(16.r),
-              child: Padding(
-                padding: EdgeInsets.all(12.w),
-                child: Row(
-                  children: [
-                    // Image thumbnail - using cached image
-                    _cachedImages[imagePath] ??
-                        ClipRRect(
+    final cardContent = TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 400 + (200)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 16.h),
+        decoration: BoxDecoration(
+          color: GlobalStyles.surfaceMain,
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(
+            color:
+                status == 'error'
+                    ? GlobalStyles.errorMain.withValues(alpha: 0.3)
+                    : GlobalStyles.primaryMain.withValues(alpha: 0.15),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: GlobalStyles.textPrimary.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+            BoxShadow(
+              color: GlobalStyles.textPrimary.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Main card content - tappable for navigation
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap:
+                    canTap
+                        ? () {
+                          HapticFeedback.mediumImpact();
+                          _viewResult(imagePath, assessmentId!, apiResponse);
+                        }
+                        : null,
+                borderRadius: BorderRadius.circular(16.r),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    vertical: 16.h,
+                    horizontal: 16.w,
+                  ),
+                  child: Row(
+                    children: [
+                      // Image thumbnail
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: GlobalStyles.textPrimary.withValues(
+                                alpha: 0.1,
+                              ),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
                           borderRadius: BorderRadius.circular(12.r),
                           child: SizedBox(
-                            width: 80.w,
-                            height: 80.w,
-                            child: Image.file(
-                              File(imagePath),
-                              fit: BoxFit.cover,
-                            ),
+                            width: 90.w,
+                            height: 90.w,
+                            child:
+                                _cachedImages[imagePath] ??
+                                Image.file(
+                                  File(imagePath),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: GlobalStyles.backgroundMain,
+                                      child: Center(
+                                        child: Icon(
+                                          LucideIcons.imageOff,
+                                          color: GlobalStyles.textDisabled,
+                                          size: GlobalStyles.iconSizeMd,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                           ),
                         ),
+                      ),
 
-                    SizedBox(width: 12.w),
+                      SizedBox(width: 16.w),
 
-                    // Content
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Image $imageNumber',
-                                style: TextStyle(
-                                  fontFamily: GlobalStyles.fontFamilyBody,
-                                  fontSize: GlobalStyles.fontSizeBody1,
-                                  fontWeight: GlobalStyles.fontWeightSemiBold,
-                                  color:
-                                      status == 'error'
-                                          ? Colors.red
-                                          : GlobalStyles.primaryMain,
+                      // Content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Image $imageNumber',
+                              style: TextStyle(
+                                fontFamily: GlobalStyles.fontFamilyHeading,
+                                fontSize: GlobalStyles.fontSizeBody1,
+                                fontWeight: GlobalStyles.fontWeightBold,
+                                color:
+                                    status == 'error'
+                                        ? GlobalStyles.errorMain
+                                        : GlobalStyles.textPrimary,
+                              ),
+                            ),
+                            SizedBox(height: 10.h),
+                            statusWidget,
+                            if (canTap) ...[
+                              SizedBox(height: 10.h),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w,
+                                  vertical: 4.h,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: GlobalStyles.primaryMain.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6.r),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      LucideIcons.arrowRight,
+                                      size: 12.sp,
+                                      color: GlobalStyles.primaryMain,
+                                    ),
+                                    SizedBox(width: 4.w),
+                                    Text(
+                                      'View full report',
+                                      style: TextStyle(
+                                        fontFamily: GlobalStyles.fontFamilyBody,
+                                        fontSize: GlobalStyles.fontSizeCaption,
+                                        color: GlobalStyles.primaryMain,
+                                        fontWeight:
+                                            GlobalStyles.fontWeightMedium,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
-                          ),
-
-                          SizedBox(height: 8.h),
-
-                          statusWidget,
-
-                          if (canTap) ...[
-                            SizedBox(height: 8.h),
-                            Text(
-                              'Tap to view full report',
-                              style: TextStyle(
-                                fontFamily: GlobalStyles.fontFamilyBody,
-                                fontSize: GlobalStyles.fontSizeCaption,
-                                color: GlobalStyles.textSecondary,
-                              ),
-                            ),
                           ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Expanded details section
+            if (isExpanded && canTap && apiResponse != null)
+              _buildExpandedDetails(apiResponse), // "Show Details" section
+            if (canTap)
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: GlobalStyles.surfaceMain.withValues(alpha: 0.1),
+                    ),
+                  ),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _expandedCards[imagePath] = !isExpanded;
+                      });
+                    },
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(16.r),
+                      bottomRight: Radius.circular(16.r),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 12.h,
+                        horizontal: 16.w,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            isExpanded ? 'Hide Details' : 'Show Details',
+                            style: TextStyle(
+                              fontFamily: GlobalStyles.fontFamilyBody,
+                              color: GlobalStyles.primaryMain,
+                              fontSize: GlobalStyles.fontSizeBody2,
+                              fontWeight: GlobalStyles.fontWeightSemiBold,
+                            ),
+                          ),
+                          SizedBox(width: 6.w),
+                          Icon(
+                            isExpanded
+                                ? LucideIcons.chevronUp
+                                : LucideIcons.chevronDown,
+                            color: GlobalStyles.primaryMain,
+                            size: 16.sp,
+                          ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Expanded details section
-          if (isExpanded && canTap && apiResponse != null)
-            _buildExpandedDetails(apiResponse), // "Show Details" section
-          if (canTap)
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: GlobalStyles.surfaceMain.withValues(alpha: 0.1),
                   ),
                 ),
               ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _expandedCards[imagePath] = !isExpanded;
-                    });
-                  },
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(16.r),
-                    bottomRight: Radius.circular(16.r),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      vertical: 12.h,
-                      horizontal: 16.w,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          isExpanded ? 'Hide Details' : 'Show Details',
-                          style: TextStyle(
-                            fontFamily: GlobalStyles.fontFamilyBody,
-                            color: GlobalStyles.primaryMain,
-                            fontSize: GlobalStyles.fontSizeBody2,
-                            fontWeight: GlobalStyles.fontWeightSemiBold,
-                          ),
-                        ),
-                        SizedBox(width: 6.w),
-                        Icon(
-                          isExpanded
-                              ? LucideIcons.chevronUp
-                              : LucideIcons.chevronDown,
-                          color: GlobalStyles.primaryMain,
-                          size: 16.sp,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
 
@@ -579,11 +724,18 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
 
   Widget _buildQuickInfoCard(String label, String value, Color color) {
     return Container(
-      padding: EdgeInsets.all(12.w),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
       decoration: BoxDecoration(
-        color: color.withAlpha(25),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: color.withAlpha(76)),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -592,19 +744,19 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
             label,
             style: TextStyle(
               fontFamily: GlobalStyles.fontFamilyBody,
-              color: GlobalStyles.textPrimary,
+              color: GlobalStyles.textSecondary,
               fontSize: GlobalStyles.fontSizeCaption,
-              fontWeight: GlobalStyles.fontWeightSemiBold,
+              fontWeight: GlobalStyles.fontWeightMedium,
             ),
           ),
-          SizedBox(height: 4.h),
+          SizedBox(height: 6.h),
           Text(
             value,
             style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
+              fontFamily: GlobalStyles.fontFamilyHeading,
               color: color,
-              fontSize: GlobalStyles.fontSizeBody2,
-              fontWeight: GlobalStyles.fontWeightSemiBold,
+              fontSize: GlobalStyles.fontSizeH6,
+              fontWeight: GlobalStyles.fontWeightBold,
             ),
           ),
         ],
@@ -615,48 +767,62 @@ class _MultipleResultsScreenState extends State<MultipleResultsScreen> {
   Widget _buildDamageItem(dynamic damage) {
     final damageType = MultipleResultsUtils.extractDamageType(damage);
     final severity = MultipleResultsUtils.extractDamageSeverity(damage);
+    final severityColor = MultipleResultsUtils.getSeverityColor(severity);
 
     return Container(
-      margin: EdgeInsets.only(bottom: 6.h),
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.r)),
+      margin: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: severityColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(
+          color: severityColor.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
       child: Row(
         children: [
-          Icon(
-            LucideIcons.triangleAlert,
-            color: GlobalStyles.warningMain,
-            size: GlobalStyles.iconSizeSm,
+          Container(
+            padding: EdgeInsets.all(6.w),
+            decoration: BoxDecoration(
+              color: severityColor.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              LucideIcons.triangleAlert,
+              color: severityColor,
+              size: GlobalStyles.iconSizeSm,
+            ),
           ),
-          SizedBox(width: 8.w),
+          SizedBox(width: 12.w),
           Expanded(
-            child: Text(
-              MultipleResultsUtils.capitalizeFirst(damageType),
-              style: TextStyle(
-                fontFamily: GlobalStyles.fontFamilyBody,
-                color: GlobalStyles.textPrimary,
-                fontSize: GlobalStyles.fontSizeBody2,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  MultipleResultsUtils.capitalizeFirst(damageType),
+                  style: TextStyle(
+                    fontFamily: GlobalStyles.fontFamilyBody,
+                    color: GlobalStyles.textPrimary,
+                    fontSize: GlobalStyles.fontSizeBody2,
+                    fontWeight: GlobalStyles.fontWeightSemiBold,
+                  ),
+                ),
+                if (severity.isNotEmpty) ...[
+                  SizedBox(height: 3.h),
+                  Text(
+                    MultipleResultsUtils.capitalizeFirst(severity),
+                    style: TextStyle(
+                      fontFamily: GlobalStyles.fontFamilyBody,
+                      color: severityColor,
+                      fontSize: GlobalStyles.fontSizeCaption,
+                      fontWeight: GlobalStyles.fontWeightMedium,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          if (severity.isNotEmpty)
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-              decoration: BoxDecoration(
-                color: MultipleResultsUtils.getSeverityColor(
-                  severity,
-                ).withAlpha(51),
-                borderRadius: BorderRadius.circular(4.r),
-              ),
-              child: Text(
-                MultipleResultsUtils.capitalizeFirst(severity),
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyBody,
-                  color: MultipleResultsUtils.getSeverityColor(severity),
-                  fontSize: GlobalStyles.fontSizeCaption,
-                  fontWeight: GlobalStyles.fontWeightMedium,
-                ),
-              ),
-            ),
         ],
       ),
     );

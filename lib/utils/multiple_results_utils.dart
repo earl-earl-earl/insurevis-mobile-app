@@ -1,8 +1,7 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:insurevis/services/image_upload_service.dart';
 import 'package:insurevis/providers/assessment_provider.dart';
-import 'package:insurevis/models/assessment_model.dart';
-import 'package:flutter/material.dart';
 
 class MultipleResultsUtils {
   /// Upload a single image to the API and return the response
@@ -118,6 +117,22 @@ class MultipleResultsUtils {
       return const Color(0xFF22C55E); // Green
     } else {
       return const Color(0xFF3B82F6); // Blue
+    }
+  }
+
+  /// Get icon based on severity
+  static IconData getSeverityIcon(String severity) {
+    final lowerSeverity = severity.toLowerCase();
+    if (lowerSeverity.contains('high') || lowerSeverity.contains('severe')) {
+      return Icons.error;
+    } else if (lowerSeverity.contains('medium') ||
+        lowerSeverity.contains('moderate')) {
+      return Icons.warning;
+    } else if (lowerSeverity.contains('low') ||
+        lowerSeverity.contains('minor')) {
+      return Icons.info;
+    } else {
+      return Icons.help;
     }
   }
 

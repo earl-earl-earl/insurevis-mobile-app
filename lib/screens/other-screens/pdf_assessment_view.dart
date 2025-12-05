@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:insurevis/global_ui_variables.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:insurevis/utils/pdf_service.dart';
@@ -29,11 +30,16 @@ class PDFAssessmentView extends StatefulWidget {
   State<PDFAssessmentView> createState() => _PDFAssessmentViewState();
 }
 
-class _PDFAssessmentViewState extends State<PDFAssessmentView> {
+class _PDFAssessmentViewState extends State<PDFAssessmentView>
+    with TickerProviderStateMixin {
   bool _isSaving = false;
   late final PDFAssessmentHandler _handler;
   bool _showAddDamageForm = false;
   String? _newDamagePart;
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   final List<String> _carParts = [
     "Back Bumper",
@@ -68,8 +74,47 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   void initState() {
     super.initState();
     _handler = PDFAssessmentHandler();
+    _initializeAnimations();
     _initializeRepairOptions();
     _calculateEstimatedDamageCost();
+  }
+
+  void _initializeAnimations() {
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: GlobalStyles.durationNormal,
+    );
+    _slideController = AnimationController(
+      vsync: this,
+      duration: GlobalStyles.durationSlow,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _fadeController,
+        curve: GlobalStyles.easingDecelerate,
+      ),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.05),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _slideController,
+        curve: GlobalStyles.easingDecelerate,
+      ),
+    );
+
+    _fadeController.forward();
+    _slideController.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _slideController.dispose();
+    super.dispose();
   }
 
   // Helper methods to access handler properties and methods
@@ -141,15 +186,19 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       backgroundColor: GlobalStyles.backgroundMain,
       appBar: AppBar(
         backgroundColor: GlobalStyles.surfaceMain,
-        elevation: 0,
-        shadowColor: GlobalStyles.shadowSm.color,
+        elevation: 2,
+        shadowColor: GlobalStyles.shadowMd.color,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: Icon(
             LucideIcons.arrowLeft,
             color: GlobalStyles.textPrimary,
             size: GlobalStyles.iconSizeMd,
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.pop(context);
+          },
         ),
         title: Text(
           'Assessment Report',
@@ -164,7 +213,13 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: _isSaving ? null : _savePDF,
+            onPressed:
+                _isSaving
+                    ? null
+                    : () {
+                      HapticFeedback.mediumImpact();
+                      _savePDF();
+                    },
             icon:
                 _isSaving
                     ? SizedBox(
@@ -185,44 +240,71 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
         ],
       ),
       body: SafeArea(child: _buildAssessmentContent()),
-      bottomNavigationBar: Padding(
-        padding: EdgeInsets.symmetric(
-          vertical: GlobalStyles.spacingMd,
-          horizontal: GlobalStyles.paddingNormal,
-        ),
-        child: ElevatedButton(
-          onPressed: _proceedToClaimInsurance,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: GlobalStyles.primaryMain,
-            foregroundColor: GlobalStyles.surfaceMain,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                GlobalStyles.buttonBorderRadius,
+      bottomNavigationBar: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          return Transform.translate(
+            offset: Offset(0, (1 - value) * 50),
+            child: Opacity(opacity: value, child: child),
+          );
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: GlobalStyles.surfaceMain,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                offset: Offset(0, -2),
+                blurRadius: 8,
               ),
-            ),
+            ],
+          ),
+          child: Padding(
             padding: EdgeInsets.symmetric(
               vertical: GlobalStyles.spacingMd,
               horizontal: GlobalStyles.paddingNormal,
             ),
-            elevation: 0,
-            shadowColor: GlobalStyles.shadowMd.color,
-            minimumSize: Size(double.infinity, GlobalStyles.minTouchTarget),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Proceed to Claim Insurance',
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyBody,
-                  fontSize: GlobalStyles.fontSizeButton,
-                  fontWeight: GlobalStyles.fontWeightSemiBold,
-                  letterSpacing: GlobalStyles.letterSpacingButton,
+            child: AnimatedContainer(
+              duration: GlobalStyles.durationFast,
+              child: ElevatedButton(
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  _proceedToClaimInsurance();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: GlobalStyles.primaryMain,
+                  foregroundColor: GlobalStyles.surfaceMain,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      GlobalStyles.buttonBorderRadius,
+                    ),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    vertical: GlobalStyles.spacingMd,
+                    horizontal: GlobalStyles.spacingLg,
+                  ),
+                  elevation: 4,
+                  shadowColor: GlobalStyles.primaryMain.withValues(alpha: 0.3),
+                  minimumSize: Size(double.infinity, 56),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Proceed to Claim Insurance',
+                      style: TextStyle(
+                        fontFamily: GlobalStyles.fontFamilyBody,
+                        fontSize: GlobalStyles.fontSizeBody1,
+                        fontWeight: GlobalStyles.fontWeightBold,
+                        letterSpacing: GlobalStyles.letterSpacingButton,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(width: GlobalStyles.spacingSm),
-              Icon(LucideIcons.arrowRight, size: GlobalStyles.iconSizeSm),
-            ],
+            ),
           ),
         ),
       ),
@@ -230,23 +312,30 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   }
 
   Widget _buildAssessmentContent() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(GlobalStyles.paddingNormal),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeaderSection(),
-          SizedBox(height: GlobalStyles.spacingLg),
-          _buildSummarySection(),
-          SizedBox(height: GlobalStyles.spacingLg),
-          _buildIndividualResults(),
-          SizedBox(height: GlobalStyles.spacingLg),
-          if (!_isDamageSevere) ...[
-            _buildRepairOptionsSection(),
-            SizedBox(height: GlobalStyles.spacingLg),
-          ],
-          _buildOverallAssessment(),
-        ],
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.all(GlobalStyles.paddingNormal),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeaderSection(),
+              SizedBox(height: GlobalStyles.spacingLg),
+              _buildSummarySection(),
+              SizedBox(height: GlobalStyles.spacingLg),
+              _buildIndividualResults(),
+              SizedBox(height: GlobalStyles.spacingLg),
+              if (!_isDamageSevere) ...[
+                _buildRepairOptionsSection(),
+                SizedBox(height: GlobalStyles.spacingLg),
+              ],
+              _buildOverallAssessment(),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -291,6 +380,28 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               fontWeight: GlobalStyles.fontWeightSemiBold,
             ),
           ),
+          SizedBox(height: GlobalStyles.spacingMd),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 800),
+            curve: GlobalStyles.easingDecelerate,
+            builder: (context, value, child) {
+              return Container(
+                height: 3,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      GlobalStyles.primaryMain,
+                      GlobalStyles.primaryMain.withValues(alpha: 0.0),
+                    ],
+                    stops: [value * 0.7, 1.0],
+                  ),
+                  borderRadius: BorderRadius.circular(GlobalStyles.radiusFull),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -324,64 +435,97 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
       }
     });
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Summary',
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              fontWeight: GlobalStyles.fontWeightBold,
-              color: GlobalStyles.textPrimary,
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 500),
+      curve: GlobalStyles.easingDecelerate,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, (1 - value) * 20),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.all(GlobalStyles.spacingMd),
+        decoration: BoxDecoration(
+          color: GlobalStyles.surfaceMain,
+          borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
+          boxShadow: [GlobalStyles.shadowMd],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(GlobalStyles.spacingSm),
+                  decoration: BoxDecoration(
+                    color: GlobalStyles.primaryMain.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
+                  ),
+                  child: Icon(
+                    LucideIcons.layoutGrid,
+                    color: GlobalStyles.primaryMain,
+                    size: GlobalStyles.iconSizeSm,
+                  ),
+                ),
+                SizedBox(width: GlobalStyles.spacingSm),
+                Text(
+                  'Summary',
+                  style: TextStyle(
+                    fontFamily: GlobalStyles.fontFamilyHeading,
+                    fontSize: GlobalStyles.fontSizeBody1,
+                    fontWeight: GlobalStyles.fontWeightBold,
+                    color: GlobalStyles.textPrimary,
+                  ),
+                ),
+              ],
             ),
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSummaryCard(
-                  'Estimated Cost',
-                  _isDamageSevere
-                      ? 'To be given by the mechanic'
-                      : (_handler.estimatedDamageCost > 0
-                          ? _formatCurrency(_handler.estimatedDamageCost)
-                          : _formatCurrency(totalCost)),
-                  LucideIcons.dollarSign,
-                  _isDamageSevere
-                      ? GlobalStyles.warningMain
-                      : GlobalStyles.successMain,
-                ),
+            SizedBox(height: GlobalStyles.spacingMd),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 180,
+                    child: _buildSummaryCard(
+                      'Estimated Cost',
+                      _isDamageSevere
+                          ? 'Mechanic'
+                          : (_handler.estimatedDamageCost > 0
+                              ? _formatCurrency(_handler.estimatedDamageCost)
+                              : _formatCurrency(totalCost)),
+                      LucideIcons.dollarSign,
+                      _isDamageSevere
+                          ? GlobalStyles.warningMain
+                          : GlobalStyles.successMain,
+                    ),
+                  ),
+                  SizedBox(width: GlobalStyles.spacingMd),
+                  SizedBox(
+                    width: 160,
+                    child: _buildSummaryCard(
+                      'Total Damages',
+                      totalDamages.toString(),
+                      LucideIcons.circleAlert,
+                      GlobalStyles.errorMain,
+                    ),
+                  ),
+                  SizedBox(width: GlobalStyles.spacingMd),
+                  SizedBox(
+                    width: 160,
+                    child: _buildSummaryCard(
+                      'Images',
+                      (widget.imagePaths ?? const <String>[]).length.toString(),
+                      LucideIcons.image,
+                      GlobalStyles.infoMain,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSummaryCard(
-                  'Total Damages',
-                  totalDamages.toString(),
-                  LucideIcons.circleAlert,
-                  GlobalStyles.errorMain,
-                ),
-              ),
-              SizedBox(width: GlobalStyles.spacingMd),
-              Expanded(
-                child: _buildSummaryCard(
-                  'Images Analyzed',
-                  (widget.imagePaths ?? const <String>[]).length.toString(),
-                  LucideIcons.image,
-                  GlobalStyles.infoMain,
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -392,39 +536,73 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     IconData icon,
     Color color,
   ) {
-    return Container(
-      padding: EdgeInsets.all(GlobalStyles.spacingMd),
-      decoration: BoxDecoration(
-        color: color.withAlpha(25),
-        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-        border: Border.all(color: color.withAlpha(76)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: GlobalStyles.fontSizeH6),
-          SizedBox(height: GlobalStyles.spacingSm),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              fontWeight: GlobalStyles.fontWeightBold,
-              color: color,
-            ),
-            textAlign: TextAlign.center,
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.elasticOut,
+      builder: (context, animValue, child) {
+        return Transform.scale(scale: animValue, child: child);
+      },
+      child: Container(
+        padding: EdgeInsets.all(GlobalStyles.spacingMd),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              color.withValues(alpha: 0.12),
+              color.withValues(alpha: 0.04),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          SizedBox(height: GlobalStyles.spacingXs),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              color: color.withValues(alpha: 0.5),
-              fontWeight: GlobalStyles.fontWeightBold,
+          borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+          border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.08),
+              offset: Offset(0, 2),
+              blurRadius: 6,
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(GlobalStyles.spacingSm),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: GlobalStyles.iconSizeSm),
+            ),
+            SizedBox(height: GlobalStyles.spacingSm),
+            Text(
+              value,
+              style: TextStyle(
+                fontFamily: GlobalStyles.fontFamilyHeading,
+                fontSize: GlobalStyles.fontSizeBody2,
+                fontWeight: GlobalStyles.fontWeightBold,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: GlobalStyles.spacingXs),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: GlobalStyles.fontFamilyBody,
+                fontSize: GlobalStyles.fontSizeCaption,
+                color: GlobalStyles.textSecondary,
+                fontWeight: GlobalStyles.fontWeightMedium,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -436,16 +614,33 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Individual Image Results',
-          style: TextStyle(
-            fontFamily: GlobalStyles.fontFamilyBody,
-            fontSize: GlobalStyles.fontSizeCaption,
-            fontWeight: GlobalStyles.fontWeightBold,
-            color: GlobalStyles.textPrimary,
-          ),
+        Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(GlobalStyles.spacingSm),
+              decoration: BoxDecoration(
+                color: GlobalStyles.infoMain.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(GlobalStyles.radiusSm),
+              ),
+              child: Icon(
+                LucideIcons.images,
+                color: GlobalStyles.infoMain,
+                size: GlobalStyles.iconSizeMd,
+              ),
+            ),
+            SizedBox(width: GlobalStyles.spacingMd),
+            Text(
+              'Individual Image Results',
+              style: TextStyle(
+                fontFamily: GlobalStyles.fontFamilyHeading,
+                fontSize: GlobalStyles.fontSizeH6,
+                fontWeight: GlobalStyles.fontWeightBold,
+                color: GlobalStyles.textPrimary,
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: GlobalStyles.spacingMd),
+        SizedBox(height: GlobalStyles.spacingLg),
         ...images.asMap().entries.map((entry) {
           final index = entry.key;
           final imagePath = entry.value;
@@ -463,120 +658,138 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     String imagePath,
     Map<String, dynamic>? response,
   ) {
-    return Container(
-      margin: EdgeInsets.only(bottom: GlobalStyles.spacingMd),
-      padding: EdgeInsets.all(GlobalStyles.spacingMd),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
-        color: GlobalStyles.primaryMain.withValues(alpha: 0.1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 400 + (imageNumber * 100)),
+      curve: GlobalStyles.easingDecelerate,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, (1 - value) * 30),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: GlobalStyles.spacingLg),
+        decoration: BoxDecoration(
+          color: GlobalStyles.surfaceMain,
+          borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
+          border: Border.all(
+            color: GlobalStyles.primaryMain.withValues(alpha: 0.2),
+            width: 1.5,
+          ),
+          boxShadow: [GlobalStyles.shadowMd],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(GlobalStyles.spacingMd),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-                child: SizedBox(
-                  width: GlobalStyles.spacingXxxl,
-                  height: GlobalStyles.spacingXxxl,
-                  child: Image.file(File(imagePath), fit: BoxFit.cover),
-                ),
-              ),
-              SizedBox(width: GlobalStyles.spacingMd),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Image $imageNumber',
-                      style: TextStyle(
-                        fontFamily: GlobalStyles.fontFamilyBody,
-                        fontSize: GlobalStyles.fontSizeBody1,
-                        fontWeight: GlobalStyles.fontWeightBold,
-                        color: GlobalStyles.textPrimary,
-                      ),
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+                    child: SizedBox(
+                      width: GlobalStyles.spacingXxxl,
+                      height: GlobalStyles.spacingXxxl,
+                      child: Image.file(File(imagePath), fit: BoxFit.cover),
                     ),
-                    if (response != null) ...[
-                      SizedBox(height: GlobalStyles.spacingXs),
-                      if (response.containsKey('overall_severity'))
+                  ),
+                  SizedBox(width: GlobalStyles.spacingMd),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          'Severity: ${_formatLabel(response['overall_severity']?.toString() ?? '')}',
+                          'Image $imageNumber',
                           style: TextStyle(
                             fontFamily: GlobalStyles.fontFamilyBody,
-                            fontSize: GlobalStyles.fontSizeCaption,
-                            fontWeight: GlobalStyles.fontWeightSemiBold,
-                            color: _getSeverityColor(
-                              response['overall_severity'].toString(),
-                            ),
+                            fontSize: GlobalStyles.fontSizeBody1,
+                            fontWeight: GlobalStyles.fontWeightBold,
+                            color: GlobalStyles.textPrimary,
                           ),
                         ),
-                      // Calculate cost based on user selections and fetched pricing
-                      Builder(
-                        builder: (context) {
-                          if (_isDamageSevere) {
-                            return Text(
-                              'Cost: To be given by the mechanic',
+                        if (response != null) ...[
+                          SizedBox(height: GlobalStyles.spacingXs),
+                          if (response.containsKey('overall_severity'))
+                            Text(
+                              'Severity: ${_formatLabel(response['overall_severity']?.toString() ?? '')}',
                               style: TextStyle(
                                 fontFamily: GlobalStyles.fontFamilyBody,
                                 fontSize: GlobalStyles.fontSizeCaption,
-                                color: GlobalStyles.warningMain,
+                                fontWeight: GlobalStyles.fontWeightSemiBold,
+                                color: _getSeverityColor(
+                                  response['overall_severity'].toString(),
+                                ),
                               ),
-                            );
-                          }
+                            ),
+                          // Calculate cost based on user selections and fetched pricing
+                          Builder(
+                            builder: (context) {
+                              if (_isDamageSevere) {
+                                return Text(
+                                  'Cost: To be given by the mechanic',
+                                  style: TextStyle(
+                                    fontFamily: GlobalStyles.fontFamilyBody,
+                                    fontSize: GlobalStyles.fontSizeCaption,
+                                    color: GlobalStyles.warningMain,
+                                  ),
+                                );
+                              }
 
-                          final calculatedCost = _calculateCostForImage(
-                            imagePath,
-                          );
+                              final calculatedCost = _calculateCostForImage(
+                                imagePath,
+                              );
 
-                          // If we have calculated pricing data, use it; otherwise fall back to API response
-                          if (calculatedCost > 0) {
-                            return Text(
-                              'Cost: ${_formatCurrency(calculatedCost)}',
-                              style: TextStyle(
-                                fontFamily: GlobalStyles.fontFamilyBody,
-                                fontSize: GlobalStyles.fontSizeCaption,
-                                color: GlobalStyles.successMain,
-                              ),
-                            );
-                          } else if (response.containsKey('total_cost')) {
-                            // Fallback to API response if pricing not yet loaded
-                            return Text(
-                              'Cost: ${_formatCurrency(_parseToDouble(response['total_cost']))}',
-                              style: TextStyle(
-                                fontFamily: GlobalStyles.fontFamilyBody,
-                                fontSize: GlobalStyles.fontSizeCaption,
-                                color: GlobalStyles.successMain,
-                              ),
-                            );
-                          }
+                              // If we have calculated pricing data, use it; otherwise fall back to API response
+                              if (calculatedCost > 0) {
+                                return Text(
+                                  'Cost: ${_formatCurrency(calculatedCost)}',
+                                  style: TextStyle(
+                                    fontFamily: GlobalStyles.fontFamilyBody,
+                                    fontSize: GlobalStyles.fontSizeCaption,
+                                    color: GlobalStyles.successMain,
+                                  ),
+                                );
+                              } else if (response.containsKey('total_cost')) {
+                                // Fallback to API response if pricing not yet loaded
+                                return Text(
+                                  'Cost: ${_formatCurrency(_parseToDouble(response['total_cost']))}',
+                                  style: TextStyle(
+                                    fontFamily: GlobalStyles.fontFamilyBody,
+                                    fontSize: GlobalStyles.fontSizeCaption,
+                                    color: GlobalStyles.successMain,
+                                  ),
+                                );
+                              }
 
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ],
-                  ],
-                ),
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
+              if (!_isDamageSevere &&
+                  response != null &&
+                  response.containsKey('damages')) ...[
+                SizedBox(height: GlobalStyles.spacingMd),
+                Text(
+                  'Detected Damages:',
+                  style: TextStyle(
+                    fontFamily: GlobalStyles.fontFamilyBody,
+                    fontSize: GlobalStyles.fontSizeCaption,
+                    fontWeight: GlobalStyles.fontWeightSemiBold,
+                    color: GlobalStyles.textPrimary,
+                  ),
+                ),
+                SizedBox(height: GlobalStyles.spacingSm),
+                ..._buildDamagesList(response['damages']),
+              ],
             ],
           ),
-          if (!_isDamageSevere &&
-              response != null &&
-              response.containsKey('damages')) ...[
-            SizedBox(height: GlobalStyles.spacingMd),
-            Text(
-              'Detected Damages:',
-              style: TextStyle(
-                fontFamily: GlobalStyles.fontFamilyBody,
-                fontSize: GlobalStyles.fontSizeCaption,
-                fontWeight: GlobalStyles.fontWeightSemiBold,
-                color: GlobalStyles.textPrimary,
-              ),
-            ),
-            SizedBox(height: GlobalStyles.spacingSm),
-            ..._buildDamagesList(response['damages']),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -628,51 +841,109 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   }
 
   Widget _buildOverallAssessment() {
-    return Container(
-      padding: EdgeInsets.all(GlobalStyles.spacingMd),
-      decoration: BoxDecoration(
-        color: GlobalStyles.primaryMain.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
-        border: Border.all(
-          color: GlobalStyles.primaryMain.withValues(alpha: 0.2),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: GlobalStyles.easingDecelerate,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, (1 - value) * 20),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.all(GlobalStyles.spacingMd),
+        decoration: BoxDecoration(
+          color: GlobalStyles.surfaceMain,
+          borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
+          border: Border.all(
+            color: GlobalStyles.primaryMain.withValues(alpha: 0.25),
+            width: 1.5,
+          ),
+          boxShadow: [GlobalStyles.shadowMd],
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Overall Assessment',
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody1,
-              fontWeight: GlobalStyles.fontWeightBold,
-              color: GlobalStyles.primaryMain,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(GlobalStyles.spacingSm),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        GlobalStyles.primaryMain.withValues(alpha: 0.2),
+                        GlobalStyles.primaryMain.withValues(alpha: 0.08),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+                  ),
+                  child: Icon(
+                    LucideIcons.clipboardCheck,
+                    color: GlobalStyles.primaryMain,
+                    size: GlobalStyles.iconSizeMd,
+                  ),
+                ),
+                SizedBox(width: GlobalStyles.spacingMd),
+                Text(
+                  'Overall Assessment',
+                  style: TextStyle(
+                    fontFamily: GlobalStyles.fontFamilyHeading,
+                    fontSize: GlobalStyles.fontSizeH5,
+                    fontWeight: GlobalStyles.fontWeightBold,
+                    color: GlobalStyles.textPrimary,
+                  ),
+                ),
+              ],
             ),
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Text(
-            'This assessment report contains the analysis of ${(widget.imagePaths ?? const <String>[]).length} vehicle images. '
-            'The damage detection was performed using AI-powered analysis to identify potential '
-            'vehicle damages and provide cost estimates for repair or replacement.',
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeCaption,
-              color: GlobalStyles.textPrimary,
-              height: 1.5,
+            SizedBox(height: GlobalStyles.spacingMd),
+            Container(
+              padding: EdgeInsets.all(GlobalStyles.spacingMd),
+              decoration: BoxDecoration(
+                color: GlobalStyles.primaryMain.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+                border: Border.all(
+                  color: GlobalStyles.primaryMain.withValues(alpha: 0.15),
+                ),
+              ),
+              child: Text(
+                'This assessment report contains the analysis of ${(widget.imagePaths ?? const <String>[]).length} vehicle images. '
+                'The damage detection was performed using AI-powered analysis to identify potential '
+                'vehicle damages and provide cost estimates for repair or replacement.',
+                style: TextStyle(
+                  fontFamily: GlobalStyles.fontFamilyBody,
+                  fontSize: GlobalStyles.fontSizeBody2,
+                  color: GlobalStyles.textPrimary,
+                  height: 1.6,
+                ),
+              ),
             ),
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Text(
-            'Note: This assessment is for estimation purposes only. Professional inspection '
-            'is recommended for final insurance claims and repair decisions.',
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeBody2,
-              color: GlobalStyles.textTertiary,
-              fontStyle: FontStyle.italic,
+            SizedBox(height: GlobalStyles.spacingMd),
+            Row(
+              children: [
+                Icon(
+                  LucideIcons.info,
+                  color: GlobalStyles.warningMain,
+                  size: GlobalStyles.fontSizeBody2,
+                ),
+                SizedBox(width: GlobalStyles.spacingSm),
+                Expanded(
+                  child: Text(
+                    'This assessment is for estimation purposes only. Professional inspection is recommended.',
+                    style: TextStyle(
+                      fontFamily: GlobalStyles.fontFamilyBody,
+                      fontSize: GlobalStyles.fontSizeCaption,
+                      color: GlobalStyles.warningMain,
+                      fontWeight: GlobalStyles.fontWeightMedium,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -781,8 +1052,8 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               Text(
                 'Repair Options',
                 style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyBody,
-                  fontSize: GlobalStyles.fontSizeCaption,
+                  fontFamily: GlobalStyles.fontFamilyHeading,
+                  fontSize: GlobalStyles.fontSizeH6,
                   fontWeight: GlobalStyles.fontWeightBold,
                   color: GlobalStyles.textPrimary,
                 ),
@@ -794,7 +1065,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
             'Select your preferred option for each damaged part to calculate accurate cost estimates.',
             style: TextStyle(
               fontFamily: GlobalStyles.fontFamilyBody,
-              fontSize: GlobalStyles.fontSizeCaption,
+              fontSize: GlobalStyles.fontSizeBody2,
               color: GlobalStyles.textTertiary,
               height: 1.5,
             ),
@@ -813,7 +1084,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                 'Manual Damages',
                 style: TextStyle(
                   fontFamily: GlobalStyles.fontFamilyBody,
-                  fontSize: GlobalStyles.fontSizeCaption,
+                  fontSize: GlobalStyles.fontSizeH6,
                   fontWeight: GlobalStyles.fontWeightBold,
                   color: GlobalStyles.textPrimary,
                 ),
@@ -882,181 +1153,203 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     }
     String? selectedOption = _handler.selectedRepairOptions[index];
 
-    return Container(
-      margin: EdgeInsets.only(bottom: GlobalStyles.spacingMd),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                "Damage ${index + 1}",
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyBody,
-                  color: GlobalStyles.textSecondary,
-                  fontSize: GlobalStyles.fontSizeCaption,
-                  fontWeight: GlobalStyles.fontWeightBold,
-                ),
-              ),
-            ],
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 400 + (index * 100)),
+      curve: GlobalStyles.easingDecelerate,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, (1 - value) * 20),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: GlobalStyles.spacingMd),
+        padding: EdgeInsets.all(GlobalStyles.spacingMd),
+        decoration: BoxDecoration(
+          color: GlobalStyles.surfaceMain,
+          borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
+          border: Border.all(
+            color: GlobalStyles.primaryMain.withValues(alpha: 0.2),
+            width: 1.5,
           ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          _buildDamageInfo(damagedPart, damageType),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Row(
-            children: [
-              Expanded(
-                child: _buildOptionButton(
-                  'Repair',
-                  LucideIcons.wrench,
-                  selectedOption == 'repair',
-                  () {
-                    setState(
-                      () => _handler.selectedRepairOptions[index] = 'repair',
-                    );
-                    if (!_handler.repairPricingData.containsKey(index) &&
-                        damagedPart != 'Unknown Part') {
-                      _fetchPricingForDamage(index, damagedPart, 'repair');
-                    } else {
-                      _calculateEstimatedDamageCost();
-                    }
-                  },
-                  GlobalStyles.infoMain,
-                ),
-              ),
-              SizedBox(width: GlobalStyles.spacingMd),
-              Expanded(
-                child: _buildOptionButton(
-                  'Replace',
-                  LucideIcons.refreshCw,
-                  selectedOption == 'replace',
-                  () {
-                    setState(
-                      () => _handler.selectedRepairOptions[index] = 'replace',
-                    );
-                    if (!_handler.replacePricingData.containsKey(index) &&
-                        damagedPart != 'Unknown Part') {
-                      _fetchPricingForDamage(index, damagedPart, 'replace');
-                    } else {
-                      _calculateEstimatedDamageCost();
-                    }
-                  },
-                  GlobalStyles.warningMain,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          // Show pricing breakdown
-          Builder(
-            builder: (context) {
-              final isLoading = _handler.isLoadingPricing[index] ?? false;
-              final repairData = _handler.repairPricingData[index];
-              final replacePricing = _handler.replacePricingData[index];
-
-              if (isLoading) {
-                return Center(
-                  child: CircularProgressIndicator(
-                    color: GlobalStyles.primaryMain,
+          boxShadow: [GlobalStyles.shadowMd],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  "Damage ${index + 1}",
+                  style: TextStyle(
+                    fontFamily: GlobalStyles.fontFamilyHeading,
+                    color: GlobalStyles.textPrimary,
+                    fontSize: GlobalStyles.fontSizeBody2,
+                    fontWeight: GlobalStyles.fontWeightBold,
                   ),
-                );
-              }
+                ),
+              ],
+            ),
+            SizedBox(height: GlobalStyles.spacingSm),
+            _buildDamageInfo(damagedPart, damageType),
+            SizedBox(height: GlobalStyles.spacingSm),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildOptionButton(
+                    'Repair',
+                    LucideIcons.wrench,
+                    selectedOption == 'repair',
+                    () {
+                      setState(
+                        () => _handler.selectedRepairOptions[index] = 'repair',
+                      );
+                      if (!_handler.repairPricingData.containsKey(index) &&
+                          damagedPart != 'Unknown Part') {
+                        _fetchPricingForDamage(index, damagedPart, 'repair');
+                      } else {
+                        _calculateEstimatedDamageCost();
+                      }
+                    },
+                    GlobalStyles.infoMain,
+                  ),
+                ),
+                SizedBox(width: GlobalStyles.spacingSm),
+                Expanded(
+                  child: _buildOptionButton(
+                    'Replace',
+                    LucideIcons.refreshCw,
+                    selectedOption == 'replace',
+                    () {
+                      setState(
+                        () => _handler.selectedRepairOptions[index] = 'replace',
+                      );
+                      if (!_handler.replacePricingData.containsKey(index) &&
+                          damagedPart != 'Unknown Part') {
+                        _fetchPricingForDamage(index, damagedPart, 'replace');
+                      } else {
+                        _calculateEstimatedDamageCost();
+                      }
+                    },
+                    GlobalStyles.warningMain,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: GlobalStyles.spacingSm),
+            // Show pricing breakdown
+            Builder(
+              builder: (context) {
+                final isLoading = _handler.isLoadingPricing[index] ?? false;
+                final repairData = _handler.repairPricingData[index];
+                final replacePricing = _handler.replacePricingData[index];
 
-              if (selectedOption == 'repair') {
-                if (repairData != null &&
-                    _hasValidPricingData(repairData, 'repair')) {
-                  return _buildApiCostBreakdown(
-                    'repair',
-                    repairData,
-                    damage,
-                    null,
-                  );
-                } else {
-                  return Container(
-                    padding: EdgeInsets.all(GlobalStyles.spacingMd),
-                    decoration: BoxDecoration(
-                      color: GlobalStyles.warningMain.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(
-                        GlobalStyles.radiusMd,
-                      ),
-                      border: Border.all(
-                        color: GlobalStyles.warningMain.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          LucideIcons.circleAlert,
-                          color: GlobalStyles.warningMain,
-                          size: GlobalStyles.fontSizeH6,
-                        ),
-                        SizedBox(width: GlobalStyles.spacingSm),
-                        Expanded(
-                          child: Text(
-                            'Repair option is not applicable for $damagedPart',
-                            style: TextStyle(
-                              fontFamily: GlobalStyles.fontFamilyBody,
-                              color: GlobalStyles.warningMain,
-                              fontSize: GlobalStyles.fontSizeBody2,
-                            ),
-                          ),
-                        ),
-                      ],
+                if (isLoading) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: GlobalStyles.primaryMain,
                     ),
                   );
                 }
-              } else if (selectedOption == 'replace') {
-                if (replacePricing != null &&
-                    _hasValidPricingData(replacePricing, 'replace')) {
-                  return _buildApiCostBreakdown(
-                    'replace',
-                    replacePricing,
-                    damage,
-                    repairData,
-                  );
-                } else {
-                  return Container(
-                    padding: EdgeInsets.all(GlobalStyles.spacingMd),
-                    decoration: BoxDecoration(
-                      color: GlobalStyles.warningMain.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(
-                        GlobalStyles.radiusMd,
-                      ),
-                      border: Border.all(
-                        color: GlobalStyles.warningMain.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          LucideIcons.circleAlert,
-                          color: GlobalStyles.warningMain,
-                          size: GlobalStyles.fontSizeH6,
+
+                if (selectedOption == 'repair') {
+                  if (repairData != null &&
+                      _hasValidPricingData(repairData, 'repair')) {
+                    return _buildApiCostBreakdown(
+                      'repair',
+                      repairData,
+                      damage,
+                      null,
+                    );
+                  } else {
+                    return Container(
+                      padding: EdgeInsets.all(GlobalStyles.spacingMd),
+                      decoration: BoxDecoration(
+                        color: GlobalStyles.warningMain.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(
+                          GlobalStyles.radiusMd,
                         ),
-                        SizedBox(width: GlobalStyles.spacingSm),
-                        Expanded(
-                          child: Text(
-                            'Replace option is not applicable for $damagedPart',
-                            style: TextStyle(
-                              fontFamily: GlobalStyles.fontFamilyBody,
-                              color: GlobalStyles.warningMain,
-                              fontSize: GlobalStyles.fontSizeBody2,
-                            ),
+                        border: Border.all(
+                          color: GlobalStyles.warningMain.withValues(
+                            alpha: 0.3,
                           ),
                         ),
-                      ],
-                    ),
-                  );
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            LucideIcons.circleAlert,
+                            color: GlobalStyles.warningMain,
+                            size: GlobalStyles.fontSizeH6,
+                          ),
+                          SizedBox(width: GlobalStyles.spacingSm),
+                          Expanded(
+                            child: Text(
+                              'Repair option is not applicable for $damagedPart',
+                              style: TextStyle(
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                                color: GlobalStyles.warningMain,
+                                fontSize: GlobalStyles.fontSizeBody2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                } else if (selectedOption == 'replace') {
+                  if (replacePricing != null &&
+                      _hasValidPricingData(replacePricing, 'replace')) {
+                    return _buildApiCostBreakdown(
+                      'replace',
+                      replacePricing,
+                      damage,
+                      repairData,
+                    );
+                  } else {
+                    return Container(
+                      padding: EdgeInsets.all(GlobalStyles.spacingMd),
+                      decoration: BoxDecoration(
+                        color: GlobalStyles.warningMain.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(
+                          GlobalStyles.radiusMd,
+                        ),
+                        border: Border.all(
+                          color: GlobalStyles.warningMain.withValues(
+                            alpha: 0.3,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            LucideIcons.circleAlert,
+                            color: GlobalStyles.warningMain,
+                            size: GlobalStyles.fontSizeH6,
+                          ),
+                          SizedBox(width: GlobalStyles.spacingSm),
+                          Expanded(
+                            child: Text(
+                              'Replace option is not applicable for $damagedPart',
+                              style: TextStyle(
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                                color: GlobalStyles.warningMain,
+                                fontSize: GlobalStyles.fontSizeBody2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
                 }
-              }
 
-              return SizedBox.shrink();
-            },
-          ),
-        ],
+                return SizedBox.shrink();
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1139,168 +1432,187 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
   }
 
   Widget _buildAddDamageForm() {
-    return Container(
-      margin: EdgeInsets.only(
-        top: GlobalStyles.spacingMd,
-        bottom: GlobalStyles.spacingMd,
-      ),
-      decoration: BoxDecoration(
-        color: GlobalStyles.surfaceMain,
-        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Add Damage',
-            style: TextStyle(
-              fontFamily: GlobalStyles.fontFamilyBody,
-              color: GlobalStyles.textPrimary,
-              fontWeight: GlobalStyles.fontWeightBold,
-            ),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: GlobalStyles.durationNormal,
+      curve: GlobalStyles.easingDecelerate,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 0.95 + (0.05 * value),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(
+          top: GlobalStyles.spacingMd,
+          bottom: GlobalStyles.spacingMd,
+        ),
+        padding: EdgeInsets.all(GlobalStyles.spacingLg),
+        decoration: BoxDecoration(
+          color: GlobalStyles.surfaceMain,
+          borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
+          border: Border.all(
+            color: GlobalStyles.primaryMain.withValues(alpha: 0.2),
+            width: 1.5,
           ),
-          SizedBox(height: GlobalStyles.spacingSm),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingMd),
-            decoration: BoxDecoration(
-              color: GlobalStyles.primaryMain.withAlpha((0.04 * 255).toInt()),
-              borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-            ),
-            child: DropdownButton<String>(
-              value: _newDamagePart,
-              hint: Text(
-                'Select part',
-                style: TextStyle(
-                  fontFamily: GlobalStyles.fontFamilyBody,
-                  color: GlobalStyles.textTertiary,
-                  fontSize: GlobalStyles.fontSizeBody2,
-                ),
-              ),
+          boxShadow: [GlobalStyles.shadowMd],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Add Damage',
               style: TextStyle(
                 fontFamily: GlobalStyles.fontFamilyBody,
                 color: GlobalStyles.textPrimary,
-                fontSize: GlobalStyles.fontSizeCaption,
+                fontWeight: GlobalStyles.fontWeightBold,
               ),
-              isExpanded: true,
-              dropdownColor: GlobalStyles.surfaceMain,
-              underline: const SizedBox.shrink(),
-              items:
-                  _carParts
-                      .map(
-                        (p) => DropdownMenuItem<String>(
-                          value: p,
-                          child: Text(
-                            _formatLabel(p),
-                            style: TextStyle(
-                              fontFamily: GlobalStyles.fontFamilyBody,
-                              color: GlobalStyles.textPrimary,
-                              fontSize: GlobalStyles.fontSizeCaption,
+            ),
+            SizedBox(height: GlobalStyles.spacingSm),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: GlobalStyles.spacingMd),
+              decoration: BoxDecoration(
+                color: GlobalStyles.primaryMain.withAlpha((0.04 * 255).toInt()),
+                borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+              ),
+              child: DropdownButton<String>(
+                value: _newDamagePart,
+                hint: Text(
+                  'Select part',
+                  style: TextStyle(
+                    fontFamily: GlobalStyles.fontFamilyBody,
+                    color: GlobalStyles.textTertiary,
+                    fontSize: GlobalStyles.fontSizeBody1,
+                  ),
+                ),
+                style: TextStyle(
+                  fontFamily: GlobalStyles.fontFamilyBody,
+                  color: GlobalStyles.textPrimary,
+                  fontSize: GlobalStyles.fontSizeBody1,
+                ),
+                isExpanded: true,
+                dropdownColor: GlobalStyles.surfaceMain,
+                underline: const SizedBox.shrink(),
+                items:
+                    _carParts
+                        .map(
+                          (p) => DropdownMenuItem<String>(
+                            value: p,
+                            child: Text(
+                              _formatLabel(p),
+                              style: TextStyle(
+                                fontFamily: GlobalStyles.fontFamilyBody,
+                                color: GlobalStyles.textPrimary,
+                                fontSize: GlobalStyles.fontSizeBody1,
+                              ),
                             ),
                           ),
-                        ),
-                      )
-                      .toList(),
-              onChanged: (val) => setState(() => _newDamagePart = val),
+                        )
+                        .toList(),
+                onChanged: (val) => setState(() => _newDamagePart = val),
+              ),
             ),
-          ),
-          SizedBox(height: GlobalStyles.spacingSm),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed:
-                      (_newDamagePart == null)
-                          ? null
-                          : () {
-                            final map = {
-                              'damaged_part': _newDamagePart!,
-                              'damage_type': '',
-                            };
-                            setState(() {
-                              _handler.manualDamages.add(map);
-                              final newIndex =
-                                  _handler.manualDamages.length - 1;
-                              final globalIndex = -(newIndex + 1);
-                              // default manual damage to 'repair' so it contributes to totals
-                              _handler.selectedRepairOptions[globalIndex] =
-                                  'repair';
-                              _fetchPricingForDamage(
-                                globalIndex,
-                                _newDamagePart!,
-                                'repair',
-                              );
-                              _showAddDamageForm = false;
-                              _newDamagePart = null;
-                              // no damage type field maintained
-                            });
-                          },
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStateColor.resolveWith((states) {
-                      if (states.contains(WidgetState.disabled)) {
-                        return GlobalStyles.textSecondary;
-                      }
-                      return GlobalStyles.primaryMain;
-                    }),
-                    foregroundColor: WidgetStateProperty.all<Color>(
-                      GlobalStyles.surfaceMain,
-                    ),
-                    shape: WidgetStateProperty.all<RoundedRectangleBorder>(
-                      RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          GlobalStyles.radiusMd,
-                        ),
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    'Add',
-                    style: TextStyle(
-                      fontFamily: GlobalStyles.fontFamilyBody,
-                      color: GlobalStyles.surfaceMain,
-                      fontSize: GlobalStyles.fontSizeCaption,
-                      fontWeight: GlobalStyles.fontWeightSemiBold,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: GlobalStyles.spacingMd),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed:
-                      () => setState(() {
-                        _showAddDamageForm = false;
-                        _newDamagePart = null;
+            SizedBox(height: GlobalStyles.spacingSm),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed:
+                        (_newDamagePart == null)
+                            ? null
+                            : () {
+                              final map = {
+                                'damaged_part': _newDamagePart!,
+                                'damage_type': '',
+                              };
+                              setState(() {
+                                _handler.manualDamages.add(map);
+                                final newIndex =
+                                    _handler.manualDamages.length - 1;
+                                final globalIndex = -(newIndex + 1);
+                                // default manual damage to 'repair' so it contributes to totals
+                                _handler.selectedRepairOptions[globalIndex] =
+                                    'repair';
+                                _fetchPricingForDamage(
+                                  globalIndex,
+                                  _newDamagePart!,
+                                  'repair',
+                                );
+                                _showAddDamageForm = false;
+                                _newDamagePart = null;
+                                // no damage type field maintained
+                              });
+                            },
+                    style: ButtonStyle(
+                      backgroundColor: WidgetStateColor.resolveWith((states) {
+                        if (states.contains(WidgetState.disabled)) {
+                          return GlobalStyles.primaryMain.withValues(
+                            alpha: GlobalStyles.disabledOpacity,
+                          );
+                        }
+                        return GlobalStyles.primaryMain;
                       }),
-                  style: ButtonStyle(
-                    shape: WidgetStatePropertyAll<RoundedRectangleBorder>(
-                      RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          GlobalStyles.radiusMd,
+                      foregroundColor: WidgetStateProperty.all<Color>(
+                        GlobalStyles.surfaceMain,
+                      ),
+                      shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            GlobalStyles.radiusMd,
+                          ),
                         ),
                       ),
                     ),
-                    side: WidgetStatePropertyAll<BorderSide>(BorderSide.none),
-                    backgroundColor: WidgetStatePropertyAll<Color>(
-                      GlobalStyles.primaryMain.withValues(alpha: 0.15),
-                    ),
-                    foregroundColor: WidgetStatePropertyAll<Color>(
-                      GlobalStyles.primaryMain,
-                    ),
-                  ),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(
-                      fontFamily: GlobalStyles.fontFamilyBody,
-                      color: GlobalStyles.primaryMain,
-                      fontSize: GlobalStyles.fontSizeCaption,
-                      fontWeight: GlobalStyles.fontWeightSemiBold,
+                    child: Text(
+                      'Add',
+                      style: TextStyle(
+                        fontFamily: GlobalStyles.fontFamilyBody,
+                        color: GlobalStyles.surfaceMain,
+                        fontSize: GlobalStyles.fontSizeCaption,
+                        fontWeight: GlobalStyles.fontWeightSemiBold,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                SizedBox(width: GlobalStyles.spacingMd),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed:
+                        () => setState(() {
+                          _showAddDamageForm = false;
+                          _newDamagePart = null;
+                        }),
+                    style: ButtonStyle(
+                      shape: WidgetStatePropertyAll<RoundedRectangleBorder>(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            GlobalStyles.radiusMd,
+                          ),
+                        ),
+                      ),
+                      side: WidgetStatePropertyAll<BorderSide>(BorderSide.none),
+                      backgroundColor: WidgetStatePropertyAll<Color>(
+                        GlobalStyles.primaryMain.withValues(alpha: 0.15),
+                      ),
+                      foregroundColor: WidgetStatePropertyAll<Color>(
+                        GlobalStyles.primaryMain,
+                      ),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontFamily: GlobalStyles.fontFamilyBody,
+                        color: GlobalStyles.primaryMain,
+                        fontSize: GlobalStyles.fontSizeCaption,
+                        fontWeight: GlobalStyles.fontWeightSemiBold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1315,8 +1627,15 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
 
     return Container(
       margin: EdgeInsets.symmetric(vertical: GlobalStyles.spacingMd),
+      padding: EdgeInsets.all(GlobalStyles.spacingMd),
       decoration: BoxDecoration(
+        color: GlobalStyles.surfaceMain,
         borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
+        border: Border.all(
+          color: GlobalStyles.primaryMain.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+        boxShadow: [GlobalStyles.shadowMd],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1328,7 +1647,7 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
                 style: TextStyle(
                   fontFamily: GlobalStyles.fontFamilyBody,
                   color: GlobalStyles.textSecondary,
-                  fontSize: GlobalStyles.fontSizeCaption,
+                  fontSize: GlobalStyles.fontSizeH6,
                   fontWeight: GlobalStyles.fontWeightBold,
                 ),
               ),
@@ -1395,6 +1714,62 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
           ),
           SizedBox(height: GlobalStyles.spacingMd),
           _buildDamageInfo(damagedPart, damageType),
+          SizedBox(height: GlobalStyles.spacingMd),
+          Row(
+            children: [
+              Expanded(
+                child: _buildOptionButton(
+                  'Repair',
+                  LucideIcons.wrench,
+                  selectedOption == 'repair',
+                  () {
+                    setState(
+                      () =>
+                          _handler.selectedRepairOptions[globalIndex] =
+                              'repair',
+                    );
+                    if (!_handler.repairPricingData.containsKey(globalIndex) &&
+                        damagedPart != 'Unknown Part') {
+                      _fetchPricingForDamage(
+                        globalIndex,
+                        damagedPart,
+                        'repair',
+                      );
+                    } else {
+                      _calculateEstimatedDamageCost();
+                    }
+                  },
+                  GlobalStyles.infoMain,
+                ),
+              ),
+              SizedBox(width: GlobalStyles.spacingMd),
+              Expanded(
+                child: _buildOptionButton(
+                  'Replace',
+                  LucideIcons.refreshCw,
+                  selectedOption == 'replace',
+                  () {
+                    setState(
+                      () =>
+                          _handler.selectedRepairOptions[globalIndex] =
+                              'replace',
+                    );
+                    if (!_handler.replacePricingData.containsKey(globalIndex) &&
+                        damagedPart != 'Unknown Part') {
+                      _fetchPricingForDamage(
+                        globalIndex,
+                        damagedPart,
+                        'replace',
+                      );
+                    } else {
+                      _calculateEstimatedDamageCost();
+                    }
+                  },
+                  GlobalStyles.warningMain,
+                ),
+              ),
+            ],
+          ),
           SizedBox(height: GlobalStyles.spacingMd),
           // Show pricing breakdown for manual damages
           Builder(
@@ -1512,62 +1887,6 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
               return SizedBox.shrink();
             },
           ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Row(
-            children: [
-              Expanded(
-                child: _buildOptionButton(
-                  'Repair',
-                  LucideIcons.wrench,
-                  selectedOption == 'repair',
-                  () {
-                    setState(
-                      () =>
-                          _handler.selectedRepairOptions[globalIndex] =
-                              'repair',
-                    );
-                    if (!_handler.repairPricingData.containsKey(globalIndex) &&
-                        damagedPart != 'Unknown Part') {
-                      _fetchPricingForDamage(
-                        globalIndex,
-                        damagedPart,
-                        'repair',
-                      );
-                    } else {
-                      _calculateEstimatedDamageCost();
-                    }
-                  },
-                  GlobalStyles.infoMain,
-                ),
-              ),
-              SizedBox(width: GlobalStyles.spacingMd),
-              Expanded(
-                child: _buildOptionButton(
-                  'Replace',
-                  LucideIcons.refreshCw,
-                  selectedOption == 'replace',
-                  () {
-                    setState(
-                      () =>
-                          _handler.selectedRepairOptions[globalIndex] =
-                              'replace',
-                    );
-                    if (!_handler.replacePricingData.containsKey(globalIndex) &&
-                        damagedPart != 'Unknown Part') {
-                      _fetchPricingForDamage(
-                        globalIndex,
-                        damagedPart,
-                        'replace',
-                      );
-                    } else {
-                      _calculateEstimatedDamageCost();
-                    }
-                  },
-                  GlobalStyles.warningMain,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -1580,48 +1899,82 @@ class _PDFAssessmentViewState extends State<PDFAssessmentView> {
     VoidCallback onTap,
     Color color,
   ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(
-          vertical: GlobalStyles.spacingXs,
-          horizontal: GlobalStyles.spacingMd,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? color : GlobalStyles.surfaceMain,
-          borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
-          border: Border.all(color: color, width: 2.5),
-          boxShadow:
-              isSelected
-                  ? [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                  : [],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? GlobalStyles.surfaceMain : color,
-              size: GlobalStyles.fontSizeH6,
-            ),
-            SizedBox(width: GlobalStyles.spacingSm),
-            Text(
-              title,
-              style: TextStyle(
-                fontFamily: GlobalStyles.fontFamilyBody,
-                color: isSelected ? GlobalStyles.surfaceMain : color,
-                fontSize: GlobalStyles.fontSizeBody1,
-                fontWeight: GlobalStyles.fontWeightBold,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+        splashColor: color.withValues(alpha: 0.2),
+        highlightColor: color.withValues(alpha: 0.1),
+        child: AnimatedContainer(
+          duration: GlobalStyles.durationFast,
+          curve: GlobalStyles.easingStandard,
+          padding: EdgeInsets.symmetric(
+            vertical: GlobalStyles.spacingSm,
+            horizontal: GlobalStyles.spacingMd,
+          ),
+          decoration: BoxDecoration(
+            gradient:
+                isSelected
+                    ? LinearGradient(
+                      colors: [color, color.withValues(alpha: 0.85)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                    : null,
+            color: isSelected ? null : GlobalStyles.surfaceMain,
+            borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+            border: Border.all(color: color, width: isSelected ? 2.5 : 2),
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                        spreadRadius: 1,
+                      ),
+                    ]
+                    : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.8, end: 1.0),
+                duration: GlobalStyles.durationFast,
+                curve: Curves.elasticOut,
+                builder: (context, value, child) {
+                  return Transform.scale(scale: value, child: child);
+                },
+                child: Icon(
+                  icon,
+                  color: isSelected ? GlobalStyles.surfaceMain : color,
+                  size: GlobalStyles.iconSizeSm,
+                ),
               ),
-            ),
-          ],
+              SizedBox(width: GlobalStyles.spacingSm),
+              Text(
+                title,
+                style: TextStyle(
+                  fontFamily: GlobalStyles.fontFamilyBody,
+                  color: isSelected ? GlobalStyles.surfaceMain : color,
+                  fontSize: GlobalStyles.fontSizeCaption,
+                  fontWeight: GlobalStyles.fontWeightBold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

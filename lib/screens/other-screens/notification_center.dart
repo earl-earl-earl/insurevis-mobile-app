@@ -14,14 +14,38 @@ class NotificationCenter extends StatefulWidget {
   State<NotificationCenter> createState() => _NotificationCenterState();
 }
 
-class _NotificationCenterState extends State<NotificationCenter> {
+class _NotificationCenterState extends State<NotificationCenter>
+    with TickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+    _fadeController.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: GlobalStyles.backgroundMain,
       appBar: AppBar(
         backgroundColor: GlobalStyles.surfaceMain,
-        elevation: 0,
+        elevation: 1,
         shadowColor: GlobalStyles.shadowSm.color,
         leading: IconButton(
           icon: Icon(
@@ -34,7 +58,7 @@ class _NotificationCenterState extends State<NotificationCenter> {
         title: Text(
           'Notifications',
           style: TextStyle(
-            fontSize: GlobalStyles.fontSizeH5,
+            fontSize: GlobalStyles.fontSizeH4,
             fontWeight: GlobalStyles.fontWeightSemiBold,
             color: GlobalStyles.textPrimary,
             fontFamily: GlobalStyles.fontFamilyHeading,
@@ -51,8 +75,8 @@ class _NotificationCenterState extends State<NotificationCenter> {
                     icon:
                         provider.isRefreshing
                             ? SizedBox(
-                              width: GlobalStyles.iconSizeSm,
-                              height: GlobalStyles.iconSizeSm,
+                              width: 20.sp,
+                              height: 20.sp,
                               child: CircularProgressIndicator(
                                 strokeWidth: GlobalStyles.iconStrokeWidthNormal,
                                 color: GlobalStyles.primaryMain,
@@ -93,7 +117,8 @@ class _NotificationCenterState extends State<NotificationCenter> {
           ),
         ],
       ),
-      body: SizedBox(
+      body: FadeTransition(
+        opacity: _fadeAnimation,
         child: Column(
           children: [
             // Loading indicator during refresh
@@ -153,11 +178,29 @@ class _NotificationCenterState extends State<NotificationCenter> {
             itemCount: notifications.length,
             itemBuilder: (context, index) {
               final notification = notifications[index];
-              return _buildNotificationCard(notification);
+              return _buildAnimatedNotificationCard(notification, index);
             },
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAnimatedNotificationCard(
+    AppNotification notification,
+    int index,
+  ) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 400 + (index * 50)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, (1 - value) * 20),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: _buildNotificationCard(notification),
     );
   }
 
@@ -166,24 +209,52 @@ class _NotificationCenterState extends State<NotificationCenter> {
     final isHighPriority = NotificationUtils.isHighPriority(notification);
 
     return Container(
+      margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
         color:
             notification.isRead
                 ? GlobalStyles.surfaceMain
-                : GlobalStyles.primaryMain.withOpacity(0.08),
+                : GlobalStyles.primaryMain.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
+        border: Border.all(
+          color:
+              notification.isRead
+                  ? GlobalStyles.textDisabled.withValues(alpha: 0.1)
+                  : GlobalStyles.primaryMain.withValues(alpha: 0.2),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _handleNotificationTap(notification),
+          borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
           child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: GlobalStyles.paddingNormal,
-              vertical: GlobalStyles.spacingMd,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Unread indicator dot
+                if (!notification.isRead)
+                  Container(
+                    width: 8.w,
+                    height: 8.h,
+                    decoration: BoxDecoration(
+                      color: GlobalStyles.primaryMain,
+                      shape: BoxShape.circle,
+                    ),
+                    margin: EdgeInsets.only(top: 8.h, right: 8.w),
+                  )
+                else
+                  SizedBox(width: 8.w, height: 8.h),
+
                 // Notification icon - prefer payload status when present
                 Container(
                   width: 56.w,
@@ -196,7 +267,7 @@ class _NotificationCenterState extends State<NotificationCenter> {
                             )
                             : NotificationUtils.getTypeColor(notification.type))
                         .withOpacity(0.15),
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     notification.data != null &&
@@ -229,18 +300,18 @@ class _NotificationCenterState extends State<NotificationCenter> {
                               notification.title,
                               style: TextStyle(
                                 color: GlobalStyles.textPrimary,
-                                fontSize: GlobalStyles.fontSizeH6,
+                                fontSize: GlobalStyles.fontSizeBody1,
                                 fontWeight:
                                     notification.isRead
                                         ? GlobalStyles.fontWeightSemiBold
                                         : GlobalStyles.fontWeightBold,
-                                fontFamily: GlobalStyles.fontFamilyHeading,
+                                fontFamily: GlobalStyles.fontFamilyBody,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: GlobalStyles.spacingXs),
+                      SizedBox(height: 8.h),
                       Text(
                         notification.message,
                         maxLines: 2,
@@ -252,15 +323,15 @@ class _NotificationCenterState extends State<NotificationCenter> {
                           height: 1.4,
                         ),
                       ),
-                      SizedBox(height: GlobalStyles.spacingSm),
+                      SizedBox(height: 8.h),
                       Row(
                         children: [
                           Icon(
                             LucideIcons.clock,
-                            size: GlobalStyles.iconSizeXs,
+                            size: 14.sp,
                             color: GlobalStyles.textDisabled,
                           ),
-                          SizedBox(width: GlobalStyles.spacingXs),
+                          SizedBox(width: 4.w),
                           Text(
                             timeAgo,
                             style: TextStyle(
@@ -270,20 +341,23 @@ class _NotificationCenterState extends State<NotificationCenter> {
                             ),
                           ),
                           if (isHighPriority) ...[
-                            SizedBox(width: GlobalStyles.spacingSm),
+                            SizedBox(width: 8.w),
                             Container(
-                              padding: GlobalStyles.chipPadding,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8.w,
+                                vertical: 3.h,
+                              ),
                               decoration: BoxDecoration(
-                                color: GlobalStyles.errorMain.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(
-                                  GlobalStyles.chipBorderRadius,
+                                color: GlobalStyles.errorMain.withValues(
+                                  alpha: 0.15,
                                 ),
+                                borderRadius: BorderRadius.circular(4.r),
                               ),
                               child: Text(
                                 'HIGH',
                                 style: TextStyle(
                                   color: GlobalStyles.errorMain,
-                                  fontSize: GlobalStyles.chipFontSize,
+                                  fontSize: 10.sp,
                                   fontWeight: GlobalStyles.fontWeightBold,
                                   fontFamily: GlobalStyles.fontFamilyBody,
                                   letterSpacing: 0.5,
@@ -302,11 +376,11 @@ class _NotificationCenterState extends State<NotificationCenter> {
                   icon: Icon(
                     LucideIcons.ellipsis,
                     color: GlobalStyles.textTertiary,
-                    size: GlobalStyles.iconSizeSm,
+                    size: 20.sp,
                   ),
                   color: GlobalStyles.surfaceMain,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(GlobalStyles.radiusLg),
+                    borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
                   ),
                   elevation: 4,
                   onSelected: (value) {
@@ -333,9 +407,9 @@ class _NotificationCenterState extends State<NotificationCenter> {
                                 Icon(
                                   LucideIcons.mailCheck,
                                   color: GlobalStyles.textPrimary,
-                                  size: GlobalStyles.iconSizeXs,
+                                  size: 16.sp,
                                 ),
-                                SizedBox(width: GlobalStyles.spacingSm),
+                                SizedBox(width: 8.w),
                                 Text(
                                   'Mark as read',
                                   style: TextStyle(
@@ -355,9 +429,9 @@ class _NotificationCenterState extends State<NotificationCenter> {
                               Icon(
                                 LucideIcons.trash2,
                                 color: GlobalStyles.errorMain,
-                                size: GlobalStyles.iconSizeXs,
+                                size: 16.sp,
                               ),
-                              SizedBox(width: GlobalStyles.spacingSm),
+                              SizedBox(width: 8.w),
                               Text(
                                 'Remove',
                                 style: TextStyle(
@@ -385,42 +459,52 @@ class _NotificationCenterState extends State<NotificationCenter> {
     final icon = NotificationUtils.getEmptyStateIcon(type);
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80.w,
-            height: 80.h,
-            decoration: BoxDecoration(
-              color: GlobalStyles.primaryMain.withOpacity(0.1),
-              shape: BoxShape.circle,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOut,
+        builder: (context, value, child) {
+          return Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, (1 - value) * 30),
+              child: child,
             ),
-            child: Icon(
-              icon,
-              size: GlobalStyles.iconSizeLg,
-              color: GlobalStyles.primaryMain,
+          );
+        },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80.sp,
+              height: 80.sp,
+              decoration: BoxDecoration(
+                color: GlobalStyles.primaryMain.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 40.sp, color: GlobalStyles.primaryMain),
             ),
-          ),
-          SizedBox(height: GlobalStyles.spacingMd),
-          Text(
-            message,
-            style: TextStyle(
-              color: GlobalStyles.textPrimary,
-              fontSize: GlobalStyles.fontSizeH6,
-              fontWeight: GlobalStyles.fontWeightSemiBold,
-              fontFamily: GlobalStyles.fontFamilyHeading,
+            SizedBox(height: 24.h),
+            Text(
+              message,
+              style: TextStyle(
+                color: GlobalStyles.textPrimary,
+                fontSize: GlobalStyles.fontSizeH5,
+                fontWeight: GlobalStyles.fontWeightSemiBold,
+                fontFamily: GlobalStyles.fontFamilyBody,
+              ),
             ),
-          ),
-          SizedBox(height: GlobalStyles.spacingSm),
-          Text(
-            'Pull down to refresh',
-            style: TextStyle(
-              color: GlobalStyles.textTertiary,
-              fontSize: GlobalStyles.fontSizeBody2,
-              fontFamily: GlobalStyles.fontFamilyBody,
+            SizedBox(height: 8.h),
+            Text(
+              'Pull down to refresh',
+              style: TextStyle(
+                color: GlobalStyles.textSecondary,
+                fontSize: GlobalStyles.fontSizeBody2,
+                fontFamily: GlobalStyles.fontFamilyBody,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -470,19 +554,41 @@ class _NotificationCenterState extends State<NotificationCenter> {
       context: context,
       builder:
           (context) => AlertDialog(
-            backgroundColor: GlobalStyles.dialogBackground,
+            backgroundColor: GlobalStyles.surfaceMain,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                GlobalStyles.dialogBorderRadius,
-              ),
+              borderRadius: BorderRadius.circular(GlobalStyles.radiusMd),
             ),
-            title: Text(
-              'Clear All Notifications',
-              style: TextStyle(
-                color: GlobalStyles.textPrimary,
-                fontSize: GlobalStyles.fontSizeH5,
-                fontWeight: GlobalStyles.fontWeightBold,
-                fontFamily: GlobalStyles.fontFamilyHeading,
+            elevation: 8,
+            title: Padding(
+              padding: EdgeInsets.only(bottom: 8.h),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40.sp,
+                    height: 40.sp,
+                    decoration: BoxDecoration(
+                      color: GlobalStyles.errorMain.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Icon(
+                      LucideIcons.trash2,
+                      size: 20.sp,
+                      color: GlobalStyles.errorMain,
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Text(
+                      'Clear All Notifications',
+                      style: TextStyle(
+                        color: GlobalStyles.textPrimary,
+                        fontSize: GlobalStyles.fontSizeH6,
+                        fontWeight: GlobalStyles.fontWeightBold,
+                        fontFamily: GlobalStyles.fontFamilyBody,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             content: Text(
@@ -491,25 +597,33 @@ class _NotificationCenterState extends State<NotificationCenter> {
                 color: GlobalStyles.textSecondary,
                 fontSize: GlobalStyles.fontSizeBody2,
                 fontFamily: GlobalStyles.fontFamilyBody,
-                height: 1.5,
+                height: 1.6,
               ),
             ),
+            actionsPadding: EdgeInsets.all(16.w),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 style: TextButton.styleFrom(
                   foregroundColor: GlobalStyles.textPrimary,
-                  padding: GlobalStyles.buttonPadding,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 8.h,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
                 ),
                 child: Text(
                   'Cancel',
                   style: TextStyle(
-                    fontSize: GlobalStyles.fontSizeButton,
+                    fontSize: GlobalStyles.fontSizeBody1,
                     fontWeight: GlobalStyles.fontWeightMedium,
                     fontFamily: GlobalStyles.fontFamilyBody,
                   ),
                 ),
               ),
+              SizedBox(width: 8.w),
               ElevatedButton(
                 onPressed: () {
                   Provider.of<NotificationProvider>(
@@ -520,12 +634,13 @@ class _NotificationCenterState extends State<NotificationCenter> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: GlobalStyles.errorMain,
-                  foregroundColor: GlobalStyles.surfaceMain,
-                  padding: GlobalStyles.buttonPadding,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.w,
+                    vertical: 8.h,
+                  ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      GlobalStyles.buttonBorderRadius,
-                    ),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   elevation: 0,
                 ),
