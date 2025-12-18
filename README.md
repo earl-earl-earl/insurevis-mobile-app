@@ -37,9 +37,8 @@ As an insurance claimant, you simply take photos of your damaged vehicle, and In
 
 ## ✨ Key Features
 
-* **Real-Time AI Damage Detection:** Analyzes vehicle damage instantly with 96%+ accuracy and displays confidence scores.
+* **Real-Time AI Damage Detection:** Analyzes vehicle damage instantly with 75%+ accuracy and displays confidence scores.
 * **Smart Camera System:** Intuitive camera interface with live AI overlay for multi-angle photo capture.
-* **Assessment Comparison:** Side-by-side comparison of multiple assessments with comprehensive cost breakdowns.
 * **Offline-First Architecture:** Works seamlessly offline with automatic cloud synchronization when online.
 * **Professional PDF Reports:** Generate customizable, multi-format PDF reports for insurance submissions.
 * **Advanced Search & Filtering:** Multi-criteria search with date range, severity, and cost filters.
