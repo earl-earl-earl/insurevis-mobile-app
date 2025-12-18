@@ -1,220 +1,114 @@
-# 🚗 InsureVis - AI-Powered Vehicle Damage Assessment
+# InsureVis
 
-## 📱 Overview
+![InsureVis Banner](assets/images/logo/4.png)
+> *AI-Powered Vehicle Damage Assessment for Streamlined Insurance Claims*
 
-InsureVis is a cutting-edge Flutter application that uses artificial intelligence to analyze vehicle damage through photos. The app provides accurate damage assessment, cost estimation, and seamless integration with insurance companies for streamlined claims processing.
+---
+
+## 📖 About
+**InsureVis** is a mobile application designed to revolutionize the insurance claims process by leveraging artificial intelligence to analyze vehicle damage through photos. This project was built to address the inefficiencies in traditional vehicle damage assessment—reducing manual inspection time, improving accuracy, and providing instant cost estimates.
+
+As an insurance claimant, you simply take photos of your damaged vehicle, and InsureVis analyzes the damage in real-time, generates professional PDF reports, and seamlessly submits claims to insurance companies—all from your mobile device.
+
+---
+
+## 🛠 Tech Stack
+
+**Frontend:**
+* [Flutter](https://flutter.dev/) - Cross-platform mobile framework
+* [Material 3 Design](https://m3.material.io/) - Modern UI/UX components
+* [Provider](https://pub.dev/packages/provider) - State management
+
+**Backend:**
+* [Supabase](https://supabase.com/) - Backend-as-a-Service (Authentication, Database, Storage)
+* [Firebase](https://firebase.google.com/) - Push notifications and analytics
+
+**AI/ML:**
+* Custom damage detection API with confidence scoring
+* Real-time image processing and analysis
+
+**Additional Tools:**
+* [Camera Plugin](https://pub.dev/packages/camera) - Photo capture functionality
+* [PDF Generation](https://pub.dev/packages/pdf) - Professional report creation
+* [Photo Manager](https://pub.dev/packages/photo_manager) - Gallery integration
+* [Flutter ScreenUtil](https://pub.dev/packages/flutter_screenutil) - Responsive design
+
+---
 
 ## ✨ Key Features
 
-### 🔍 **Advanced AI Analysis**
-- Real-time damage detection with confidence scores
-- Multi-angle photo assessment support
-- Detailed damage categorization (dents, scratches, paint damage, etc.)
-- Professional analysis reports with technical details
+* **Real-Time AI Damage Detection:** Analyzes vehicle damage instantly with 96%+ accuracy and displays confidence scores.
+* **Smart Camera System:** Intuitive camera interface with live AI overlay for multi-angle photo capture.
+* **Assessment Comparison:** Side-by-side comparison of multiple assessments with comprehensive cost breakdowns.
+* **Offline-First Architecture:** Works seamlessly offline with automatic cloud synchronization when online.
+* **Professional PDF Reports:** Generate customizable, multi-format PDF reports for insurance submissions.
+* **Advanced Search & Filtering:** Multi-criteria search with date range, severity, and cost filters.
+* **Dark/Light Theme Support:** Modern Material 3 design with accessibility features and dynamic theming.
+* **Analytics Dashboard:** Real-time metrics with interactive charts and CSV/Excel export capabilities.
 
-### 📸 **Smart Camera System**
-- Intuitive camera interface with real-time AI overlay
-- Multiple photo capture from different angles
-- Gallery integration for existing photos
-- Batch photo processing and analysis
+---
 
-### 📊 **Assessment Management**
-- Comprehensive assessment comparison tools
-- Advanced search and filtering capabilities
-- Grid, comparison, and summary view modes
-- Cost analysis and severity breakdown
+## 🚀 Getting Started
 
-### ☁️ **Cloud Synchronization**
-- Cross-device data synchronization
-- Offline-first architecture with auto-sync
-- Secure cloud backup and restore
-- Pending uploads queue for offline scenarios
+Follow these steps to set up the project locally.
 
-### 🎨 **Modern UI/UX**
-- Dark/Light theme support with Material 3 design
-- Glassmorphic effects and smooth animations
-- Accessibility features and font scaling
-- Professional notification system
+### Prerequisites
+* Flutter SDK (v3.0 or higher)
+* Android Studio or Xcode for platform development
+* Dart SDK (comes with Flutter)
 
-### 📋 **Document Management**
-- PDF report generation with customizable layouts
-- Multi-file document submission system
-- Insurance company integration
-- Export capabilities for various formats
+### Installation
 
-## 🏗️ Architecture
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/insurevis.git
+   cd insurevis
+   ```
 
-### **Provider-Based State Management**
-- `AssessmentProvider` - Manages damage assessments and AI analysis
-- `UserProvider` - Centralized user profile and statistics
-- `NotificationProvider` - Persistent notification system
-- `ThemeProvider` - Comprehensive theming system
+2. **Install dependencies**
+   ```bash
+   flutter pub get
+   ```
 
-### **Advanced Components**
-- `EnhancedDamageAnalysis` - AI-powered damage analysis with confidence scores
-- `RealTimeDamageOverlay` - Live damage detection during photo capture
-- `AssessmentComparison` - Multi-view assessment comparison tool
-- `AdvancedSearchFilter` - Comprehensive search and filtering system
-- `AnalyticsDashboard` - Real-time analytics with charts and export functionality
+3. **Set up environment variables**
+   - Create a `.env` file in the root directory
+   - Add your API keys and configuration (see `.env.example`)
+   ```
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_ANON_KEY=your_supabase_key
+   FIREBASE_API_KEY=your_firebase_key
+   ```
 
-### **Services**
-- `CloudSyncService` - Cloud synchronization with offline support
-- `NetworkHelper` - HTTP request handling with error management
-- `EnhancedPDFService` - Professional multi-format PDF report generation
-- `ExportService` - CSV/Excel export with analytics capabilities
+4. **Run the project**
+   ```bash
+   flutter run
+   ```
 
-## 🚀 Recent Improvements (Phase 3)
-
-### **Enhanced AI Analysis**
-- ✅ Real-time damage detection preview with animated overlays
-- ✅ Confidence score indicators with color-coded accuracy levels
-- ✅ Detailed technical analysis breakdowns
-- ✅ Expandable damage analysis cards with animation
-
-### **Assessment Comparison System**
-- ✅ Grid view for quick assessment overview
-- ✅ Side-by-side comparison interface
-- ✅ Comprehensive summary with recommendations
-- ✅ Damage distribution analytics and cost breakdown
-
-### **Cloud Synchronization**
-- ✅ Offline-first architecture with automatic sync
-- ✅ Pending uploads queue management
-- ✅ Cross-device data synchronization
-- ✅ Background sync monitoring
-
-### **Advanced Search & Filtering**
-- ✅ Multi-criteria search with real-time filtering
-- ✅ Date range, severity, and cost filters
-- ✅ Multiple sorting options with persistent state
-- ✅ Animated expandable filter interface
-
-## 📋 Development Status
-
-### **✅ Phase 1 - Critical Stability (COMPLETED)**
-- Fixed all Flutter analysis issues (211 → 0)
-- Resolved deprecation warnings and print statements
-- Implemented async context safety
-- Code quality optimization
-
-### **✅ Phase 2 - Enhanced UX (COMPLETED)**
-- Centralized user management system
-- Persistent notification system
-- Comprehensive theming architecture
-- Accessibility improvements
-
-### **✅ Phase 3 - Feature Enhancement (COMPLETED)**
-- ✅ Enhanced AI analysis with confidence scores
-- ✅ Real-time damage detection overlay
-- ✅ Assessment comparison tools
-- ✅ Cloud synchronization service
-- ✅ Advanced search and filtering
-- ✅ Professional PDF report generation with multi-format support
-- ✅ CSV/Excel export functionality with analytics
-- ✅ Analytics dashboard with real-time metrics and charts
-- ✅ Integrated UI for export and sharing capabilities
-
-### **🚀 Phase 4 - Business Integration (IN PROGRESS)**
-- Backend architecture implementation (Supabase/Firebase)
-- User authentication and authorization system
-- Real-time data synchronization across devices
-- Insurance provider API integrations
-- Enhanced vehicle management with VIN lookup
-- Appointment scheduling and communication systems
-- Voice features and GPS location tracking
-
-## 🛠️ Technical Specifications
-
-### **Dependencies**
-- Flutter SDK 3.x with null safety
-- Provider for state management
-- Camera plugin for photo capture
-- Photo Manager for gallery integration
-- HTTP for API communications
-- Shared Preferences for local storage
-- Flutter ScreenUtil for responsive design
-
-### **Code Quality**
-- Zero Flutter analysis issues
-- 100% null safety compliance
-- Consistent file naming conventions
-- Comprehensive error handling
-- Production-ready performance optimizations
-
-### **Architecture Patterns**
-- Provider pattern for state management
-- Repository pattern for data access
-- Service layer for business logic
-- Component-based UI architecture
-
-## 📱 Getting Started
-
-### **Prerequisites**
-- Flutter SDK 3.x or higher
-- Android Studio / Xcode for platform development
-- API access for damage assessment service
-
-### **Installation**
-```bash
-# Clone the repository
-git clone https://github.com/your-repo/insurevis.git
-
-# Navigate to project directory
-cd insurevis
-
-# Install dependencies
-flutter pub get
-
-# Run the application
-flutter run
-```
-
-### **Configuration**
-1. Update API endpoints in network configuration
-2. Configure cloud storage credentials
-3. Set up push notification services
-4. Configure insurance provider integrations
-
-## 📈 Performance Metrics
-
-### **Code Quality**
-- ✅ Zero critical analyzer warnings
-- ✅ 100% null safety compliance
-- ✅ Optimized memory usage
-- ✅ Fast startup time (< 2 seconds)
-
-### **AI Analysis**
-- 🎯 96%+ damage detection accuracy
-- ⚡ Real-time processing (< 3 seconds)
-- 📊 Multi-angle assessment support
-- 🔍 Detailed confidence scoring
-
-### **User Experience**
-- 🎨 Modern Material 3 design
-- ♿ Full accessibility support
-- 🌙 Dark/Light theme switching
-- 📱 Responsive across all screen sizes
+5. **Build for production**
+   ```bash
+   # For Android
+   flutter build apk --release
+   
+   # For iOS
+   flutter build ios --release
+   ```
+---
 
 ## 🤝 Contributing
 
-We welcome contributions to improve InsureVis! Please follow our development guidelines:
+Contributions are welcome! Please follow these steps:
 
 1. Fork the repository
-2. Create a feature branch
-3. Follow our code style guidelines
-4. Add comprehensive tests
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 📞 Support
-
-For support, bug reports, or feature requests:
-- 📧 Email: support@insurevis.com
-- 🐛 Issues: [GitHub Issues](https://github.com/your-repo/insurevis/issues)
-- 📖 Documentation: [Wiki](https://github.com/your-repo/insurevis/wiki)
 
 ---
 
