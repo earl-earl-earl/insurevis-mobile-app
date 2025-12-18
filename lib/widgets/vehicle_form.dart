@@ -35,10 +35,33 @@ class _VehicleFormState extends State<VehicleForm> {
   // Available models for selected make
   List<Map<String, dynamic>> _availableModels = [];
 
+  // Search controller and filtered models
+  late TextEditingController _modelSearchController;
+  List<Map<String, dynamic>> _filteredModels = [];
+  bool _showModelDropdown = false;
+
+  // Search controller and filtered makes
+  late TextEditingController _makeSearchController;
+  List<Map<String, dynamic>> _filteredMakes = [];
+  bool _showMakeDropdown = false;
+
   @override
   void initState() {
     super.initState();
+    _modelSearchController = TextEditingController();
+    _modelSearchController.addListener(_filterModels);
+    _makeSearchController = TextEditingController();
+    _makeSearchController.addListener(_filterMakes);
     _fetchCarBrands();
+  }
+
+  @override
+  void dispose() {
+    _modelSearchController.removeListener(_filterModels);
+    _modelSearchController.dispose();
+    _makeSearchController.removeListener(_filterMakes);
+    _makeSearchController.dispose();
+    super.dispose();
   }
 
   /// Fetches car brands data from the repository (which handles caching)
@@ -107,6 +130,46 @@ class _VehicleFormState extends State<VehicleForm> {
     }
   }
 
+  /// Filters available models based on search input
+  void _filterModels() {
+    final searchQuery = _modelSearchController.text.trim().toLowerCase();
+
+    setState(() {
+      if (searchQuery.isEmpty) {
+        _filteredModels = [..._availableModels];
+      } else {
+        _filteredModels =
+            _availableModels.where((model) {
+              final modelName =
+                  (model['model'] ?? model['model_name'])
+                      .toString()
+                      .toLowerCase();
+              return modelName.contains(searchQuery);
+            }).toList();
+      }
+      _showModelDropdown = true;
+    });
+  }
+
+  /// Filters available makes based on search input
+  void _filterMakes() {
+    final searchQuery = _makeSearchController.text.trim().toLowerCase();
+
+    setState(() {
+      if (searchQuery.isEmpty) {
+        _filteredMakes = [..._carBrandsData];
+      } else {
+        _filteredMakes =
+            _carBrandsData.where((brand) {
+              final brandName =
+                  (brand['brand'] ?? brand['name']).toString().toLowerCase();
+              return brandName.contains(searchQuery);
+            }).toList();
+      }
+      _showMakeDropdown = true;
+    });
+  }
+
   /// Updates available models when a make is selected
   void _onMakeSelected(String? make, {bool updateController = true}) {
     setState(() {
@@ -117,7 +180,10 @@ class _VehicleFormState extends State<VehicleForm> {
         if (updateController) widget.makeController.clear();
         _availableModels = [];
       } else if (make != null) {
-        if (updateController) widget.makeController.text = make;
+        if (updateController) {
+          widget.makeController.text = make;
+          _makeSearchController.text = make;
+        }
         final selectedBrandData = _carBrandsData.firstWhere(
           (brand) => (brand['brand'] ?? brand['name']) == make,
           orElse: () => <String, dynamic>{},
@@ -138,8 +204,11 @@ class _VehicleFormState extends State<VehicleForm> {
         _selectedModel = null;
         _isModelOthers = false;
         widget.modelController.clear();
+        _modelSearchController.clear();
         widget.yearController.clear();
+        _filteredModels = [..._availableModels];
       }
+      _showMakeDropdown = false;
     });
   }
 
@@ -148,17 +217,22 @@ class _VehicleFormState extends State<VehicleForm> {
     setState(() {
       _selectedModel = model;
       _isModelOthers = model == 'Others';
+      _showModelDropdown = false;
 
       if (_isModelOthers) {
         if (updateController) {
           widget.modelController.clear();
+          _modelSearchController.clear();
           widget.yearController.clear();
         }
       } else if (model != null) {
-        if (updateController) widget.modelController.text = model;
+        if (updateController) {
+          widget.modelController.text = model;
+          _modelSearchController.text = model;
+        }
 
         if (updateController) {
-          final selectedModelData = _availableModels.firstWhere(
+          final selectedModelData = _filteredModels.firstWhere(
             (m) => (m['model'] ?? m['model_name']) == model,
             orElse: () => <String, dynamic>{},
           );
@@ -336,17 +410,17 @@ class _VehicleFormState extends State<VehicleForm> {
             ),
           )
         else
-          DropdownButtonFormField<String>(
-            value: _selectedMake,
-            hint: Text(
-              'Select vehicle make',
-              style: TextStyle(
-                fontSize: GlobalStyles.fontSizeBody1,
-                color: GlobalStyles.textTertiary,
-                fontWeight: GlobalStyles.fontWeightRegular,
-                fontFamily: GlobalStyles.fontFamilyBody,
-              ),
-            ),
+          TextField(
+            controller: _makeSearchController,
+            onTap: () {
+              setState(() {
+                _showMakeDropdown = true;
+                _filteredMakes = [..._carBrandsData];
+              });
+            },
+            onChanged: (value) {
+              _filterMakes();
+            },
             style: TextStyle(
               fontSize: GlobalStyles.fontSizeBody1,
               color: GlobalStyles.textPrimary,
@@ -354,6 +428,13 @@ class _VehicleFormState extends State<VehicleForm> {
               fontFamily: GlobalStyles.fontFamilyBody,
             ),
             decoration: InputDecoration(
+              hintText: 'Search vehicle make',
+              hintStyle: TextStyle(
+                fontSize: GlobalStyles.fontSizeBody1,
+                color: GlobalStyles.textTertiary,
+                fontWeight: GlobalStyles.fontWeightRegular,
+                fontFamily: GlobalStyles.fontFamilyBody,
+              ),
               prefixIcon: Icon(
                 LucideIcons.car,
                 color: GlobalStyles.primaryMain.withOpacity(0.7),
@@ -387,40 +468,88 @@ class _VehicleFormState extends State<VehicleForm> {
               ),
               contentPadding: GlobalStyles.inputPadding,
             ),
-            items: [
-              ..._carBrandsData
-                  .where(
-                    (brand) => brand['brand'] != null || brand['name'] != null,
-                  )
-                  .map((brand) {
-                    final brandName =
-                        (brand['brand'] ?? brand['name']).toString();
-                    return DropdownMenuItem<String>(
-                      value: brandName,
+          ),
+        if (_showMakeDropdown && !_isLoadingBrands)
+          Container(
+            margin: EdgeInsets.only(top: GlobalStyles.spacingSm),
+            decoration: BoxDecoration(
+              color: GlobalStyles.inputBackground,
+              borderRadius: BorderRadius.circular(
+                GlobalStyles.inputBorderRadius,
+              ),
+              border: Border.all(
+                color: GlobalStyles.inputBorderColor,
+                width: 1,
+              ),
+            ),
+            constraints: BoxConstraints(maxHeight: 250),
+            child:
+                _filteredMakes.isEmpty
+                    ? Padding(
+                      padding: GlobalStyles.inputPadding,
                       child: Text(
-                        brandName,
+                        'No makes found',
                         style: TextStyle(
                           fontSize: GlobalStyles.fontSizeBody1,
+                          color: GlobalStyles.textSecondary,
                           fontWeight: GlobalStyles.fontWeightMedium,
                           fontFamily: GlobalStyles.fontFamilyBody,
                         ),
                       ),
-                    );
-                  })
-                  .toList(),
-              DropdownMenuItem<String>(
-                value: 'Others',
-                child: Text(
-                  'Others',
-                  style: TextStyle(
-                    fontSize: GlobalStyles.fontSizeBody1,
-                    fontWeight: GlobalStyles.fontWeightMedium,
-                    fontFamily: GlobalStyles.fontFamilyBody,
-                  ),
-                ),
-              ),
-            ],
-            onChanged: _onMakeSelected,
+                    )
+                    : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _filteredMakes.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == _filteredMakes.length) {
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                _onMakeSelected('Others');
+                              },
+                              child: Padding(
+                                padding: GlobalStyles.inputPadding,
+                                child: Text(
+                                  'Others',
+                                  style: TextStyle(
+                                    fontSize: GlobalStyles.fontSizeBody1,
+                                    color: GlobalStyles.textPrimary,
+                                    fontWeight: GlobalStyles.fontWeightMedium,
+                                    fontFamily: GlobalStyles.fontFamilyBody,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        final brand = _filteredMakes[index];
+                        final brandName =
+                            (brand['brand'] ?? brand['name']).toString();
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              _onMakeSelected(brandName);
+                            },
+                            child: Padding(
+                              padding: GlobalStyles.inputPadding,
+                              child: Text(
+                                brandName,
+                                style: TextStyle(
+                                  fontSize: GlobalStyles.fontSizeBody1,
+                                  color: GlobalStyles.textPrimary,
+                                  fontWeight: GlobalStyles.fontWeightMedium,
+                                  fontFamily: GlobalStyles.fontFamilyBody,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
           ),
         if (_isMakeOthers) ...[
           SizedBox(height: GlobalStyles.spacingMd),
@@ -496,17 +625,18 @@ class _VehicleFormState extends State<VehicleForm> {
             ),
           ),
         ),
-        DropdownButtonFormField<String>(
-          value: _selectedModel,
-          hint: Text(
-            isDisabled ? 'Select make first' : 'Select vehicle model',
-            style: TextStyle(
-              fontSize: GlobalStyles.fontSizeBody1,
-              color: GlobalStyles.textTertiary,
-              fontWeight: GlobalStyles.fontWeightRegular,
-              fontFamily: GlobalStyles.fontFamilyBody,
-            ),
-          ),
+        TextField(
+          controller: _modelSearchController,
+          enabled: !isDisabled,
+          onTap: () {
+            setState(() {
+              _showModelDropdown = true;
+              _filteredModels = [..._availableModels];
+            });
+          },
+          onChanged: (value) {
+            _filterModels();
+          },
           style: TextStyle(
             fontSize: GlobalStyles.fontSizeBody1,
             color: GlobalStyles.textPrimary,
@@ -514,6 +644,13 @@ class _VehicleFormState extends State<VehicleForm> {
             fontFamily: GlobalStyles.fontFamilyBody,
           ),
           decoration: InputDecoration(
+            hintText: isDisabled ? 'Select make first' : 'Search vehicle model',
+            hintStyle: TextStyle(
+              fontSize: GlobalStyles.fontSizeBody1,
+              color: GlobalStyles.textTertiary,
+              fontWeight: GlobalStyles.fontWeightRegular,
+              fontFamily: GlobalStyles.fontFamilyBody,
+            ),
             prefixIcon: Icon(
               LucideIcons.carFront,
               color:
@@ -556,47 +693,89 @@ class _VehicleFormState extends State<VehicleForm> {
             ),
             contentPadding: GlobalStyles.inputPadding,
           ),
-          items:
-              isDisabled
-                  ? []
-                  : [
-                    ..._availableModels
-                        .where(
-                          (model) =>
-                              model['model'] != null ||
-                              model['model_name'] != null,
-                        )
-                        .map((model) {
-                          final modelName =
-                              (model['model'] ?? model['model_name'])
-                                  .toString();
-                          return DropdownMenuItem<String>(
-                            value: modelName,
-                            child: Text(
-                              modelName,
-                              style: TextStyle(
-                                fontSize: GlobalStyles.fontSizeBody1,
-                                fontWeight: GlobalStyles.fontWeightMedium,
-                                fontFamily: GlobalStyles.fontFamilyBody,
-                              ),
-                            ),
-                          );
-                        })
-                        .toList(),
-                    DropdownMenuItem<String>(
-                      value: 'Others',
+        ),
+        if (_showModelDropdown && !isDisabled)
+          Container(
+            margin: EdgeInsets.only(top: GlobalStyles.spacingSm),
+            decoration: BoxDecoration(
+              color: GlobalStyles.inputBackground,
+              borderRadius: BorderRadius.circular(
+                GlobalStyles.inputBorderRadius,
+              ),
+              border: Border.all(
+                color: GlobalStyles.inputBorderColor,
+                width: 1,
+              ),
+            ),
+            constraints: BoxConstraints(maxHeight: 250),
+            child:
+                _filteredModels.isEmpty
+                    ? Padding(
+                      padding: GlobalStyles.inputPadding,
                       child: Text(
-                        'Others',
+                        'No models found',
                         style: TextStyle(
                           fontSize: GlobalStyles.fontSizeBody1,
+                          color: GlobalStyles.textSecondary,
                           fontWeight: GlobalStyles.fontWeightMedium,
                           fontFamily: GlobalStyles.fontFamilyBody,
                         ),
                       ),
+                    )
+                    : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _filteredModels.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == _filteredModels.length) {
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                _onModelSelected('Others');
+                              },
+                              child: Padding(
+                                padding: GlobalStyles.inputPadding,
+                                child: Text(
+                                  'Others',
+                                  style: TextStyle(
+                                    fontSize: GlobalStyles.fontSizeBody1,
+                                    color: GlobalStyles.textPrimary,
+                                    fontWeight: GlobalStyles.fontWeightMedium,
+                                    fontFamily: GlobalStyles.fontFamilyBody,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        final model = _filteredModels[index];
+                        final modelName =
+                            (model['model'] ?? model['model_name']).toString();
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              _onModelSelected(modelName);
+                            },
+                            child: Padding(
+                              padding: GlobalStyles.inputPadding,
+                              child: Text(
+                                modelName,
+                                style: TextStyle(
+                                  fontSize: GlobalStyles.fontSizeBody1,
+                                  color: GlobalStyles.textPrimary,
+                                  fontWeight: GlobalStyles.fontWeightMedium,
+                                  fontFamily: GlobalStyles.fontFamilyBody,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  ],
-          onChanged: isDisabled ? null : _onModelSelected,
-        ),
+          ),
         if (_isModelOthers) ...[
           SizedBox(height: GlobalStyles.spacingMd),
           TextField(
